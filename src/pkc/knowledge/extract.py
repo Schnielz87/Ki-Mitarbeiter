@@ -320,22 +320,28 @@ def extract_plain(raw: bytes | str) -> ExtractedDocument:
         raise ExtractionError("Datei enthielt keinen Text.")
     sections: list[Section] = []
     heading = ""
+    level = 1
+    title = ""
     buffer: list[str] = []
     for line in text.split("\n"):
         if line.startswith("#"):
             body = "\n".join(buffer).strip()
             if body:
-                sections.append(Section(heading, body))
+                sections.append(Section(heading, body, level=level))
             buffer = []
+            level = len(line) - len(line.lstrip("#"))
             heading = line.lstrip("#").strip()
+            if not title and level == 1:
+                title = heading
             continue
         buffer.append(line)
     body = "\n".join(buffer).strip()
     if body or not sections:
-        sections.append(Section(heading, body))
-    title = sections[0].heading or ""
-    return ExtractedDocument(title=title, sections=[s for s in sections if s.text.strip()],
-                             format="text")
+        sections.append(Section(heading, body, level=level))
+    kept = [s for s in sections if s.text.strip()]
+    return ExtractedDocument(
+        title=title or (kept[0].heading if kept else ""), sections=kept, format="text"
+    )
 
 
 # ------------------------------------------------------------------ Verteiler

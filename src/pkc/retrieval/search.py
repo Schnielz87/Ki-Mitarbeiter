@@ -47,7 +47,16 @@ def fts_query(text: str, max_terms: int = 18) -> str:
         terms = [w for w in words if len(w) > 1][:4]
     if not terms:
         return ""
-    return " OR ".join(f'"{t}"*' for t in terms[:max_terms])
+    # Deutsche Wortbildung: "aufbewahren" soll auch "Aufbewahrungsfrist" finden.
+    # Dafuer wird bei langen Woertern zusaetzlich ein gekuerzter Stamm gesucht.
+    expanded: list[str] = []
+    for term in terms[:max_terms]:
+        expanded.append(term)
+        if len(term) >= 9:
+            stem = term[:7]
+            if stem not in expanded:
+                expanded.append(stem)
+    return " OR ".join(f'"{t}"*' for t in expanded)
 
 
 @dataclass
@@ -74,8 +83,16 @@ class Hit:
 
     @property
     def reference(self) -> str:
-        parts = [p for p in (self.citation, self.title) if p]
-        return " - ".join(dict.fromkeys(parts)) or self.doc_uid
+        """Fundstellenbezeichnung ohne Dopplung von Zitat und Titel."""
+        citation = (self.citation or "").strip()
+        title = (self.title or "").strip()
+        if citation and title:
+            if title.lower() in citation.lower():
+                return citation
+            if citation.lower() in title.lower():
+                return title
+            return f"{citation} - {title}"
+        return citation or title or self.doc_uid
 
     def excerpt(self, length: int = 320) -> str:
         text = " ".join(self.text.split())
