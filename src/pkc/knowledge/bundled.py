@@ -9,6 +9,7 @@ spaeter per Update dazukommen, haben Vorrang.
 from __future__ import annotations
 
 import hashlib
+import re
 from pathlib import Path
 
 from ..db import utc_now
@@ -21,6 +22,26 @@ from .store import KnowledgeStore
 log = get_logger(__name__)
 
 BUNDLED_SOURCE_ID = "P00_MITGELIEFERTE_FACHMODULE"
+
+#: Ein Fachmodul nennt seine tragenden Normen in einer "Massgeblich"-Zeile.
+_GOVERNING = re.compile(r"^\s*Ma(?:ss|ß)geblich\s*:?\s*(?P<norms>.+)$", re.MULTILINE)
+_MARKUP = re.compile(r"[*_`]+")
+
+
+def governing_norms(text: str, limit: int = 150) -> str:
+    """Liest die tragenden Normen eines Fachmoduls aus seiner Kopfzeile.
+
+    Diese Normen gelten fuer das gesamte Modul.  Sie werden deshalb jedem
+    Abschnitt als Fundstellenzusatz mitgegeben - sonst waere "§ 15 UStG" nur
+    in der kurzen Einleitung auffindbar und die Recherche nach der Norm
+    liefe ins Leere.
+    """
+    match = _GOVERNING.search(text or "")
+    if not match:
+        return ""
+    norms = _MARKUP.sub("", match.group("norms")).strip().rstrip(".")
+    norms = re.sub(r"\s+", " ", norms)
+    return norms[:limit].rstrip(" ,;")
 
 
 def ingest_bundled_modules(
@@ -67,15 +88,18 @@ def ingest_bundled_modules(
             result["fehlgeschlagen"] += 1
             result["fehler"].append(f"{path.name}: {exc}")
             continue
-        chunks = chunk_document(document, chunk_tokens, chunk_overlap)
+        title = document.title or path.stem.replace("_", " ")
+        norms = governing_norms(document.text)
+        citation = f"Fachmodul {title}" + (f" · {norms}" if norms else "")
+        chunks = chunk_document(document, chunk_tokens, chunk_overlap,
+                                default_citation=citation)
         if not chunks:
             result["fehlgeschlagen"] += 1
             result["fehler"].append(f"{path.name}: keine Abschnitte")
             continue
-        title = document.title or path.stem.replace("_", " ")
         doc_id = store.upsert_document(
             doc_uid, BUNDLED_SOURCE_ID, title,
-            url="", kind="module", citation=f"Fachmodul {title}",
+            url="", kind="module", citation=citation,
             path_raw=paths.relative(path), sha256=digest, size=len(raw),
             licence="Bestandteil der Anwendung", priority=5,
             meta={"datei": path.name, "profil": profile_id, "aufgenommen_am": utc_now()},

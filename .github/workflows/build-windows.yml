@@ -1,0 +1,112 @@
+name: Windows-Build und Tests
+
+# Erzeugt PORTABLE_BUCHHALTER.exe auf einem echten Windows-Rechner.
+# Die Entwicklungsumgebung dieses Projekts ist Linux; die EXE entsteht hier.
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  tests-linux:
+    name: Tests (Linux)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Abhaengigkeiten
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements-dev.txt
+      - name: Tests
+        run: python -m pytest tests -q
+
+  build-windows:
+    name: EXE bauen und pruefen (Windows)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Tkinter vorhanden?
+        run: python -c "import tkinter; print('Tk', tkinter.TkVersion)"
+
+      - name: Abhaengigkeiten
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements-dev.txt
+
+      - name: Tests auf Windows
+        run: python -m pytest tests -q
+
+      - name: Portablen Ordner bauen
+        run: powershell -NoProfile -ExecutionPolicy Bypass -File build\build_windows.ps1 -OhneTests
+
+      - name: EXE existiert wirklich
+        shell: pwsh
+        run: |
+          $exe = "dist\Portable-Buchhalter\PORTABLE_BUCHHALTER.exe"
+          if (-not (Test-Path $exe)) { throw "Die EXE wurde nicht erzeugt." }
+          $groesse = (Get-Item $exe).Length
+          Write-Host "EXE vorhanden, $([math]::Round($groesse/1MB,1)) MB"
+
+      - name: Systempruefung der gebauten EXE
+        shell: pwsh
+        run: |
+          Set-Location dist\Portable-Buchhalter
+          .\PORTABLE_BUCHHALTER.exe check | Tee-Object -Variable ausgabe
+          if ($LASTEXITCODE -gt 2) { throw "Die EXE liess sich nicht ausfuehren." }
+          if ($ausgabe -notmatch "Systempruefung") { throw "Unerwartete Ausgabe der EXE." }
+
+      - name: Offline-Fachfrage gegen die gebaute EXE
+        shell: pwsh
+        run: |
+          Set-Location dist\Portable-Buchhalter
+          $antwort = .\PORTABLE_BUCHHALTER.exe --offline frage "Welche Pflichtangaben muss eine Rechnung enthalten?" | Out-String
+          Write-Host $antwort
+          if ($antwort -notmatch "QUELLEN") { throw "Die Antwort enthielt keinen Quellenteil." }
+          if ($antwort -notmatch "Rechnung") { throw "Die lokale Recherche lieferte nichts Passendes." }
+
+      - name: Unternehmenswissen speichern und nach Neustart lesen
+        shell: pwsh
+        run: |
+          Set-Location dist\Portable-Buchhalter
+          .\PORTABLE_BUCHHALTER.exe wissen set company.chart_of_accounts "Das Unternehmen verwendet SKR03." --titel Kontenrahmen --kategorie accounting
+          $wert = .\PORTABLE_BUCHHALTER.exe wissen get company.chart_of_accounts | Out-String
+          if ($wert -notmatch "SKR03") { throw "Das Unternehmenswissen wurde nicht dauerhaft gespeichert." }
+
+      - name: Portabilitaet - anderes Laufwerk, Pfad mit Leerzeichen
+        shell: pwsh
+        run: |
+          # Ein anderer Laufwerksbuchstabe wird ueber subst simuliert.
+          $ziel = "$env:RUNNER_TEMP\Zweiter PC\Portable Buchhalter"
+          New-Item -ItemType Directory -Force -Path $ziel | Out-Null
+          Copy-Item "dist\Portable-Buchhalter\*" -Destination $ziel -Recurse -Force
+          subst X: "$env:RUNNER_TEMP\Zweiter PC"
+          try {
+            Set-Location "X:\Portable Buchhalter"
+            $wert = .\PORTABLE_BUCHHALTER.exe wissen get company.chart_of_accounts | Out-String
+            Write-Host "Auf X: gelesen: $wert"
+            if ($wert -notmatch "SKR03") {
+              throw "Nach Laufwerkswechsel war das Unternehmenswissen nicht verfuegbar."
+            }
+            .\PORTABLE_BUCHHALTER.exe check
+            if ($LASTEXITCODE -gt 2) { throw "Auf dem anderen Laufwerk startete die EXE nicht." }
+          } finally {
+            Set-Location $env:GITHUB_WORKSPACE
+            subst X: /D
+          }
+
+      - name: Ergebnis bereitstellen
+        uses: actions/upload-artifact@v4
+        with:
+          name: Portable-Buchhalter-Windows
+          path: dist/Portable-Buchhalter/
+          retention-days: 30

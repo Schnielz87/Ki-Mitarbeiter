@@ -1,0 +1,181 @@
+{
+  "beschreibung": "Fachliche Testfaelle nach Masterprompt Abschnitt 47. Geprueft wird automatisch, ob die lokale Recherche zu jeder Frage das fachlich richtige Material findet (Stichworte und erwartete Normen). Die Qualitaet der formulierten Antwort haengt vom eingesetzten Sprachmodell ab und ist Teil der manuellen Abnahme (docs/ABNAHME.md).",
+  "faelle": [
+    {
+      "id": "F01",
+      "name": "Normale Eingangsrechnung",
+      "frage": "Ich habe eine Eingangsrechnung ueber 1.190 EUR brutto mit 19 Prozent Umsatzsteuer von einem inlaendischen Lieferanten. Wie pruefe und buche ich sie?",
+      "erwartete_stichworte": ["Pflichtangaben", "Vorsteuer"],
+      "erwartete_normen": ["§ 14 UStG", "§ 15 UStG"],
+      "hinweis": "Pruefschema Pflichtangaben, Vorsteuerabzug, Buchungssatz."
+    },
+    {
+      "id": "F02",
+      "name": "Fehlerhafte Rechnung",
+      "frage": "Auf einer Eingangsrechnung fehlt die Steuernummer des Lieferanten und der Leistungszeitpunkt. Was folgt daraus?",
+      "erwartete_stichworte": ["Pflichtangabe", "Vorsteuerabzug", "Berichtigung"],
+      "erwartete_normen": ["§ 14 UStG"],
+      "hinweis": "Versagung des Vorsteuerabzugs, Berichtigungsmoeglichkeit."
+    },
+    {
+      "id": "F03",
+      "name": "Innergemeinschaftlicher Erwerb",
+      "frage": "Wir haben Waren aus Frankreich bezogen, der Lieferant hat ohne Umsatzsteuer abgerechnet. Wie ist der innergemeinschaftliche Erwerb zu behandeln und zu buchen?",
+      "erwartete_stichworte": ["innergemeinschaftlich", "Erwerb", "Vorsteuer"],
+      "erwartete_normen": ["§ 1a UStG", "§ 3d UStG"],
+      "hinweis": "Erwerbsbesteuerung, ergebnisneutral bei vollem Vorsteuerabzug."
+    },
+    {
+      "id": "F04",
+      "name": "Innergemeinschaftliche Lieferung",
+      "frage": "Wir liefern Waren an einen Unternehmer in Oesterreich. Welche Voraussetzungen muessen fuer die Steuerbefreiung erfuellt sein?",
+      "erwartete_stichworte": ["Lieferung", "USt-IdNr", "Zusammenfassend"],
+      "erwartete_normen": ["§ 6a UStG"],
+      "hinweis": "Quick Fixes: USt-IdNr. und ZM sind materielle Voraussetzungen."
+    },
+    {
+      "id": "F05",
+      "name": "Reverse Charge",
+      "frage": "Ein Dienstleister aus Polen hat uns eine Leistung ohne Umsatzsteuer berechnet mit dem Hinweis auf die Steuerschuldnerschaft des Leistungsempfaengers. Was ist zu tun?",
+      "erwartete_stichworte": ["Steuerschuldnerschaft", "Leistungsempfaenger"],
+      "erwartete_normen": ["§ 13b UStG"],
+      "hinweis": "Steuerschuld beim Empfaenger, Vorsteuerabzug, Buchung."
+    },
+    {
+      "id": "F06",
+      "name": "Kleinunternehmer",
+      "frage": "Ein Lieferant weist auf seiner Rechnung keine Umsatzsteuer aus und verweist auf die Kleinunternehmerregelung. Was bedeutet das fuer uns?",
+      "erwartete_stichworte": ["Kleinunternehmer"],
+      "erwartete_normen": ["§ 19 UStG"],
+      "hinweis": "Kein Vorsteuerabzug; Betragsgrenzen sind zeitabhaengig."
+    },
+    {
+      "id": "F07",
+      "name": "Vorsteuerabzug",
+      "frage": "Unter welchen Voraussetzungen ist die Vorsteuer aus einer Eingangsrechnung abziehbar?",
+      "erwartete_stichworte": ["Vorsteuer", "ordnungsgemaesse Rechnung", "Unternehmer"],
+      "erwartete_normen": ["§ 15 UStG"],
+      "hinweis": "Vier Voraussetzungen, Ausschluss bei steuerfreien Ausgangsumsaetzen."
+    },
+    {
+      "id": "F08",
+      "name": "E-Rechnung",
+      "frage": "Wir erhalten eine ZUGFeRD-Rechnung als PDF mit eingebettetem XML. Was ist dabei zu beachten?",
+      "erwartete_stichworte": ["E-Rechnung", "XRechnung", "strukturiert"],
+      "erwartete_normen": [],
+      "hinweis": "XML ist massgeblich; Aufbewahrung im Originalformat."
+    },
+    {
+      "id": "F09",
+      "name": "Anlagegut",
+      "frage": "Wir haben eine Maschine fuer 12.000 EUR netto angeschafft. Wie ist sie zu erfassen?",
+      "erwartete_stichworte": ["Anschaffungskosten", "Anlagevermoegen"],
+      "erwartete_normen": ["§ 255 HGB", "§ 7 EStG"],
+      "hinweis": "Aktivierung, Anschaffungsnebenkosten, Nutzungsdauer."
+    },
+    {
+      "id": "F10",
+      "name": "Abschreibung",
+      "frage": "Wie schreibe ich ein im Juni angeschafftes Wirtschaftsgut mit acht Jahren Nutzungsdauer im ersten Jahr ab?",
+      "erwartete_stichworte": ["Abschreibung", "Nutzungsdauer", "linear"],
+      "erwartete_normen": ["§ 7 EStG"],
+      "hinweis": "Zeitanteilige AfA ab dem Monat der Anschaffung."
+    },
+    {
+      "id": "F11",
+      "name": "Geringwertiges Wirtschaftsgut",
+      "frage": "Ein Buerostuhl kostet 780 EUR netto. Kann ich ihn sofort absetzen?",
+      "erwartete_stichworte": ["geringwertig", "Sammelposten"],
+      "erwartete_normen": ["§ 6 EStG"],
+      "hinweis": "Wertgrenze ist zeitabhaengig und zu pruefen."
+    },
+    {
+      "id": "F12",
+      "name": "Skonto",
+      "frage": "Wir haben eine Eingangsrechnung unter Abzug von 2 Prozent Skonto bezahlt. Was ist umsatzsteuerlich zu tun?",
+      "erwartete_stichworte": ["Skonto", "Minderung des Entgelts"],
+      "erwartete_normen": ["§ 17 UStG"],
+      "hinweis": "Berichtigung von Entgelt und Vorsteuer im Zahlungszeitraum."
+    },
+    {
+      "id": "F13",
+      "name": "Gutschrift",
+      "frage": "Unser Kunde schickt uns eine Gutschrift ueber unsere Leistung. Ist das eine Rechnungskorrektur?",
+      "erwartete_stichworte": ["Gutschrift", "Rechnungskorrektur"],
+      "erwartete_normen": ["§ 14 UStG"],
+      "hinweis": "Unterscheidung Abrechnungsgutschrift und kaufmaennische Gutschrift."
+    },
+    {
+      "id": "F14",
+      "name": "Forderungsausfall",
+      "frage": "Ueber das Vermoegen eines Kunden wurde das Insolvenzverfahren eroeffnet. Wie behandle ich die offene Forderung?",
+      "erwartete_stichworte": ["uneinbringlich", "Wertberichtigung"],
+      "erwartete_normen": ["§ 17 UStG"],
+      "hinweis": "Umsatzsteuerberichtigung, Wertberichtigung auf den Nettobetrag."
+    },
+    {
+      "id": "F15",
+      "name": "Rechnungsabgrenzung",
+      "frage": "Wir haben im Dezember die Versicherungspraemie fuer das gesamte Folgejahr gezahlt. Wie grenze ich das ab?",
+      "erwartete_stichworte": ["Rechnungsabgrenzung", "aktiver"],
+      "erwartete_normen": ["§ 250 HGB"],
+      "hinweis": "Aktiver Rechnungsabgrenzungsposten."
+    },
+    {
+      "id": "F16",
+      "name": "Rueckstellung",
+      "frage": "Uns droht eine Nachzahlung aus einem laufenden Rechtsstreit. Muss ich eine Rueckstellung bilden?",
+      "erwartete_stichworte": ["Rueckstellung", "ungewisse Verbindlichkeit"],
+      "erwartete_normen": ["§ 249 HGB"],
+      "hinweis": "Vier Voraussetzungen; Drohverlustrueckstellung steuerlich untersagt."
+    },
+    {
+      "id": "F17",
+      "name": "Vertragsstrafe ohne Lieferung",
+      "frage": "Wir muessen eine Vertragsstrafe zahlen, ohne dass eine Lieferung erfolgt ist. Faellt darauf Umsatzsteuer an?",
+      "erwartete_stichworte": ["Vertragsstrafe", "Schadenersatz", "Leistungsaustausch"],
+      "erwartete_normen": [],
+      "hinweis": "Echter Schadenersatz ist nicht steuerbar - kein Leistungsaustausch."
+    },
+    {
+      "id": "F18",
+      "name": "Anzahlung und nachtraegliche Lieferung",
+      "frage": "Wir haben eine Anzahlung erhalten und liefern erst im naechsten Jahr. Wie behandle ich Anzahlung und Schlussrechnung?",
+      "erwartete_stichworte": ["Anzahlung", "Schlussrechnung"],
+      "erwartete_normen": ["§ 13 UStG"],
+      "hinweis": "Umsatzsteuer bereits bei Vereinnahmung; Absetzung in der Schlussrechnung."
+    },
+    {
+      "id": "F19",
+      "name": "Abweichender Leistungs- und Rechnungszeitpunkt",
+      "frage": "Die Leistung wurde im Dezember erbracht, die Rechnung ist im Januar datiert. In welche Periode gehoert der Aufwand?",
+      "erwartete_stichworte": ["wirtschaftliche Zugehoerigkeit", "Periodenzuordnung"],
+      "erwartete_normen": ["§ 252 HGB"],
+      "hinweis": "Wirtschaftliche Zugehoerigkeit, nicht das Rechnungsdatum."
+    },
+    {
+      "id": "F20",
+      "name": "Leistungsort einer sonstigen Leistung",
+      "frage": "Wir erbringen eine Beratungsleistung an ein Unternehmen in Italien. Wo ist der Leistungsort?",
+      "erwartete_stichworte": ["Leistungsort", "Empfaenger"],
+      "erwartete_normen": ["§ 3a UStG"],
+      "hinweis": "B2B-Grundregel: Empfaengerort, regelmaessig Reverse Charge."
+    },
+    {
+      "id": "F21",
+      "name": "Aufbewahrung und GoBD",
+      "frage": "Wie lange und in welcher Form muessen wir Eingangsrechnungen aufbewahren?",
+      "erwartete_stichworte": ["Aufbewahrung", "GoBD", "Originalformat"],
+      "erwartete_normen": ["§ 147 AO", "§ 14b UStG", "§ 257 HGB"],
+      "hinweis": "Fristen zeitabhaengig; elektronische Belege im Ursprungsformat."
+    },
+    {
+      "id": "F22",
+      "name": "Jahresabschlussvorbereitung",
+      "frage": "Welche Arbeiten gehoeren zur Vorbereitung des Jahresabschlusses?",
+      "erwartete_stichworte": ["Inventur", "Abstimmung", "Umsatzsteuerverprobung"],
+      "erwartete_normen": [],
+      "hinweis": "Ablaufplan und typische Differenzanalysen."
+    }
+  ]
+}

@@ -31,6 +31,16 @@ log = get_logger(__name__)
 
 _TOKEN = re.compile(r"[a-zA-ZäöüÄÖÜß0-9§]+", re.UNICODE)
 
+#: Sehr haeufige deutsche Woerter. Sie tragen keine Bedeutung, erzeugen aber
+#: Scheinaehnlichkeit zwischen beliebigen Texten.
+_COMMON = frozenset("""
+der die das dem den des ein eine einen einer eines und oder aber auch ist sind
+war waren wird werden wurde wurden kann koennen muss muessen darf duerfen soll
+sollen hat haben hatte hatten mit von fuer auf bei im in an zu zur zum als aus
+nach ueber unter vor durch gegen ohne um dass wenn weil damit sich es sie er
+wir ihr ich man nicht nur noch schon bereits sowie bzw beim vom zum
+""".split())
+
 
 class EmbeddingProvider(Protocol):
     name: str
@@ -70,7 +80,7 @@ class HashingEmbedder:
         self.name = f"hashing-{self.dim}d"
 
     def _features(self, text: str) -> list[tuple[str, float]]:
-        tokens = tokenize(text)
+        tokens = [t for t in tokenize(text) if t not in _COMMON and len(t) > 1]
         features: list[tuple[str, float]] = [(f"w:{t}", 1.0) for t in tokens]
         features += [
             (f"b:{tokens[i]}_{tokens[i + 1]}", 0.7) for i in range(len(tokens) - 1)

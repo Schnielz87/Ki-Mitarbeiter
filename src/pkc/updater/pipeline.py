@@ -363,7 +363,8 @@ class UpdatePipeline:
             log.warning("%s: %s", doc.doc_uid, result.detail)
             return result
 
-        chunks = chunk_document(document, self.chunk_tokens, self.chunk_overlap)
+        chunks = chunk_document(document, self.chunk_tokens, self.chunk_overlap,
+                                default_citation=doc.citation or document.title or doc.title)
         if not chunks:
             result.detail = "Dokument enthielt nach der Aufbereitung keine Abschnitte."
             return result

@@ -77,6 +77,7 @@ def chunk_sections(
     max_tokens: int = 400,
     overlap_tokens: int = 60,
     min_chars: int = 40,
+    default_citation: str = "",
 ) -> list[Chunk]:
     max_chars = max(200, int(max_tokens * 3.7))
     overlap_chars = max(0, int(overlap_tokens * 3.7))
@@ -93,7 +94,12 @@ def chunk_sections(
             chunks.append(
                 Chunk(
                     ord=index, text=piece, heading=section.heading,
-                    citation=section.citation, tokens=estimate_tokens(piece),
+                    # Ohne eigene Fundstelle traegt der Abschnitt den Dokumenttitel.
+                    # Sonst waere der Titel nicht durchsuchbar - eine Frage nach
+                    # "Jahresabschluss" faende den Ablaufplan nicht, weil das Wort
+                    # nur in der Ueberschrift des Dokuments steht.
+                    citation=section.citation or default_citation,
+                    tokens=estimate_tokens(piece),
                     meta=dict(section.meta),
                 )
             )
@@ -105,5 +111,9 @@ def chunk_document(
     document: ExtractedDocument,
     max_tokens: int = 400,
     overlap_tokens: int = 60,
+    default_citation: str = "",
 ) -> list[Chunk]:
-    return chunk_sections(document.sections, max_tokens, overlap_tokens)
+    return chunk_sections(
+        document.sections, max_tokens, overlap_tokens,
+        default_citation=default_citation or document.title,
+    )

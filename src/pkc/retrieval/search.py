@@ -209,7 +209,10 @@ class HybridSearcher:
 
         lexical_ids = [cid for cid, _ in lexical]
         vector_ids = [cid for cid, _ in vector]
-        fused = rrf_merge([lexical_ids, vector_ids], weights=[1.0, 0.8])
+        # Die Volltextsuche ist die verlaessliche Grundlage; die Vektorsuche
+        # ergaenzt sie (und ist ohne echtes Einbettungsmodell deutlich schwaecher).
+        # Sie wird daher geringer gewichtet, damit sie gute Treffer nicht verdraengt.
+        fused = rrf_merge([lexical_ids, vector_ids], weights=[1.0, 0.45])
         lexical_rank = {cid: i + 1 for i, cid in enumerate(lexical_ids)}
         vector_rank = {cid: i + 1 for i, cid in enumerate(vector_ids)}
 

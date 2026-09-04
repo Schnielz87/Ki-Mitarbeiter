@@ -1,0 +1,21 @@
+# Pflicht: keine.
+# Der portable KI-Mitarbeiter laeuft mit der Standardbibliothek von Python 3.11+.
+# Die folgenden Pakete erweitern ihn; fehlt eines, meldet die Anwendung das
+# klar und arbeitet ohne die betreffende Funktion weiter.
+
+# Verschluesselter Geheimnistresor (AES-256-GCM). Ohne dieses Paket werden
+# keine Zugangsdaten gespeichert - es wird nichts unverschluesselt abgelegt.
+cryptography>=41.0
+
+# Textextraktion aus PDF-Belegen. Ohne dieses Paket meldet die Anwendung
+# "PDF nicht auswertbar", statt leeren Text vorzutaeuschen.
+pypdf>=4.0
+
+# Excel-Import im Connector. Alternative ohne dieses Paket: CSV-Export.
+openpyxl>=3.1
+
+# Lokales Sprachmodell im selben Prozess. Alternative ohne dieses Paket:
+# llama-server aus llama.cpp starten und llm.server_url setzen.
+# Bewusst NICHT als Pflicht, weil das Paket auf manchen Rechnern kompiliert
+# werden muss.
+# llama-cpp-python>=0.3
