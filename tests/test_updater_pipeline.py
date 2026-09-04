@@ -205,6 +205,20 @@ def test_rollback_restores_previous_state(setup):
     ) == 0
 
 
+def test_binary_content_is_not_indexed(setup):
+    """Binaerdaten duerfen nicht als vermeintliches Fachwissen im Index landen."""
+    pipeline, store, _, _, http_server = setup
+    http_server.add("/bmf/gobd.html", bytes(range(256)) * 40,
+                    "text/html; charset=utf-8", '"binaer"')
+    report = pipeline.run(trigger="test")
+    ergebnis = next(r for r in report.results if r.doc_uid == "T_GOBD")
+    assert ergebnis.status == "failed"
+    assert "kein lesbarer Text" in ergebnis.detail
+    assert store.db.scalar(
+        "SELECT COUNT(*) FROM documents WHERE doc_uid='T_GOBD'"
+    ) == 0, "das Dokument darf gar nicht erst angelegt werden"
+
+
 def test_schedule_due_logic(setup):
     pipeline, _, _, _, _ = setup
     due, reason = pipeline.due("manual")

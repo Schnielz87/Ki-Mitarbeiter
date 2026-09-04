@@ -149,12 +149,15 @@ class Paths:
     def detect(cls) -> "Paths":
         return cls(detect_root())
 
-    def __getattr__(self, name: str) -> Path:  # pragma: no cover - trivial
-        try:
-            rel = LAYOUT[name]
-        except KeyError as exc:
-            raise AttributeError(name) from exc
-        return self.root / rel
+    def __getattr__(self, name: str) -> Path:
+        """Bequemer Zugriff: ``paths.models`` entspricht ``paths.get("models")``.
+
+        Beide Wege muessen dasselbe liefern - sonst waere ein Verzeichnis je
+        nach Schreibweise ein anderes.
+        """
+        if name not in LAYOUT:
+            raise AttributeError(name)
+        return self.get(name)
 
     def get(self, name: str) -> Path:
         """Verzeichnis nach Layout-Name (explizite, typsichere Variante)."""

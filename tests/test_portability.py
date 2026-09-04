@@ -49,6 +49,21 @@ def test_root_detection_handles_awkward_paths(tmp_path, monkeypatch, verzeichnis
     assert paths.relative(paths.company_db) == "database/company.db"
 
 
+def test_path_accessors_agree(tmp_path):
+    """``paths.models`` und ``paths.get("models")`` muessen dasselbe liefern.
+
+    Sonst zeigt dasselbe Verzeichnis je nach Schreibweise an eine andere
+    Stelle - besonders heikel bei getrennter Programm- und Datenwurzel.
+    """
+    from pkc.paths import LAYOUT
+
+    paths = Paths(tmp_path)
+    for name in LAYOUT:
+        assert getattr(paths, name) == paths.get(name), f"Abweichung bei {name}"
+    with pytest.raises(AttributeError):
+        _ = paths.gibt_es_nicht
+
+
 def test_no_absolute_drive_letters_in_source():
     """Kein fester Laufwerksbuchstabe im Programmcode (Masterprompt 3)."""
     import re
@@ -179,9 +194,16 @@ def test_company_memory_survives_knowledge_reset(portable_root):
         ctrl2.shutdown()
 
 
-@pytest.mark.skipif(os.geteuid() == 0 if hasattr(os, "geteuid") else False,
-                    reason="als root sind Schreibrechte nicht wirksam einschraenkbar")
-def test_readonly_root_is_reported(tmp_path, monkeypatch):
+@pytest.mark.skipif(
+    os.name != "posix" or (hasattr(os, "geteuid") and os.geteuid() == 0),
+    reason=(
+        "Rechtebits nach POSIX gelten nur dort: Windows ignoriert chmod auf "
+        "Verzeichnissen (dort wirken ACLs), und als root sind sie ohnehin "
+        "wirkungslos. Der plattformunabhaengige Fall steht in "
+        "test_unwritable_root_is_reported."
+    ),
+)
+def test_readonly_root_posix(tmp_path, monkeypatch):
     root = tmp_path / "nur_lesen"
     root.mkdir()
     root.chmod(stat.S_IRUSR | stat.S_IXUSR)
@@ -191,6 +213,34 @@ def test_readonly_root_is_reported(tmp_path, monkeypatch):
         assert not paths.is_writable()
     finally:
         root.chmod(stat.S_IRWXU)
+
+
+def test_unwritable_root_is_reported(tmp_path):
+    """Ein nicht beschreibbarer Ort wird erkannt - auf jedem Betriebssystem.
+
+    Statt Rechtebits zu setzen (was unter Windows nicht wirkt), wird ein Ort
+    verwendet, der sich gar nicht als Verzeichnis anlegen laesst: eine
+    bestehende Datei.
+    """
+    datei = tmp_path / "das_ist_eine_datei.txt"
+    datei.write_text("kein Verzeichnis", encoding="utf-8")
+    paths = Paths(datei / "unterordner")
+    assert not paths.is_writable(), (
+        "unterhalb einer Datei kann kein Datenverzeichnis entstehen"
+    )
+
+
+def test_startup_refuses_unwritable_root(tmp_path):
+    """Die Systempruefung meldet einen nicht beschreibbaren Ort als kritisch."""
+    datei = tmp_path / "belegt.txt"
+    datei.write_text("x", encoding="utf-8")
+    paths = Paths(datei / "wurzel")
+    from app.controller import StartupReport
+
+    report = StartupReport(root=str(paths.root))
+    report.add("Datenverzeichnis", paths.is_writable(), "Test", critical=True)
+    assert not report.usable, "ohne Schreibrecht darf die Anwendung nicht starten"
+    assert "ACHTUNG" in report.as_text()
 
 
 def test_two_controllers_share_one_data_directory(portable_root):

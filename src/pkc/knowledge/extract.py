@@ -411,5 +411,34 @@ def extract(
     if handler is None:
         raise ExtractionError(f"Unbekanntes Format: {chosen!r}")
     document = handler(raw_bytes)
+    _reject_if_not_text(document)
     document.meta.setdefault("detected_format", chosen)
     return document
+
+
+#: Anteil unlesbarer Zeichen, ab dem ein "Text" keiner mehr ist.
+_MAX_JUNK_RATIO = 0.2
+
+
+def _reject_if_not_text(document: ExtractedDocument, sample: int = 4000) -> None:
+    """Verhindert, dass Binaerdaten als Fachwissen in den Index geraten.
+
+    Erkennt eine Datei weder ZIP noch PDF noch XML, landet sie beim
+    HTML-Extraktor und ergaebe dort scheinbaren "Text". Ein solcher Eintrag
+    waere in der Recherche wertlos und in der Quellenanzeige irrefuehrend.
+    """
+    text = document.text[:sample]
+    if not text.strip():
+        raise ExtractionError("Nach der Aufbereitung blieb kein Text uebrig.")
+    junk = sum(
+        1 for char in text
+        if not (char.isprintable() or char in "\n\t ")
+        or char in "\ufffd"
+    )
+    ratio = junk / len(text)
+    if ratio > _MAX_JUNK_RATIO:
+        raise ExtractionError(
+            f"Der Inhalt ist kein lesbarer Text ({ratio:.0%} unlesbare Zeichen) - "
+            "vermutlich eine Binaerdatei oder ein nicht unterstuetztes Format. "
+            "Es wurde nichts uebernommen."
+        )
