@@ -1,0 +1,50 @@
+# Checkpoint 18 - Gesamtintegration, Praxistest und Abnahmevorbereitung
+
+* Zeitpunkt: 2026-09-04T21:11:17+00:00
+* Status: **TEILWEISE**
+* Git-Commit: `b5ce89b69e31e768ecbd36d9786921dd7981bbca`
+* Naechster Task: Abnahme durch den Auftraggeber nach docs/ABNAHME.md
+
+## Fortsetzungspunkt
+
+Punkte A bis J der Abnahme auf einem Windows-Rechner durchfuehren und die Ergebnisse in TESTBERICHT.md und PROJEKTSTATUS.md eintragen
+
+## Erledigte Arbeit
+
+- Die vollstaendige Nutzungskette aus Masterprompt 49 laeuft automatisch durch
+- Nachgewiesen: kein Serverdienst noetig; der Stand ist allein von der Platte ablesbar
+- Fehler behoben: eine abgeschaltete Netzpruefung ueberschrieb eine ausdrueckliche Statusvorgabe
+- Projektstatus, Testbericht und Abnahmedokument auf den tatsaechlichen Stand gebracht
+
+## Dateien
+
+- tests/test_abnahme_kette.py
+- docs/ABNAHME.md
+- PROJEKTSTATUS.md
+- TESTBERICHT.md
+
+## Tests
+
+- python -m pytest tests -q
+
+**Testergebnis:** 112 Tests bestanden, 1 uebersprungen
+
+## Offene Punkte
+
+- EXE bauen und per Doppelklick starten (Abnahme A und B)
+- Echtes Sprachmodell einrichten und pruefen (Abnahme C)
+- Offline-Fachfragen fachlich beurteilen (Abnahme D)
+- Datentraeger an einem zweiten Windows-PC verwenden (Abnahme F)
+- Quellenregister gegen die echten amtlichen Server validieren (Abnahme G)
+
+## Pruefsummen (SHA-256)
+
+| Datei | Pruefsumme |
+|---|---|
+| PROJEKTSTATUS.md | `4fd71ffe1cd3a490d18da41351931a349dd2670e17f5de85b59492d6fc510d22` |
+| TESTBERICHT.md | `e8e0186729f48bf3335083561278516b6624a91915d612922e6e9620301fb6e3` |
+| docs/ABNAHME.md | `5476618a9a6831c61d663e772294261944cf2696262b2d7977cb8ed557054a3e` |
+
+## Hinweise
+
+Der Status lautet ausdruecklich NICHT 'MVP FERTIG', sondern 'fertig zur Abnahme'. Die Definition of Done aus Masterprompt 51 verlangt Schritte, die zwingend Windows, eine echte Oberflaeche, ein echtes Modell und Zugriff auf die echten Quellen erfordern. Diese wurden hier nicht ausgefuehrt und werden daher nicht als erledigt ausgewiesen.

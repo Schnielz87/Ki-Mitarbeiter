@@ -4,7 +4,7 @@ Stand: 04.09.2026 · Branch `claude/portable-ki-buchhalter-xr1qlj`
 
 ## Zusammenfassung
 
-**109 automatische Tests bestanden, 1 uebersprungen.** Ausfuehrungszeit rund
+**112 automatische Tests bestanden, 1 uebersprungen.** Ausfuehrungszeit rund
 10 Sekunden. Reproduzierbar mit:
 
 ```
@@ -20,6 +20,7 @@ python -m pytest tests -q
 | `test_llm_providers.py` | 8 bestanden | Sprachmodellanbindung gegen einen echten lokalen Modelldienst |
 | `test_sicherheit_freigaben.py` | 13 bestanden | Tresor, Freigaben, Protokoll, Connectoren |
 | `test_fachliche_faelle.py` | 48 bestanden | 22 fachliche Sachverhalte nach Masterprompt 47 |
+| `test_abnahme_kette.py` | 3 bestanden | Die vollstaendige Nutzungskette aus Masterprompt 49 in einem Durchlauf |
 
 Der uebersprungene Test prueft das Verhalten bei schreibgeschuetztem
 Verzeichnis. Als `root` sind Dateirechte nicht wirksam einschraenkbar; der
@@ -131,7 +132,28 @@ Gegen ein Tkinter-Doppel, das Widgets, Texte und Rueckrufe nachbildet.
 | CSV | Liest eine echte Datei mit Semikolon und deutschem Dezimalkomma |
 | Vorschau | Schreibt nachweislich nichts |
 
-## 7. Fachliche Testfaelle (48 Tests)
+## 7. Nutzungskette (3 Tests)
+
+Der Test `test_vollstaendige_nutzungskette` durchlaeuft die Kette aus
+Masterprompt 49 in einem Stueck:
+
+offline starten · Fachfrage mit Quellen und Wissensstand ·
+"Wir verwenden grundsaetzlich SKR03" wird erkannt und gespeichert ·
+Freigaberegel ergaenzt · Programm beenden · **kompletter Datenbestand an
+einen anderen Ort mit Leerzeichen im Pfad** · dort starten ·
+Unternehmenswissen ist vorhanden und fliesst in den Modellkontext ·
+Gespraechshistorie ist mitgewandert · online gehen · Wissensupdate mit
+Originalablage und Bericht als Datei · offline gehen · **das neu geladene
+Schreiben ist offline auffindbar** · erneut starten - alles noch da.
+
+Ersetzt wurden dabei: das Sprachmodell durch einen Testanbieter, die
+amtlichen Quellen durch einen echten lokalen HTTP-Server, der zweite
+Rechner durch ein anderes Wurzelverzeichnis.
+
+Zwei weitere Tests belegen, dass der Grundbetrieb **ohne jeden Serverdienst**
+auskommt und dass der Stand allein von der Platte ablesbar ist.
+
+## 8. Fachliche Testfaelle (48 Tests)
 
 22 Sachverhalte aus `src/profiles/buchhalter/testcases.json`, darunter alle
 in Masterprompt 47 geforderten: normale und fehlerhafte Eingangsrechnung,
@@ -171,6 +193,7 @@ aufgefuehrt, weil ein Testbericht ohne Fundstellen wenig wert ist.
 | Normen eines Fachmoduls waren nur in dessen kurzer Einleitung auffindbar | Die `Massgeblich`-Zeile bildete einen eigenen, kurzen Abschnitt | Die tragenden Normen werden jedem Abschnitt des Moduls mitgegeben |
 | Gute Volltexttreffer wurden von schwachen Vektortreffern verdraengt | Vektorliste zu hoch gewichtet | Gewicht gesenkt; haeufige deutsche Woerter fliessen nicht mehr in die Einbettung ein |
 | Der Quellenteil fehlte in manchen Antworten | Die Pruefung fand das Wort „Quellen" im Fliesstext und hielt es fuer eine Ueberschrift | Abschnittserkennung nur noch am Zeilenanfang |
+| Eine abgeschaltete Netzpruefung ueberschrieb eine ausdrueckliche Statusvorgabe | „nicht pruefen" wurde als „kein Netz" behandelt | Ein bereits gesetzter Status bleibt erhalten |
 | „Lokales Modell: OK" trotz fehlendem Modell | Der Notbetrieb meldete sich als verfuegbar | Systempruefung meldet HINWEIS und beschreibt den Notbetrieb |
 | HTML-Titel wurde falsch erkannt | `<title>` liegt in `<head>`, das uebersprungen wurde | Titel wird vor der Bereichspruefung ausgewertet |
 | Deutsche Abkuerzungen zerteilten Saetze | „GmbH & Co. KG" wurde als Satzende gelesen | Abkuerzungsliste in der Satztrennung |

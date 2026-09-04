@@ -89,10 +89,21 @@ class NetworkMonitor:
         return self.status.mode
 
     def check(self) -> NetStatus:
-        """Synchrone Pruefung. Erster Erfolg genuegt."""
+        """Synchrone Pruefung. Erster Erfolg genuegt.
+
+        Ist die Pruefung abgeschaltet, wird ein bereits gesetzter Status
+        **nicht** ueberschrieben: "nicht pruefen" heisst nicht "kein Netz".
+        Sonst wuerde eine ausdrueckliche Vorgabe des Nutzers stillschweigend
+        verworfen.
+        """
         if not self.enabled:
-            status = NetStatus(False, time.time(), (), "Netzpruefung deaktiviert")
-            return self._apply(status)
+            with self._lock:
+                bekannt = self._status.checked_at > 0.0
+            if bekannt:
+                return self.status
+            return self._apply(
+                NetStatus(False, time.time(), (), "Netzpruefung deaktiviert")
+            )
         reachable: list[str] = []
         detail = "keine Testadresse erreichbar"
         for host in self.hosts:
