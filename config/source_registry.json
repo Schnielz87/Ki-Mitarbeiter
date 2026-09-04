@@ -1,0 +1,222 @@
+{
+  "schema_version": 1,
+  "title": "Quellenregister Portabler KI-Buchhalter",
+  "description": "Maschinenlesbares Register der Fachquellen nach Masterprompt Abschnitt 26-28. Prioritaet 1 = Gesetz/amtliche Rechtsquelle, 5 = seriöse Sekundaerquelle.",
+  "url_verification_note": "Die URLs wurden nach bestem Wissen eingetragen, konnten in der Entwicklungsumgebung jedoch NICHT live geprueft werden (ausgehender Netzzugriff war dort auf Paketregistries beschraenkt). Beim ersten Online-Update prueft die Anwendung jede URL und meldet Fehlschlaege im Updatebericht, statt Erfolg zu behaupten. Quellen mit verified=false sind ungeprueft.",
+  "licence_note": "Es werden ausschliesslich frei zugaengliche amtliche bzw. offen lizenzierte Inhalte lokal gespeichert. Kostenpflichtige oder zugangsbeschraenkte Datenbanken werden nicht kopiert.",
+  "sources": [
+    {
+      "source_id": "Q01_GESETZE_IM_INTERNET",
+      "name": "Gesetze im Internet (BMJ / juris)",
+      "publisher": "Bundesministerium der Justiz",
+      "priority": 1,
+      "kind": "law",
+      "base_url": "https://www.gesetze-im-internet.de/",
+      "fetcher": "static",
+      "licence": "Amtliches Werk, gemeinfrei nach § 5 UrhG; Bereitstellung durch BMJ/juris",
+      "enabled": true,
+      "verified": false,
+      "notes": "Bereitstellung der Gesetze als XML-ZIP je Norm. Inhaltsverzeichnis aller Normen: gii-toc.xml",
+      "meta": { "toc_url": "https://www.gesetze-im-internet.de/gii-toc.xml" },
+      "documents": [
+        { "doc_uid": "GII_USTG",   "url": "https://www.gesetze-im-internet.de/ustg_1980/xml.zip", "title": "Umsatzsteuergesetz (UStG)", "citation": "UStG", "format": "xml_zip", "kind": "law" },
+        { "doc_uid": "GII_USTDV",  "url": "https://www.gesetze-im-internet.de/ustdv_1980/xml.zip", "title": "Umsatzsteuer-Durchfuehrungsverordnung (UStDV)", "citation": "UStDV", "format": "xml_zip", "kind": "law" },
+        { "doc_uid": "GII_ESTG",   "url": "https://www.gesetze-im-internet.de/estg/xml.zip", "title": "Einkommensteuergesetz (EStG)", "citation": "EStG", "format": "xml_zip", "kind": "law" },
+        { "doc_uid": "GII_ESTDV",  "url": "https://www.gesetze-im-internet.de/estdv_1955/xml.zip", "title": "Einkommensteuer-Durchfuehrungsverordnung (EStDV)", "citation": "EStDV", "format": "xml_zip", "kind": "law" },
+        { "doc_uid": "GII_KSTG",   "url": "https://www.gesetze-im-internet.de/kstg_1977/xml.zip", "title": "Koerperschaftsteuergesetz (KStG)", "citation": "KStG", "format": "xml_zip", "kind": "law" },
+        { "doc_uid": "GII_GEWSTG", "url": "https://www.gesetze-im-internet.de/gewstg/xml.zip", "title": "Gewerbesteuergesetz (GewStG)", "citation": "GewStG", "format": "xml_zip", "kind": "law" },
+        { "doc_uid": "GII_AO",     "url": "https://www.gesetze-im-internet.de/ao_1977/xml.zip", "title": "Abgabenordnung (AO)", "citation": "AO", "format": "xml_zip", "kind": "law" },
+        { "doc_uid": "GII_HGB",    "url": "https://www.gesetze-im-internet.de/hgb/xml.zip", "title": "Handelsgesetzbuch (HGB)", "citation": "HGB", "format": "xml_zip", "kind": "law" },
+        { "doc_uid": "GII_BGB",    "url": "https://www.gesetze-im-internet.de/bgb/xml.zip", "title": "Buergerliches Gesetzbuch (BGB)", "citation": "BGB", "format": "xml_zip", "kind": "law" },
+        { "doc_uid": "GII_GMBHG",  "url": "https://www.gesetze-im-internet.de/gmbhg/xml.zip", "title": "GmbH-Gesetz (GmbHG)", "citation": "GmbHG", "format": "xml_zip", "kind": "law" },
+        { "doc_uid": "GII_AKTG",   "url": "https://www.gesetze-im-internet.de/aktg/xml.zip", "title": "Aktiengesetz (AktG)", "citation": "AktG", "format": "xml_zip", "kind": "law" },
+        { "doc_uid": "GII_UMWG",   "url": "https://www.gesetze-im-internet.de/umwg_1995/xml.zip", "title": "Umwandlungsgesetz (UmwG)", "citation": "UmwG", "format": "xml_zip", "kind": "law" },
+        { "doc_uid": "GII_EGHGB",  "url": "https://www.gesetze-im-internet.de/hgbeg/xml.zip", "title": "Einfuehrungsgesetz zum HGB (EGHGB)", "citation": "EGHGB", "format": "xml_zip", "kind": "law" },
+        { "doc_uid": "GII_FGO",    "url": "https://www.gesetze-im-internet.de/fgo/xml.zip", "title": "Finanzgerichtsordnung (FGO)", "citation": "FGO", "format": "xml_zip", "kind": "law" },
+        { "doc_uid": "GII_BEWG",   "url": "https://www.gesetze-im-internet.de/bewg/xml.zip", "title": "Bewertungsgesetz (BewG)", "citation": "BewG", "format": "xml_zip", "kind": "law" },
+        { "doc_uid": "GII_ERBSTG", "url": "https://www.gesetze-im-internet.de/erbstg_1974/xml.zip", "title": "Erbschaftsteuer- und Schenkungsteuergesetz (ErbStG)", "citation": "ErbStG", "format": "xml_zip", "kind": "law" },
+        { "doc_uid": "GII_GRUNDG", "url": "https://www.gesetze-im-internet.de/gg/xml.zip", "title": "Grundgesetz (GG)", "citation": "GG", "format": "xml_zip", "kind": "law" }
+      ]
+    },
+    {
+      "source_id": "Q02_BMF",
+      "name": "Bundesministerium der Finanzen - BMF-Schreiben und Verwaltungsanweisungen",
+      "publisher": "Bundesministerium der Finanzen",
+      "priority": 2,
+      "kind": "admin",
+      "base_url": "https://www.bundesfinanzministerium.de/",
+      "fetcher": "static",
+      "licence": "Amtliche Veroeffentlichung; Nutzung nach Massgabe des Herausgebers",
+      "enabled": true,
+      "verified": false,
+      "notes": "Einstiegsseiten fuer BMF-Schreiben, UStAE, GoBD und E-Rechnung. Die Detail-URLs einzelner Schreiben aendern sich; der Abruf erfolgt daher ueber die Uebersichtsseiten und wird beim ersten Online-Update validiert.",
+      "documents": [
+        { "doc_uid": "BMF_SCHREIBEN_INDEX", "url": "https://www.bundesfinanzministerium.de/Web/DE/Themen/Steuern/Steuerverwaltung-u-steuerrecht/steuerverwaltung-und-steuerrecht.html", "title": "BMF - Steuerverwaltung und Steuerrecht (Einstieg BMF-Schreiben)", "citation": "BMF", "format": "html", "kind": "admin" },
+        { "doc_uid": "BMF_USTAE_INDEX", "url": "https://www.bundesfinanzministerium.de/Content/DE/Downloads/BMF_Schreiben/Steuerarten/Umsatzsteuer/Umsatzsteuer-Anwendungserlass/umsatzsteuer-anwendungserlass-stand-2024-12-31.html", "title": "Umsatzsteuer-Anwendungserlass (UStAE) - Einstiegsseite", "citation": "UStAE", "format": "html", "kind": "admin" }
+      ]
+    },
+    {
+      "source_id": "Q03_ELSTER",
+      "name": "ELSTER - Elektronische Steuererklaerung",
+      "publisher": "Bayerisches Landesamt fuer Steuern / Steuerverwaltungen der Laender",
+      "priority": 4,
+      "kind": "authority",
+      "base_url": "https://www.elster.de/",
+      "fetcher": "static",
+      "licence": "Behoerdeninformation",
+      "enabled": true,
+      "verified": false,
+      "notes": "Hinweise zu Abgabefristen, Formularen und elektronischer Uebermittlung.",
+      "documents": [
+        { "doc_uid": "ELSTER_START", "url": "https://www.elster.de/eportal/infoseite/hilfe", "title": "ELSTER - Hilfe und Informationen", "citation": "ELSTER", "format": "html", "kind": "authority" }
+      ]
+    },
+    {
+      "source_id": "Q04_BZST",
+      "name": "Bundeszentralamt fuer Steuern",
+      "publisher": "Bundeszentralamt fuer Steuern",
+      "priority": 4,
+      "kind": "authority",
+      "base_url": "https://www.bzst.de/",
+      "fetcher": "static",
+      "licence": "Behoerdeninformation",
+      "enabled": true,
+      "verified": false,
+      "notes": "USt-IdNr., Bestaetigungsverfahren nach § 18e UStG, Zusammenfassende Meldung.",
+      "documents": [
+        { "doc_uid": "BZST_USTID", "url": "https://www.bzst.de/DE/Unternehmen/Umsatzsteuer/Umsatzsteuer-Identifikationsnummer/umsatzsteuer-identifikationsnummer_node.html", "title": "BZSt - Umsatzsteuer-Identifikationsnummer", "citation": "BZSt USt-IdNr.", "format": "html", "kind": "authority" },
+        { "doc_uid": "BZST_ZM", "url": "https://www.bzst.de/DE/Unternehmen/Umsatzsteuer/Zusammenfassende_Meldung/zusammenfassende_meldung_node.html", "title": "BZSt - Zusammenfassende Meldung", "citation": "BZSt ZM", "format": "html", "kind": "authority" }
+      ]
+    },
+    {
+      "source_id": "Q05_BFH",
+      "name": "Bundesfinanzhof - Entscheidungen",
+      "publisher": "Bundesfinanzhof",
+      "priority": 3,
+      "kind": "case_law",
+      "base_url": "https://www.bundesfinanzhof.de/",
+      "fetcher": "static",
+      "licence": "Amtliche Entscheidungssammlung",
+      "enabled": true,
+      "verified": false,
+      "notes": "Hoechstrichterliche Rechtsprechung in Steuersachen.",
+      "documents": [
+        { "doc_uid": "BFH_ENTSCHEIDUNGEN", "url": "https://www.bundesfinanzhof.de/de/entscheidungen/entscheidungen-online/", "title": "BFH - Entscheidungen online", "citation": "BFH", "format": "html", "kind": "case_law" }
+      ]
+    },
+    {
+      "source_id": "Q06_BVERFG",
+      "name": "Bundesverfassungsgericht - Entscheidungen",
+      "publisher": "Bundesverfassungsgericht",
+      "priority": 3,
+      "kind": "case_law",
+      "base_url": "https://www.bundesverfassungsgericht.de/",
+      "fetcher": "static",
+      "licence": "Amtliche Entscheidungssammlung",
+      "enabled": true,
+      "verified": false,
+      "notes": "Verfassungsrechtliche Vorgaben mit Steuerbezug.",
+      "documents": [
+        { "doc_uid": "BVERFG_ENTSCHEIDUNGEN", "url": "https://www.bundesverfassungsgericht.de/DE/Entscheidungen/Entscheidungen_node.html", "title": "BVerfG - Entscheidungen", "citation": "BVerfG", "format": "html", "kind": "case_law" }
+      ]
+    },
+    {
+      "source_id": "Q07_EURLEX",
+      "name": "EUR-Lex - Recht der Europaeischen Union",
+      "publisher": "Amt fuer Veroeffentlichungen der Europaeischen Union",
+      "priority": 1,
+      "kind": "law",
+      "base_url": "https://eur-lex.europa.eu/",
+      "fetcher": "static",
+      "licence": "Wiederverwendung nach Beschluss 2011/833/EU zulaessig (Quellenangabe erforderlich)",
+      "enabled": true,
+      "verified": false,
+      "notes": "Insbesondere die Mehrwertsteuer-Systemrichtlinie 2006/112/EG.",
+      "documents": [
+        { "doc_uid": "EU_MWSTSYSTRL", "url": "https://eur-lex.europa.eu/legal-content/DE/TXT/HTML/?uri=CELEX:02006L0112-20240101", "title": "Richtlinie 2006/112/EG (Mehrwertsteuer-Systemrichtlinie), konsolidiert", "citation": "MwStSystRL", "format": "html", "kind": "law" },
+        { "doc_uid": "EU_DVO_282_2011", "url": "https://eur-lex.europa.eu/legal-content/DE/TXT/HTML/?uri=CELEX:02011R0282-20220701", "title": "Durchfuehrungsverordnung (EU) Nr. 282/2011, konsolidiert", "citation": "MwStVO", "format": "html", "kind": "law" }
+      ]
+    },
+    {
+      "source_id": "Q08_CURIA",
+      "name": "Gerichtshof der Europaeischen Union (EuGH)",
+      "publisher": "Gerichtshof der Europaeischen Union",
+      "priority": 3,
+      "kind": "case_law",
+      "base_url": "https://curia.europa.eu/",
+      "fetcher": "static",
+      "licence": "Amtliche Rechtsprechungssammlung",
+      "enabled": true,
+      "verified": false,
+      "notes": "EuGH-Rechtsprechung zum Mehrwertsteuerrecht.",
+      "documents": [
+        { "doc_uid": "CURIA_RECHTSPRECHUNG", "url": "https://curia.europa.eu/juris/recherche.jsf?language=de", "title": "EuGH - Rechtsprechungsrecherche", "citation": "EuGH", "format": "html", "kind": "case_law" }
+      ]
+    },
+    {
+      "source_id": "Q09_BGBL",
+      "name": "Bundesgesetzblatt / Verkuendungsplattform des Bundes",
+      "publisher": "Bundesanzeiger Verlag / Bundesministerium der Justiz",
+      "priority": 1,
+      "kind": "law",
+      "base_url": "https://www.recht.bund.de/",
+      "fetcher": "static",
+      "licence": "Amtliche Verkuendung",
+      "enabled": true,
+      "verified": false,
+      "notes": "Amtliche Verkuendung neuer Gesetze - massgeblich fuer 'gueltig ab'.",
+      "documents": [
+        { "doc_uid": "BGBL_START", "url": "https://www.recht.bund.de/de/bgbl/1/", "title": "Bundesgesetzblatt Teil I", "citation": "BGBl. I", "format": "html", "kind": "law" }
+      ]
+    },
+    {
+      "source_id": "Q10_UNTERNEHMENSREGISTER",
+      "name": "Unternehmensregister",
+      "publisher": "Bundesanzeiger Verlag im Auftrag des BMJ",
+      "priority": 4,
+      "kind": "authority",
+      "base_url": "https://www.unternehmensregister.de/",
+      "fetcher": "static",
+      "licence": "Teilweise entgeltpflichtig - es werden nur frei zugaengliche Hinweisseiten gespeichert",
+      "enabled": false,
+      "verified": false,
+      "notes": "Standardmaessig DEAKTIVIERT: Registerinhalte sind teils entgeltpflichtig bzw. zugangsbeschraenkt und duerfen nicht pauschal lokal kopiert werden.",
+      "documents": [
+        { "doc_uid": "UNTREG_INFO", "url": "https://www.unternehmensregister.de/ureg/", "title": "Unternehmensregister - Einstieg", "citation": "Unternehmensregister", "format": "html", "kind": "authority" }
+      ]
+    },
+    {
+      "source_id": "Q11_IHK",
+      "name": "IHK / DIHK - Fachinformationen",
+      "publisher": "Deutscher Industrie- und Handelskammertag",
+      "priority": 5,
+      "kind": "secondary",
+      "base_url": "https://www.dihk.de/",
+      "fetcher": "static",
+      "licence": "Sekundaerquelle - nur ergaenzend, nie gegen Primaerrecht",
+      "enabled": true,
+      "verified": false,
+      "notes": "Praxisnahe Erlaeuterungen. Darf Primaerquellen niemals ueberstimmen (Masterprompt 26).",
+      "documents": [
+        { "doc_uid": "DIHK_STEUERN", "url": "https://www.dihk.de/de/themen-und-positionen/wirtschaftspolitik/steuern-und-finanzen", "title": "DIHK - Steuern und Finanzen", "citation": "DIHK", "format": "html", "kind": "secondary" }
+      ]
+    },
+    {
+      "source_id": "Q12_EINVOICE",
+      "name": "E-Rechnung (Bund) und Normungsgrundlagen",
+      "publisher": "Bundesministerium des Innern / KoSIT",
+      "priority": 4,
+      "kind": "authority",
+      "base_url": "https://www.e-rechnung-bund.de/",
+      "fetcher": "static",
+      "licence": "Behoerdeninformation",
+      "enabled": true,
+      "verified": false,
+      "notes": "XRechnung/ZUGFeRD-Grundlagen fuer die verpflichtende E-Rechnung im B2B ab 2025.",
+      "documents": [
+        { "doc_uid": "ERECHNUNG_BUND", "url": "https://www.e-rechnung-bund.de/", "title": "E-Rechnung Bund - Informationsportal", "citation": "E-Rechnung Bund", "format": "html", "kind": "authority" },
+        { "doc_uid": "KOSIT_XRECHNUNG", "url": "https://www.xoev.de/xrechnung-16828", "title": "KoSIT - Standard XRechnung", "citation": "XRechnung", "format": "html", "kind": "authority" }
+      ]
+    }
+  ]
+}
