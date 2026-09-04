@@ -179,18 +179,23 @@ class RagEngine:
         warnings: Sequence[str],
     ) -> str:
         parts = [text.rstrip()]
-        upper = text.upper()
 
         shown = list(used) or list(bundle.references)
-        if shown and "QUELLEN" not in upper:
-            parts.append("**QUELLEN**\n" + "\n".join(ref.as_line() for ref in shown))
+        if shown and not _has_section(text, "QUELLEN"):
+            if response.is_generated:
+                lines = [ref.as_line() for ref in shown]
+            else:
+                # Ohne Modellantwort ist die Fundstelle selbst das Ergebnis -
+                # dann wird der Auszug mitgegeben, nicht nur die Bezeichnung.
+                lines = [f"{ref.as_line()}\n    {ref.excerpt}" for ref in shown]
+            parts.append("**QUELLEN**\n" + "\n".join(lines))
         elif not shown:
             parts.append(
                 "**QUELLEN**\nKeine lokale Fundstelle verwendet. Diese Antwort ist nicht "
                 "durch eine lokale Quelle belegt."
             )
 
-        if "WISSENSSTAND" not in upper:
+        if not _has_section(text, "WISSENSSTAND"):
             parts.append(
                 "**WISSENSSTAND**\n"
                 f"Lokaler Wissensstand: {knowledge_date or 'unbekannt'} · "
@@ -199,7 +204,7 @@ class RagEngine:
                 f"{'' if response.is_generated else ' (kein Sprachmodell verfuegbar)'}"
             )
 
-        if response.is_generated and "FREIGABEBEDARF" not in upper:
+        if response.is_generated and not _has_section(text, "FREIGABEBEDARF"):
             parts.append(
                 "**FREIGABEBEDARF**\n"
                 "Fachliche Zuarbeit ohne Gewaehr. Buchungen, Meldungen und Zahlungen "
@@ -210,6 +215,16 @@ class RagEngine:
         if warnings:
             parts.append("**HINWEISE DER ANWENDUNG**\n" + "\n".join(f"* {w}" for w in warnings))
         return "\n\n".join(parts)
+
+
+def _has_section(text: str, name: str) -> bool:
+    """Erkennt eine Abschnittsueberschrift - nicht ein zufaelliges Vorkommen des Wortes.
+
+    "in den vorhandenen Quellen" ist keine Ueberschrift "QUELLEN"; ohne diese
+    Unterscheidung wuerde der Quellenteil faelschlich weggelassen.
+    """
+    pattern = rf"^[ \t]*(?:\*\*|##+[ \t]*|__)?{re.escape(name)}\b"
+    return re.search(pattern, text or "", re.MULTILINE | re.IGNORECASE) is not None
 
 
 def _strip_numbers(text: str, numbers: Sequence[int]) -> str:

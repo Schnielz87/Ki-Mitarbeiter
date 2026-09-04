@@ -1,0 +1,25 @@
+# Laufzeitdaten des portablen Datentraegers - gehoeren nicht ins Repository
+/database/
+/logs/
+/backups/
+/updates/
+/conversations/
+/workspace/
+/company/
+/data/
+/runtime/
+/models/
+/resources/raw/
+/resources/normalized/
+/resources/metadata/
+/resources/index/
+/config/settings.json
+/config/secrets.enc
+/dist/
+/build/output/
+*.db
+*.db-wal
+*.db-shm
+__pycache__/
+*.pyc
+.pytest_cache/

@@ -54,6 +54,9 @@ LAYOUT: dict[str, str] = {
     "docs": "docs",
 }
 
+#: Verzeichnisse, die zum *Programm* gehoeren (nicht zu den Nutzdaten).
+PROGRAM_DIRS = frozenset({"app", "profiles", "tools", "docs"})
+
 #: Verzeichnisse, die beim Start angelegt werden duerfen/sollen.
 RUNTIME_DIRS = (
     "config",
@@ -93,6 +96,21 @@ def _marker_dir(start: Path) -> Path | None:
 def _src_dir(start: Path) -> Path | None:
     for candidate in [start, *start.parents]:
         if (candidate / "src" / "pkc" / "paths.py").is_file():
+            return candidate
+    return None
+
+
+def _source_root() -> Path | None:
+    """Wurzel des mitgelieferten Programmcodes (Verzeichnis ueber ``src``)."""
+    if is_frozen():
+        exe_dir = Path(sys.executable).resolve().parent
+        for candidate in [exe_dir, *exe_dir.parents]:
+            if (candidate / "src" / "profiles").is_dir():
+                return candidate
+        return None
+    here = Path(__file__).resolve()
+    for candidate in here.parents:
+        if (candidate / "src" / "profiles").is_dir():
             return candidate
     return None
 
@@ -140,7 +158,24 @@ class Paths:
 
     def get(self, name: str) -> Path:
         """Verzeichnis nach Layout-Name (explizite, typsichere Variante)."""
+        if name in PROGRAM_DIRS:
+            return self.program_root / LAYOUT[name]
         return self.root / LAYOUT[name]
+
+    @property
+    def program_root(self) -> Path:
+        """Wurzel der *Programmdateien* (Code, Mitarbeiterprofile).
+
+        Im Normalbetrieb ist das dieselbe Wurzel wie die der Daten: alles liegt
+        zusammen auf der SSD.  Sind die Daten ausnahmsweise woanders (Tests,
+        getrennte Datenablage, schreibgeschuetztes Programmverzeichnis), wird
+        der Ort des Programmcodes verwendet.  So findet die Anwendung ihr
+        Mitarbeiterprofil auch dann, wenn nur der Datenbereich verschoben wurde.
+        """
+        if (self.root / "src" / "profiles").is_dir():
+            return self.root
+        source_root = _source_root()
+        return source_root if source_root is not None else self.root
 
     # -- konkrete, haeufig benutzte Dateien -----------------------------
     @property
