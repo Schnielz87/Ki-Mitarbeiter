@@ -1,0 +1,27 @@
+{
+  "task_number": "02",
+  "task_name": "Systemarchitektur und Technologieentscheidungen",
+  "status": "abgeschlossen",
+  "work_done": [
+    "Schichtenmodell festgelegt: Core, Profil, Anwendung, Oberflaeche",
+    "Technologieentscheidungen mit Begruendung dokumentiert (Python, Tkinter, SQLite+FTS5, llama.cpp, PyInstaller)",
+    "Trennung Fachwissen / Unternehmenswissen in zwei Datenbanken beschlossen"
+  ],
+  "files": [
+    "ARCHITEKTUR.md",
+    "src/pkc/db/schema.py"
+  ],
+  "tests": [
+    "keine (Entwurfstask)"
+  ],
+  "test_result": "nicht anwendbar",
+  "open_points": [],
+  "next_task": "TASK 03",
+  "resume_hint": "Portable Ordnerstruktur und relative Pfade umsetzen",
+  "git_commit": "879b84c0ee242a35f6ce261b623b1e90e02508a0",
+  "created_at": "2026-09-04T20:56:49+00:00",
+  "checksums": {
+    "ARCHITEKTUR.md": "5444ce6a74d818384701eaa53c402493b6f90b32ee23fd47cf7a395130023da2"
+  },
+  "notes": ""
+}

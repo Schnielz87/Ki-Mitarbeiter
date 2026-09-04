@@ -1,0 +1,26 @@
+{
+  "task_number": "12",
+  "task_name": "Persistentes Unternehmensgedaechtnis",
+  "status": "abgeschlossen",
+  "work_done": [
+    "Versioniertes Gedaechtnis mit Historie, Archivierung, Wiederherstellung und Volltextsuche",
+    "Regelbasierte Erkennung dauerhaft relevanter Angaben aus deutschen Formulierungen",
+    "Export als JSON und lesbares Markdown auf den Datentraeger"
+  ],
+  "files": [
+    "src/pkc/memory/store.py",
+    "src/pkc/memory/capture.py",
+    "src/pkc/memory/schema_keys.py"
+  ],
+  "tests": [
+    "tests/test_controller.py"
+  ],
+  "test_result": "10 Tests gruen, darunter Neustart und Ortswechsel",
+  "open_points": [],
+  "next_task": "TASK 13",
+  "resume_hint": "Offlinefaehige grafische Benutzeroberflaeche",
+  "git_commit": "879b84c0ee242a35f6ce261b623b1e90e02508a0",
+  "created_at": "2026-09-04T20:57:40+00:00",
+  "checksums": {},
+  "notes": ""
+}

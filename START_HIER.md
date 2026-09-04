@@ -1,0 +1,104 @@
+# START HIER
+
+## Was ist das?
+
+Ein **portabler KI-Buchhalter**. Er liegt vollstaendig auf diesem
+Datentraeger, arbeitet **ohne Internet** und merkt sich, was Sie ihm ueber Ihr
+Unternehmen sagen - dauerhaft, hier auf dem Datentraeger, nicht auf dem
+jeweiligen Rechner.
+
+## In drei Schritten loslegen
+
+1. Datentraeger an einen Windows-PC anschliessen.
+2. Diesen Ordner oeffnen.
+3. **PORTABLE_BUCHHALTER.exe** doppelklicken.
+
+Es oeffnet sich ein Fenster mit einer Systempruefung. Wenn dort
+„Der Buchhalter kann gestartet werden" steht, auf **BUCHHALTER STARTEN**
+klicken.
+
+> Liegt hier noch keine `PORTABLE_BUCHHALTER.exe`, wurde sie fuer diesen
+> Datentraeger noch nicht gebaut. Wie das geht, steht in `docs/ABNAHME.md`.
+> Zum Ausprobieren genuegt `PORTABLE_BUCHHALTER.bat` - dafuer braucht der PC
+> allerdings eine Python-Installation.
+
+## Was Sie **nicht** brauchen
+
+Kein Python, kein Git, keine Entwicklungsumgebung, keinen Compiler, kein
+Terminal, keine Administratorrechte, keine Installation - und keinen Server.
+
+## Was Sie einmalig einrichten sollten
+
+### 1. Sprachmodell (einmalig, etwa 5 GB)
+
+Ohne Sprachmodell recherchiert die Anwendung zwar in ihren Quellen, kann aber
+**keine ausformulierte Fachantwort** geben. Sie sagt das dann auch deutlich.
+
+Anleitung: `docs/MODELL_EINRICHTEN.md`
+
+### 2. Angaben zu Ihrem Unternehmen
+
+In der Anwendung: Registerkarte **Unternehmenswissen** →
+**Onboarding fortsetzen**. Dort werden Kontenrahmen, Rechtsform,
+Freigaberegeln und Aehnliches abgefragt. Alles davon darf leer bleiben und
+spaeter ergaenzt werden.
+
+Sie koennen solche Angaben auch einfach im Gespraech sagen, zum Beispiel:
+
+> „Wir verwenden grundsaetzlich SKR03."
+
+Der Buchhalter fragt dann nach, ob er sich das dauerhaft merken soll.
+
+### 3. Fachwissen aktualisieren (nur mit Internet)
+
+Registerkarte **Wissen aktualisieren** → **Wissen jetzt aktualisieren**.
+Die geladenen Texte werden lokal gespeichert und stehen danach **auch ohne
+Internet** zur Verfuegung.
+
+## Was der Buchhalter kann
+
+Sachverhalte einordnen, Kontierungs- und Buchungsvorschlaege erstellen,
+Rechnungen auf Pflichtangaben pruefen, Umsatzsteuerfragen aufbereiten
+(Vorsteuer, Reverse Charge, innergemeinschaftliche Vorgaenge, Leistungsort),
+Anlagevermoegen und Abschreibungen, Abgrenzungen und Rueckstellungen, GoBD
+und Aufbewahrung, Jahresabschlussvorbereitung, Belege auswerten, Berechnungen
+und Quellenrecherche.
+
+## Was er ausdruecklich **nicht** ist
+
+Er ersetzt **nicht** den Steuerberater, den Wirtschaftspruefer, den
+verantwortlichen Buchhalter oder die Geschaeftsfuehrung. Er leistet Zuarbeit.
+Buchungen, Meldungen und Zahlungen brauchen immer die Pruefung und Freigabe
+eines Menschen.
+
+Wenn er sich nicht sicher ist, sagt er das - er raet nicht.
+
+## Datentraeger an einen anderen PC
+
+Einfach abziehen und am anderen Rechner anstecken. Alles wandert mit: das
+Unternehmenswissen, die Gespraeche, die Belege, die Einstellungen, das
+Fachwissen. Auch ein anderer Laufwerksbuchstabe (D:, E:, F: ...) ist kein
+Problem.
+
+## Wenn etwas nicht geht
+
+| Beobachtung | Was zu tun ist |
+|---|---|
+| Die EXE startet nicht | `PORTABLE_BUCHHALTER.exe check` in der Eingabeaufforderung ausfuehren - die Ausgabe nennt den Grund |
+| „Kein Sprachmodell verfuegbar" | `docs/MODELL_EINRICHTEN.md` |
+| Antworten ohne Quellen | Registerkarte **Wissen aktualisieren** ausfuehren (braucht Internet) |
+| Der Datentraeger ist voll | Alte Ordner unter `updates\` und `backups\` loeschen |
+| Etwas ging verloren | `BACKUP_WIEDERHERSTELLUNG.md` |
+
+## Wichtige Dateien in diesem Ordner
+
+| Datei / Ordner | Inhalt |
+|---|---|
+| `README.md` | Ausfuehrliche Beschreibung |
+| `docs/ABNAHME.md` | Schritt-fuer-Schritt-Pruefung, ob alles funktioniert |
+| `docs/MODELL_EINRICHTEN.md` | Sprachmodell einrichten |
+| `SICHERHEITSKONZEPT.md` | Datenschutz und Verlust des Datentraegers |
+| `BACKUP_WIEDERHERSTELLUNG.md` | Sichern und Wiederherstellen |
+| `company\` | Ihr Unternehmensprofil, lesbar exportiert |
+| `database\company.db` | Unternehmensgedaechtnis - **die wichtigste Datei** |
+| `logs\` | Protokolle bei Problemen |

@@ -1,0 +1,25 @@
+{
+  "task_number": "06",
+  "task_name": "Quellenabruf und Dokument-zu-lokal-Pipeline",
+  "status": "abgeschlossen",
+  "work_done": [
+    "HTTP-Client der Standardbibliothek mit ETag/Last-Modified, Wartezeit je Host und robots.txt",
+    "Pipeline: Abruf, Originalablage, Extraktion, Normalisierung, Metadaten, Chunking, Index, Bericht",
+    "Ruecknahme eines Laufs ueber eine Sicherung, die vor dem Lauf angelegt wird"
+  ],
+  "files": [
+    "src/pkc/updater/http_client.py",
+    "src/pkc/updater/pipeline.py"
+  ],
+  "tests": [
+    "tests/test_updater_pipeline.py"
+  ],
+  "test_result": "8 Tests gruen gegen einen echten lokalen HTTP-Server",
+  "open_points": [],
+  "next_task": "TASK 07",
+  "resume_hint": "Normalisierung, Metadaten und Versionierung",
+  "git_commit": "879b84c0ee242a35f6ce261b623b1e90e02508a0",
+  "created_at": "2026-09-04T20:57:39+00:00",
+  "checksums": {},
+  "notes": "Gegen die echten amtlichen Server nicht geprueft - der Netzzugang der Entwicklungsumgebung war auf Paketregistries beschraenkt."
+}
