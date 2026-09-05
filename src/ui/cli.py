@@ -372,8 +372,12 @@ def cmd_approvals(args) -> int:
         controller.shutdown()
 
 
+#: Die allgemeinen Schalter. Sie gelten fuer jeden Unterbefehl.
+GLOBAL_OPTIONS = ("root", "offline", "quiet", "kunde_bereich")
+
+
 def _global_options(parser: argparse.ArgumentParser, suppress: bool = False) -> None:
-    """Die drei allgemeinen Schalter.
+    """Die allgemeinen Schalter.
 
     Sie werden am Hauptbefehl *und* an jedem Unterbefehl angeboten, damit
     sowohl ``... --quiet check`` als auch ``... check --quiet`` funktioniert.
@@ -386,6 +390,8 @@ def _global_options(parser: argparse.ArgumentParser, suppress: bool = False) -> 
                         help="Netzpruefung ueberspringen")
     parser.add_argument("--quiet", action="store_true", default=leer,
                         help="weniger Ausgaben")
+    parser.add_argument("--kunde-bereich", dest="kunde_bereich", default=leer,
+                        help="Datenbereich eines bestimmten Unternehmens verwenden")
 
 
 def build_parser() -> argparse.ArgumentParser:
