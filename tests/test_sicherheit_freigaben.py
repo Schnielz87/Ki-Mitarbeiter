@@ -185,6 +185,55 @@ def test_csv_connector_reads_real_file(portable_root, company):
     assert "Steuerschluessel" in ergebnis.meta["spalten"]
 
 
+@pytest.mark.parametrize("versuch", [
+    "../geheim.csv",
+    "../../geheim.csv",
+    "unterordner/../../geheim.csv",
+])
+def test_file_connector_stays_in_its_directory(portable_root, company, versuch):
+    """Ein Connector darf nur dort lesen, wofuer er eingerichtet wurde.
+
+    Ohne diese Grenze koennte eine Angabe wie ``../geheim.csv`` beliebige
+    Dateien des Rechners lesen - besonders heikel, sobald Abfragen nicht
+    mehr von Hand, sondern automatisiert entstehen.
+    """
+    from pkc.connectors import ConnectorError
+
+    _, audit, approvals = company
+    verzeichnis = portable_root.get("workspace")
+    verzeichnis.mkdir(parents=True, exist_ok=True)
+    (verzeichnis / "erlaubt.csv").write_text("a;b\n1;2\n", encoding="utf-8")
+    (portable_root.root / "geheim.csv").write_text(
+        "Konto;Passwort\n1;streng-geheim\n", encoding="utf-8"
+    )
+    config = Config.load(portable_root)
+    config.set("connectors.settings", {"csv": {"directory": str(verzeichnis)}})
+    csv_connector = build_registry(config, approvals, audit).get("csv")
+
+    assert csv_connector.read("erlaubt.csv").count == 1
+
+    with pytest.raises(ConnectorError) as fehler:
+        csv_connector.read(versuch)
+    assert "innerhalb" in str(fehler.value)
+
+
+def test_file_connector_rejects_absolute_paths(portable_root, company):
+    from pkc.connectors import ConnectorError
+
+    _, audit, approvals = company
+    verzeichnis = portable_root.get("workspace")
+    verzeichnis.mkdir(parents=True, exist_ok=True)
+    ausserhalb = portable_root.root / "geheim.csv"
+    ausserhalb.write_text("Konto;Passwort\n1;geheim\n", encoding="utf-8")
+    config = Config.load(portable_root)
+    config.set("connectors.settings", {"csv": {"directory": str(verzeichnis)}})
+    csv_connector = build_registry(config, approvals, audit).get("csv")
+
+    with pytest.raises(ConnectorError) as fehler:
+        csv_connector.read(str(ausserhalb))
+    assert "absoluter Pfad" in str(fehler.value)
+
+
 def test_preview_does_not_write(portable_root, company):
     _, audit, approvals = company
     config = Config.load(portable_root)

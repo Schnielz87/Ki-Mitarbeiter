@@ -14,6 +14,34 @@ from pathlib import Path
 from .base import Connector, ConnectorError, ConnectorMode, ConnectorResult, NotConfigured
 
 
+def resolve_within(directory: Path, name: str) -> Path:
+    """Loest einen Dateinamen **innerhalb** des konfigurierten Verzeichnisses auf.
+
+    Ein Connector darf nur dort lesen, wofuer er eingerichtet wurde. Ohne
+    diese Pruefung koennte eine Angabe wie ``../../geheim.csv`` oder ein
+    absoluter Pfad aus dem Verzeichnis herausfuehren - besonders heikel,
+    sobald Abfragen nicht mehr von Hand, sondern automatisiert entstehen.
+    """
+    if not name or not name.strip():
+        raise ConnectorError("Es wurde keine Datei angegeben.")
+    basis = Path(directory).resolve()
+    kandidat = Path(name)
+    if kandidat.is_absolute() or kandidat.drive or kandidat.anchor:
+        raise ConnectorError(
+            f"Nur Dateien innerhalb von {basis} sind erlaubt - "
+            "ein absoluter Pfad wird nicht angenommen."
+        )
+    ziel = (basis / kandidat).resolve()
+    try:
+        ziel.relative_to(basis)
+    except ValueError:
+        raise ConnectorError(
+            f"Nur Dateien innerhalb von {basis} sind erlaubt - "
+            f"{name!r} fuehrt aus dem Verzeichnis heraus."
+        ) from None
+    return ziel
+
+
 def sniff_dialect(sample: str) -> csv.Dialect | type[csv.Dialect]:
     try:
         return csv.Sniffer().sniff(sample, delimiters=";,\t|")
@@ -46,9 +74,10 @@ class CsvConnector(Connector):
         ok, detail = self.configured()
         if not ok:
             raise NotConfigured(f"{self.name}: {detail}")
-        path = Path(self.config["directory"]) / query if query else None
-        if path is None or not path.is_file():
-            available = sorted(p.name for p in Path(self.config["directory"]).glob("*.csv"))
+        basis = Path(self.config["directory"])
+        path = resolve_within(basis, query)
+        if not path.is_file():
+            available = sorted(p.name for p in basis.glob("*.csv"))
             raise ConnectorError(
                 f"{self.name}: Datei '{query}' nicht gefunden. "
                 f"Vorhanden: {', '.join(available) if available else 'keine CSV-Datei'}"
@@ -112,7 +141,7 @@ class ExcelConnector(Connector):
             raise NotConfigured(f"{self.name}: {detail}")
         import openpyxl  # type: ignore
 
-        path = Path(self.config["directory"]) / query
+        path = resolve_within(Path(self.config["directory"]), query)
         if not path.is_file():
             raise ConnectorError(f"{self.name}: Datei nicht gefunden: {path}")
         book = openpyxl.load_workbook(path, read_only=True, data_only=True)
