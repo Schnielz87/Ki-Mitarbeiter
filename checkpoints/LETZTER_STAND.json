@@ -1,10 +1,10 @@
 {
-  "task_number": "24",
-  "task_name": "Commercial-Readiness-Gate",
+  "task_number": "25",
+  "task_name": "Windows-Ablauf wieder gruen",
   "status": "abgeschlossen",
-  "created_at": "2026-09-05T14:29:44+00:00",
-  "git_commit": "4350f7b3032575173b3387c553ba7d45c777b686",
+  "created_at": "2026-09-05T14:53:29+00:00",
+  "git_commit": "b9253b766bc2a8f0cda8ad7aa2ecdfb54a13c06b",
   "next_task": "Abnahme und Pilotbetrieb",
-  "resume_hint": "docs/ABNAHME.md B bis G; danach rechtliche Pruefung und Pilotkunde",
-  "checkpoint_file": "TASK_24_commercial_readiness_gate.json"
+  "resume_hint": "Status bleibt 'fertig zur Abnahme' - nicht MVP FERTIG, nicht COMMERCIAL READY",
+  "checkpoint_file": "TASK_25_windows_ablauf_wieder_gruen.json"
 }

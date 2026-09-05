@@ -192,7 +192,17 @@ Je Fall wird geprueft:
 
 ## Pruefung auf einem echten Windows-Rechner
 
-Ablauf https://github.com/Schnielz87/Ki-Mitarbeiter/actions/runs/33970160321 - **alle 13 Schritte bestanden**:
+Zuletzt bestaetigt durch Ablauf
+https://github.com/Schnielz87/Ki-Mitarbeiter/actions/runs/33973017177
+(Stand `b9253b7`) - **alle 13 Schritte bestanden**. Der erste vollstaendige
+Nachweis war Ablauf
+https://github.com/Schnielz87/Ki-Mitarbeiter/actions/runs/33970160321.
+
+Dazwischen liegt eine Luecke, die hier ausdruecklich benannt wird: die
+Ablaeufe 11 bis 18 waren **nicht** gruen. Sie blieben zunaechst an einem
+modalen Meldungsfenster haengen und scheiterten danach an einem Test, der
+nur unter Linux gueltig war. Beide Ursachen sind behoben und stehen in der
+Maengelliste; erst der Ablauf 19 ist wieder vollstaendig durchgelaufen.
 
 | Schritt | Ergebnis |
 |---|---|
@@ -202,9 +212,9 @@ Ablauf https://github.com/Schnielz87/Ki-Mitarbeiter/actions/runs/33970160321 - *
 | Beide Programme existieren wirklich | `PORTABLE_BUCHHALTER.exe` und `PORTABLE_BUCHHALTER_KONSOLE.exe` |
 | Systempruefung der gebauten EXE | lief durch, Fachwissen aufgenommen |
 | **Offline-Fachfrage gegen die gebaute EXE** | beantwortet, mit Quellenteil |
-| **Unternehmenswissen speichern und nach Neustart lesen** | SKR03 war nach einem eigenen Programmlauf wieder da |
-| **Laufwerkswechsel ueber `subst`, Pfad mit Leerzeichen** | Unternehmenswissen dort vorhanden, EXE startete |
-| Paket bereitgestellt | Artefakt `Portable-Buchhalter-Windows`, 22,8 MB |
+| **Unternehmenswissen speichern und nach Neustart lesen** | `gespeichert: company.chart_of_accounts (Version 1)`, `company.db` 147.456 Bytes auf der Platte, im neuen Programmlauf `Rueckgabe (Code 0): 'Das Unternehmen verwendet SKR03.'` |
+| **Laufwerkswechsel ueber `subst`, Pfad mit Leerzeichen** | auf `X:\Portable Buchhalter`: `Auf X: gelesen: Das Unternehmen verwendet SKR03.`, Systempruefung lief dort durch |
+| Paket bereitgestellt | Artefakt `Portable-Buchhalter-Windows`, 22.956.536 Bytes (rund 22,9 MB), 1039 Dateien |
 
 Damit sind **gebaut**, **gespeichert** und **verifiziert** fuer die
 Windows-Anwendung keine Behauptungen mehr, sondern belegt.
