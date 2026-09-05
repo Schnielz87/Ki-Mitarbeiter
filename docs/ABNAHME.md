@@ -14,16 +14,21 @@ Tabelle trennt das sauber:
 |---|---|---|
 | Kernlogik, Gedaechtnis, Recherche, Update, Sicherheit | **automatisch getestet, 109 Tests** | - |
 | Portabilitaet ueber Wurzelverzeichnisse und Pfade mit Leerzeichen | **automatisch getestet** | - |
-| Windows-EXE gebaut | nein - kein Windows vorhanden | **A** |
+| Windows-EXE gebaut | **ja** - auf einem echten Windows-Rechner im Ablauf der Fortlaufenden Integration | A nur noch bestaetigen |
 | Grafische Oberflaeche in echtem Tkinter | nein - kein Tkinter, kein Bildschirm | **B** |
 | Antwort eines echten Sprachmodells | nein - keine Modellquelle erreichbar | **C** |
 | Abruf der echten amtlichen Quellen | nein - Netzrichtlinie sperrte die Hosts | **D** |
 | Echter zweiter PC und echter Laufwerkswechsel | nur simuliert | **E** |
 
-Der Windows-Ablauf in `.github/workflows/build-windows.yml` deckt A, Teile
-von B und E bereits auf einem echten Windows-Rechner ab - dort wird die EXE
-gebaut, gestartet, eine Offline-Fachfrage gestellt, Unternehmenswissen
-gespeichert und ueber `subst` ein Laufwerkswechsel geprueft.
+**Bereits auf echtem Windows bestanden** (Ablauf
+https://github.com/Schnielz87/Ki-Mitarbeiter/actions/runs/33970160321):
+beide Programme gebaut, Systempruefung der EXE, Offline-Fachfrage mit
+Quellenteil, Unternehmenswissen ueber einen Neustart hinweg, Laufwerkswechsel
+ueber `subst` in einen Pfad mit Leerzeichen, alle 134 Tests. Das fertige
+Paket liegt dort als Artefakt `Portable-Buchhalter-Windows` (22,8 MB).
+
+Damit ist Punkt **A** faktisch erledigt - Sie koennen entweder selbst bauen
+oder das Artefakt herunterladen und entpacken.
 
 ---
 
@@ -35,7 +40,12 @@ mindestens 16 GB frei.
 
 ---
 
-## A. EXE bauen
+## A. EXE bauen (oder herunterladen)
+
+**Schneller Weg:** Im Ablauf oben auf „Artifacts" das Paket
+`Portable-Buchhalter-Windows` herunterladen und entpacken. Dann weiter bei B.
+
+**Selbst bauen:**
 
 ```
 powershell -ExecutionPolicy Bypass -File build\build_windows.ps1

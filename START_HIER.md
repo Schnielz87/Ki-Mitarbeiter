@@ -18,9 +18,12 @@ Es oeffnet sich ein Fenster mit einer Systempruefung. Wenn dort
 klicken.
 
 > Liegt hier noch keine `PORTABLE_BUCHHALTER.exe`, wurde sie fuer diesen
-> Datentraeger noch nicht gebaut. Wie das geht, steht in `docs/ABNAHME.md`.
-> Zum Ausprobieren genuegt `PORTABLE_BUCHHALTER.bat` - dafuer braucht der PC
-> allerdings eine Python-Installation.
+> Datentraeger noch nicht aufgespielt. Das fertige Paket kann fertig gebaut
+> heruntergeladen werden (Artefakt `Portable-Buchhalter-Windows` unter
+> https://github.com/Schnielz87/Ki-Mitarbeiter/actions/runs/33970160321), oder Sie bauen
+> es selbst nach `docs/ABNAHME.md`. Zum Ausprobieren genuegt auch
+> `PORTABLE_BUCHHALTER.bat` - dafuer braucht der PC allerdings eine
+> Python-Installation.
 
 ## Was Sie **nicht** brauchen
 

@@ -56,8 +56,8 @@ Er lautet: **fertig zur Abnahme**. Der Weg dorthin steht in
 | 14 | Hybridbetrieb, Internetstatus, Update-System | GETESTET | Offlinelauf, Ruecknahme, Zeitplan |
 | 15 | Unternehmens-Onboarding und Memory-Verwaltung | GETESTET | 21 Fragen, Rueckfrage vor dem Speichern |
 | 16 | Connector-/ERP-Architektur | GETESTET | Nur-Lese-Standard und Freigabesperre erzwungen |
-| 17 | Sicherheit, Freigaben, Audit, Packaging, EXE | TEILWEISE | 13 Sicherheitstests gruen; **EXE nicht gebaut** |
-| 18 | Gesamtintegration, Praxistest, Endabnahme | TEILWEISE | Nutzungskette automatisch durchlaufen; Endabnahme offen |
+| 17 | Sicherheit, Freigaben, Audit, Packaging, EXE | **GEBAUT** | 13 Sicherheitstests gruen; beide Programme auf echtem Windows gebaut und ausgefuehrt |
+| 18 | Gesamtintegration, Praxistest, Endabnahme | TEILWEISE | Nutzungskette automatisch **und auf echtem Windows** durchlaufen; Endabnahme mit Modell offen |
 
 ## 4. Was tatsaechlich geprueft ist
 
@@ -81,16 +81,20 @@ und mit stark eingeschraenktem Netzzugang** statt.
 
 | Punkt | Lage | Abnahme |
 |---|---|---|
-| Windows-EXE | In dieser Umgebung **nicht baubar**. Build-Skript und Windows-Ablauf der Fortlaufenden Integration sind vorhanden und bauen sie auf einem echten Windows-Rechner. | `docs/ABNAHME.md` A |
-| Tkinter-Oberflaeche | Weder Tkinter noch Bildschirm vorhanden. Die Oberflaechenlogik ist gegen ein Tkinter-Doppel geprueft, das echte Fenster **nicht**. | B |
+| Windows-EXE | **Erledigt.** In dieser Entwicklungsumgebung nicht baubar, aber auf einem echten Windows-Rechner gebaut und ausgefuehrt - siehe Abschnitt 1. Das Paket kann als Artefakt heruntergeladen werden, statt selbst zu bauen. | `docs/ABNAHME.md` A |
+| Tkinter-Oberflaeche | Weder Tkinter noch Bildschirm in der Entwicklungsumgebung. Die Oberflaechenlogik ist gegen ein Tkinter-Doppel geprueft, und auf Windows ist Tkinter nachweislich vorhanden - **das Fenster selbst wurde aber nie geoeffnet**. | B |
 | Lokales Sprachmodell | Modellquellen waren gesperrt. Die Anbindung ist gegen einen echten lokalen Modelldienst geprueft, **nicht mit einem echten GGUF-Modell**. | C |
 | Amtliche Quellen | `gesetze-im-internet.de`, `bundesfinanzministerium.de` und weitere waren durch die Netzrichtlinie gesperrt (403 des Proxys). Die Abrufkette ist gegen einen lokalen Server vollstaendig geprueft, **nicht gegen die echten Quellen**. Alle Registereintraege tragen `verified: false`. | G |
-| Zweiter PC, echter Laufwerkswechsel | Ueber wechselnde Wurzelverzeichnisse simuliert; im Windows-Ablauf zusaetzlich ueber `subst`. Ein echter zweiter Rechner stand nicht zur Verfuegung. | F |
+| Zweiter PC, echter Laufwerkswechsel | Der **Laufwerkswechsel ist auf echtem Windows geprueft** (`subst`, Zielpfad mit Leerzeichen) - das Unternehmenswissen war dort vorhanden. Ein physisch zweiter Rechner und ein echter USB-Datentraeger standen nicht zur Verfuegung. | F |
 | Fachliche Qualitaet der Antworten | Haengt vom eingesetzten Sprachmodell ab. Geprueft ist, dass das **richtige Material** gefunden wird. | D |
 
 ## 6. Naechste Schritte
 
-1. **Abnahme durchfuehren** - `docs/ABNAHME.md`, Punkte A bis J.
+1. **Abnahme durchfuehren** - `docs/ABNAHME.md`. Punkt A ist bereits durch
+   den Windows-Ablauf belegt; das fertige Paket kann dort heruntergeladen
+   werden. Zu pruefen bleiben vor allem B (Fenster oeffnet sich),
+   C (Sprachmodell), D (fachliche Qualitaet), F (zweiter Rechner) und
+   G (echte Quellen).
 2. **Quellenregister validieren** - der erste Online-Lauf zeigt, welche URLs
    noch stimmen; Korrekturen erfolgen in `config/source_registry.json` ohne
    Programmaenderung.

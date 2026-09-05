@@ -1,50 +1,47 @@
 # Checkpoint 18 - Gesamtintegration, Praxistest und Abnahmevorbereitung
 
-* Zeitpunkt: 2026-09-04T21:11:17+00:00
+* Zeitpunkt: 2026-09-05T13:57:44+00:00
 * Status: **TEILWEISE**
-* Git-Commit: `b5ce89b69e31e768ecbd36d9786921dd7981bbca`
-* Naechster Task: Abnahme durch den Auftraggeber nach docs/ABNAHME.md
+* Git-Commit: `32db7304884026a146cab62bde0e25c937fb4710`
+* Naechster Task: Abnahme durch den Auftraggeber: docs/ABNAHME.md B, C, D, F, G
 
 ## Fortsetzungspunkt
 
-Punkte A bis J der Abnahme auf einem Windows-Rechner durchfuehren und die Ergebnisse in TESTBERICHT.md und PROJEKTSTATUS.md eintragen
+Paket herunterladen oder bauen, Fenster per Doppelklick oeffnen, Sprachmodell einrichten, Fachfragen beurteilen, zweiten Rechner und echte Quellen pruefen
 
 ## Erledigte Arbeit
 
-- Die vollstaendige Nutzungskette aus Masterprompt 49 laeuft automatisch durch
-- Nachgewiesen: kein Serverdienst noetig; der Stand ist allein von der Platte ablesbar
-- Fehler behoben: eine abgeschaltete Netzpruefung ueberschrieb eine ausdrueckliche Statusvorgabe
-- Projektstatus, Testbericht und Abnahmedokument auf den tatsaechlichen Stand gebracht
+- Nutzungskette aus Masterprompt 49 laeuft automatisch und auf echtem Windows durch
+- Vier echte Fehler aus dem Windows-Ablauf behoben (Fensterprogramm ohne Ausgabe, Schalterposition, zwei Pfadausbrueche)
+- Projektstatus, Testbericht, Abnahme und Changelog auf den belegten Stand gebracht
 
 ## Dateien
 
 - tests/test_abnahme_kette.py
 - docs/ABNAHME.md
 - PROJEKTSTATUS.md
-- TESTBERICHT.md
 
 ## Tests
 
-- python -m pytest tests -q
+- python -m pytest tests -q; Windows-Ablauf 33970160321
 
-**Testergebnis:** 112 Tests bestanden, 1 uebersprungen
+**Testergebnis:** 134 Tests bestanden, 1 uebersprungen; 13 von 13 Windows-Schritten bestanden
 
 ## Offene Punkte
 
-- EXE bauen und per Doppelklick starten (Abnahme A und B)
-- Echtes Sprachmodell einrichten und pruefen (Abnahme C)
-- Offline-Fachfragen fachlich beurteilen (Abnahme D)
-- Datentraeger an einem zweiten Windows-PC verwenden (Abnahme F)
-- Quellenregister gegen die echten amtlichen Server validieren (Abnahme G)
+- B: Fenster per Doppelklick oeffnen
+- C: echtes Sprachmodell
+- D: fachliche Qualitaet der Antworten
+- F: zweiter Windows-Rechner
+- G: Quellenregister gegen die echten amtlichen Server
 
 ## Pruefsummen (SHA-256)
 
 | Datei | Pruefsumme |
 |---|---|
-| PROJEKTSTATUS.md | `4fd71ffe1cd3a490d18da41351931a349dd2670e17f5de85b59492d6fc510d22` |
-| TESTBERICHT.md | `e8e0186729f48bf3335083561278516b6624a91915d612922e6e9620301fb6e3` |
-| docs/ABNAHME.md | `5476618a9a6831c61d663e772294261944cf2696262b2d7977cb8ed557054a3e` |
+| PROJEKTSTATUS.md | `f955bef178d4b14a855a3c3e53cce3e0417b6d4e060436b528a38cfd158df699` |
+| TESTBERICHT.md | `28e04cf7ab18dbe4d35715416b0dc2236b0e744be5789a12f12905a58c0238b5` |
 
 ## Hinweise
 
-Der Status lautet ausdruecklich NICHT 'MVP FERTIG', sondern 'fertig zur Abnahme'. Die Definition of Done aus Masterprompt 51 verlangt Schritte, die zwingend Windows, eine echte Oberflaeche, ein echtes Modell und Zugriff auf die echten Quellen erfordern. Diese wurden hier nicht ausgefuehrt und werden daher nicht als erledigt ausgewiesen.
+Status weiterhin 'fertig zur Abnahme', nicht 'MVP FERTIG'. Der EXE-Bau ist belegt, die verbleibenden Punkte brauchen Hardware und ein Modell.

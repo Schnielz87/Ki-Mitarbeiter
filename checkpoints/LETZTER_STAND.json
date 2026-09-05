@@ -1,10 +1,10 @@
 {
-  "task_number": "18b",
-  "task_name": "Arbeitsunterbrechung - Wiedereinstiegspunkt",
-  "status": "offen",
-  "created_at": "2026-09-05T08:03:38+00:00",
-  "git_commit": "c740ef0d8a6156857507ac91bbc39d8d5e630e0f",
-  "next_task": "Ergebnis des Windows-Ablaufs pruefen: baut die EXE jetzt durch?",
-  "resume_hint": "WEITERARBEIT.md lesen. Erster Schritt: Lauf unter github.com/Schnielz87/Ki-Mitarbeiter/actions pruefen. Baut die EXE durch, Task 17 in PROJEKTSTATUS.md auf GEBAUT setzen - mit Verweis auf den konkreten Lauf, nicht vorher.",
-  "checkpoint_file": "TASK_18b_arbeitsunterbrechung___wiedereinstiegspunkt.json"
+  "task_number": "18",
+  "task_name": "Gesamtintegration, Praxistest und Abnahmevorbereitung",
+  "status": "teilweise",
+  "created_at": "2026-09-05T13:57:44+00:00",
+  "git_commit": "32db7304884026a146cab62bde0e25c937fb4710",
+  "next_task": "Abnahme durch den Auftraggeber: docs/ABNAHME.md B, C, D, F, G",
+  "resume_hint": "Paket herunterladen oder bauen, Fenster per Doppelklick oeffnen, Sprachmodell einrichten, Fachfragen beurteilen, zweiten Rechner und echte Quellen pruefen",
+  "checkpoint_file": "TASK_18_gesamtintegration_praxistest_und_abnahmevorbereitung.json"
 }

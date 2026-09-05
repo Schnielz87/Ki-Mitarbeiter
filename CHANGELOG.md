@@ -84,13 +84,18 @@ Referenzimplementierung **KI-Buchhalter**.
 
 109 bestanden, 1 uebersprungen. Einzelheiten in `TESTBERICHT.md`.
 
-### Bekannte Grenzen dieser Fassung
+### Auf einem echten Windows-Rechner geprueft
 
-* Die Windows-EXE wurde in der Entwicklungsumgebung nicht gebaut - dort gab
-  es kein Windows. Sie entsteht ueber das Build-Skript oder die Fortlaufende
-  Integration.
-* Die Oberflaeche wurde nicht in echtem Tkinter ausgefuehrt - kein Tkinter,
-  kein Bildschirm vorhanden.
+Der Ablauf https://github.com/Schnielz87/Ki-Mitarbeiter/actions/runs/33970160321 hat alle
+13 Schritte bestanden: beide Programme gebaut, Systempruefung der EXE,
+Offline-Fachfrage mit Quellenteil, Unternehmenswissen ueber einen Neustart
+hinweg, Laufwerkswechsel ueber `subst` in einen Pfad mit Leerzeichen. Das
+fertige Paket liegt dort als Artefakt bereit.
+
+### Bekannte Grenzen dieser Fassung
+* Das Fenster wurde nie geoeffnet. Auf Windows ist Tkinter nachweislich
+  vorhanden und die Oberflaechenlogik ist gegen ein Doppel geprueft - der
+  Doppelklick selbst steht aus.
 * Es wurde kein echtes Sprachmodell ausgefuehrt - keine Modellquelle
   erreichbar.
 * Die URLs des Quellenregisters wurden nicht live geprueft - die

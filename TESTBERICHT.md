@@ -4,7 +4,7 @@ Stand: 04.09.2026 · Branch `claude/portable-ki-buchhalter-xr1qlj`
 
 ## Zusammenfassung
 
-**112 automatische Tests bestanden, 1 uebersprungen.** Ausfuehrungszeit rund
+**134 automatische Tests bestanden, 1 uebersprungen.** Ausfuehrungszeit rund
 10 Sekunden. Reproduzierbar mit:
 
 ```
@@ -181,6 +181,29 @@ Je Fall wird geprueft:
 
 ---
 
+## Pruefung auf einem echten Windows-Rechner
+
+Ablauf https://github.com/Schnielz87/Ki-Mitarbeiter/actions/runs/33970160321 - **alle 13 Schritte bestanden**:
+
+| Schritt | Ergebnis |
+|---|---|
+| Tkinter vorhanden | ja |
+| Alle Tests auf Windows | bestanden |
+| Portablen Ordner bauen | erzeugt |
+| Beide Programme existieren wirklich | `PORTABLE_BUCHHALTER.exe` und `PORTABLE_BUCHHALTER_KONSOLE.exe` |
+| Systempruefung der gebauten EXE | lief durch, Fachwissen aufgenommen |
+| **Offline-Fachfrage gegen die gebaute EXE** | beantwortet, mit Quellenteil |
+| **Unternehmenswissen speichern und nach Neustart lesen** | SKR03 war nach einem eigenen Programmlauf wieder da |
+| **Laufwerkswechsel ueber `subst`, Pfad mit Leerzeichen** | Unternehmenswissen dort vorhanden, EXE startete |
+| Paket bereitgestellt | Artefakt `Portable-Buchhalter-Windows`, 22,8 MB |
+
+Damit sind **gebaut**, **gespeichert** und **verifiziert** fuer die
+Windows-Anwendung keine Behauptungen mehr, sondern belegt.
+
+Nicht Teil dieses Ablaufs: das tatsaechliche Oeffnen des Fensters per
+Doppelklick, ein echtes Sprachmodell, die echten amtlichen Quellen und ein
+physisch zweiter Rechner.
+
 ## Waehrend der Tests gefundene und behobene Maengel
 
 Diese Punkte fielen den Tests auf und wurden korrigiert - sie sind hier
@@ -211,10 +234,11 @@ aufgefuehrt, weil ein Testbericht ohne Fundstellen wenig wert ist.
 
 Ehrlich und vollstaendig:
 
-1. **Windows-EXE** - in der Entwicklungsumgebung nicht baubar. Der
-   Windows-Ablauf der Fortlaufenden Integration baut und prueft sie auf einem
-   echten Windows-Rechner.
-2. **Echte Tkinter-Oberflaeche** - kein Tkinter und kein Bildschirm vorhanden.
+1. ~~**Windows-EXE**~~ - **erledigt**: auf einem echten Windows-Rechner
+   gebaut und ausgefuehrt, siehe Abschnitt oben.
+2. **Echte Tkinter-Oberflaeche** - das Fenster wurde nie geoeffnet. Auf
+   Windows ist Tkinter nachweislich vorhanden, die Oberflaechenlogik ist
+   gegen ein Doppel geprueft - der Doppelklick selbst steht aus.
 3. **Echtes Sprachmodell** - keine Modellquelle erreichbar.
 4. **Echte amtliche Quellen** - die Netzrichtlinie sperrte
    `gesetze-im-internet.de`, `bundesfinanzministerium.de` und die uebrigen.

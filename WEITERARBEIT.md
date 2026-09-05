@@ -4,6 +4,20 @@ Diese Datei ist der Wiedereinstiegspunkt. Sie wurde geschrieben, weil die
 Arbeit auf Wunsch des Auftraggebers unterbrochen wurde (Limit). Der Chat wird
 zum Fortsetzen **nicht** benoetigt.
 
+## Erledigt seit dem Wiedereinstieg
+
+Der als naechstes vorgesehene Schritt - „Baut die EXE durch?" - ist
+**beantwortet: ja**. Ablauf https://github.com/Schnielz87/Ki-Mitarbeiter/actions/runs/33970160321
+hat alle 13 Schritte bestanden. Dabei kamen vier echte Fehler heraus, die
+alle behoben sind: Fensterprogramm ohne Ausgabe unter Windows, Schalter nur
+vor dem Unterbefehl erlaubt, Ausbruch der Datei-Connectoren aus ihrem
+Verzeichnis, Ausbruch ueber Kennungen des Quellenregisters. Task 17 steht
+jetzt belegt auf GEBAUT.
+
+Offen bleiben die Abnahmepunkte, die ein echtes Sprachmodell, das Oeffnen
+des Fensters, einen zweiten Rechner oder die echten amtlichen Quellen
+brauchen - siehe `docs/ABNAHME.md`.
+
 ## Stand
 
 | | |
