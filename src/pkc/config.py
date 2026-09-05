@@ -166,7 +166,16 @@ def _coerce(raw: str) -> Any:
 def _env_overrides(data: dict, prefix: str = "KIM_") -> dict:
     """``KIM_LLM_PROVIDER=echo`` -> {"llm": {"provider": "echo"}}."""
     result = copy.deepcopy(data)
-    reserved = {"KIM_ROOT", "KIM_CHECKPOINT_DIR", "KIM_PASSPHRASE"}
+    # Schalter, die keine Konfigurationspfade sind und deshalb nie als solche
+    # gelesen werden duerfen - sonst kollidieren sie, sobald die Konfiguration
+    # einmal einen gleichnamigen Schluessel bekommt.
+    reserved = {
+        "KIM_ROOT",
+        "KIM_CHECKPOINT_DIR",
+        "KIM_PASSPHRASE",
+        "KIM_CARRIER_ID",
+        "KIM_UNBEAUFSICHTIGT",
+    }
     for env_key, raw in os.environ.items():
         if not env_key.startswith(prefix) or env_key in reserved:
             continue

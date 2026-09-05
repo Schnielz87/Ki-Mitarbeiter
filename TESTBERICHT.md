@@ -4,7 +4,7 @@ Stand: 05.09.2026 · Branch `claude/portable-ki-buchhalter-xr1qlj`
 
 ## Zusammenfassung
 
-**212 automatische Tests bestanden, 1 uebersprungen** (unter Windows 211 bestanden, 2 uebersprungen). Ausfuehrungszeit rund
+**214 automatische Tests bestanden, 1 uebersprungen** (unter Windows 213 bestanden, 2 uebersprungen). Ausfuehrungszeit rund
 10 Sekunden. Reproduzierbar mit:
 
 ```
@@ -15,7 +15,7 @@ python -m pytest tests -q
 |---|---|---|
 | `test_updater_pipeline.py` | 13 bestanden | Wissensupdate gegen einen echten lokalen HTTP-Server |
 | `test_controller.py` | 10 bestanden | Anwendungssteuerung von Ende zu Ende |
-| `test_portability.py` | 15 bestanden, 1 uebersprungen | Portabilitaet und Robustheit |
+| `test_portability.py` | 17 bestanden, 1 uebersprungen | Portabilitaet und Robustheit |
 | `test_gui_logic.py` | 10 bestanden | Oberflaechenlogik gegen ein Tkinter-Doppel |
 | `test_llm_providers.py` | 8 bestanden | Sprachmodellanbindung gegen einen echten lokalen Modelldienst |
 | `test_sicherheit_freigaben.py` | 17 bestanden | Tresor, Freigaben, Protokoll, Connectoren, Pfadgrenzen |
@@ -237,6 +237,8 @@ aufgefuehrt, weil ein Testbericht ohne Fundstellen wenig wert ist.
 
 | Fund | Ursache | Behebung |
 |---|---|---|
+| Die Schaltertabelle behauptete Vollstaendigkeit und war unvollstaendig | Beim Dokumentieren der Umgebungsschalter fehlten `KIM_LLM_PROVIDER` und `KIM_PASSPHRASE`. Eine Tabelle, die Vollstaendigkeit behauptet und es nicht ist, ist schlimmer als keine | Tabelle vervollstaendigt; ein Test vergleicht die im Produktcode vorkommenden Schalter mit der Tabelle und schlaegt fehl, sobald einer fehlt |
+| Zwei Schalter waren nicht als Schalter gekennzeichnet | `KIM_CARRIER_ID` und `KIM_UNBEAUFSICHTIGT` fehlten in der Liste der reservierten Namen. Sie greifen heute nur deshalb nicht als Konfigurationseintrag durch, weil es zufaellig keinen gleichnamigen Eintrag gibt | Beide reserviert; ein Test setzt eine Konfiguration auf, die genau diese Namen traegt, und weist nach, dass kein Schalter sie ueberschreibt - der allgemeine Mechanismus aber weiter funktioniert |
 | Ein Test war nur unter Linux gueltig | Er loeschte den Datenbereich bei laufender Anwendung. Unter Linux geht das - eine geoeffnete Datei laesst sich abhaengen; unter Windows nicht: `PermissionError [WinError 32]`. Der Mangel lag im Test, nicht im Programm | Die Pruefabsicht - der wirkliche Fall ist der im Betrieb abgezogene Datentraeger - wird jetzt plattformunabhaengig geprueft: jeder einzelne Schritt des Beendens wird zum Scheitern gebracht, das Beenden muss trotzdem durchlaufen. Nachgewiesen durch Gegenprobe: entfernt man eine der Absicherungen, schlaegt der Test fehl. Die Fassung am echten Dateisystem laeuft weiter, unter Windows uebersprungen |
 | Der Windows-Lauf blieb stundenlang stehen statt zu scheitern | Der Startpunkt meldet einen Startfehler auch als Meldungsfenster. Ein solches Fenster ist **modal**: es wartet auf den Klick auf "OK". Unter Linux ohne Bildschirm startet Tkinter gar nicht erst, der Aufruf kehrt sofort zurueck - unter Windows steht ein Fenstersystem zur Verfuegung, das Fenster ging auf, und niemand klickte. Die Ablaeufe 11 bis 16 hingen im Schritt "Tests auf Windows" | Schalter `KIM_UNBEAUFSICHTIGT` fuer den Betrieb ohne Aufsicht; `tests/conftest.py` setzt ihn fuer den ganzen Testlauf, damit kein kuenftiger Test dasselbe ausloest. Zusaetzlich Zeitgrenzen im Bauablauf, damit ein Haenger nach zehn Minuten scheitert statt nach sechs Stunden, und `cancel-in-progress`, damit ein neuer Stand die alten Ablaeufe beendet |
 | Mitarbeiterprofil wurde nicht gefunden, wenn der Datenbereich getrennt lag | Programm- und Datenwurzel waren gleichgesetzt | Getrennte `program_root`; Vorgabedateien werden in neue Datenbereiche uebernommen |

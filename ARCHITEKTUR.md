@@ -132,6 +132,21 @@ Es gibt **keinen** fest verdrahteten Laufwerksbuchstaben. Die Wurzel wird zur
 Laufzeit ermittelt (`pkc.paths.detect_root`), Pfade mit Leerzeichen
 funktionieren, `D:` und `E:` sind gleichwertig.
 
+## 5a. Schalter der Umgebung
+
+Die Anwendung braucht im Normalbetrieb **keine** Umgebungsvariable - die
+Wurzel wird selbst gefunden. Die folgenden Schalter gibt es fuer Sonderfaelle;
+sie sind vollstaendig, damit niemand raten muss.
+
+| Schalter | Wirkung |
+|---|---|
+| `KIM_ROOT` | Setzt die portable Wurzel ausdruecklich, statt sie zu ermitteln. Fuer Tests und ungewoehnliche Ablagen. |
+| `KIM_CHECKPOINT_DIR` | Zweiter, vom Datentraeger unabhaengiger Ort fuer Checkpoints. Unter Windows sonst `D:\Ki-Agent\checkpoints`. |
+| `KIM_CARRIER_ID` | Ueberschreibt die Kennung des Datentraegers, an die eine Lizenz gebunden ist. Nur fuer Tests des Lizenzverfahrens. |
+| `KIM_LLM_PROVIDER` | Beispiel fuer den allgemeinen Mechanismus: `KIM_<PFAD_MIT_UNTERSTRICHEN>` ueberschreibt einen Eintrag aus `config/settings.json`, hier `llm.provider`. Ueberschrieben werden nur **bereits vorhandene** Eintraege; ein unbekannter Name legt nichts an. |
+| `KIM_PASSPHRASE` | Passwort des Geheimnistresors, damit es nicht abgefragt werden muss. Nur fuer unbeaufsichtigte Ablaeufe - ein Passwort in einer Umgebungsvariablen ist fuer andere Prozesse desselben Kontos lesbar und gehoert nicht in den Normalbetrieb. |
+| `KIM_UNBEAUFSICHTIGT` | Betrieb ohne Aufsicht: ein Startfehler wird nur nach stderr und in `logs\startfehler.txt` gemeldet, **kein Meldungsfenster**. Notwendig ueberall dort, wo niemand auf "OK" klicken kann - automatische Tests, Bauablaeufe, Dienste. Ein modales Fenster wartet sonst endlos; genau daran blieben die Windows-Ablaeufe 11 bis 16 haengen. Beim Doppelklick bleibt das Fenster, dort ist es der einzige sichtbare Weg. Erkannt werden `1`, `ja`, `true`; `0`, `nein`, `false` und leer schalten ab. |
+
 ## 6. Trennung Fachwissen / Unternehmenswissen (Masterprompt 14)
 
 Zwei getrennte Datenbanken, bewusst nicht eine:

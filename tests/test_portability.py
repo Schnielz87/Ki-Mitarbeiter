@@ -23,6 +23,8 @@ import pytest
 from app.controller import AppController
 from pkc.db import Database
 from pkc.db.schema import KNOWLEDGE_MIGRATIONS
+
+ROOT = Path(__file__).resolve().parents[1]
 from pkc.paths import Paths, detect_root
 from test_controller import make_controller
 
@@ -257,3 +259,70 @@ def test_two_controllers_share_one_data_directory(portable_root):
     finally:
         first.shutdown()
         second.shutdown()
+
+
+def test_schalter_sind_keine_konfigurationspfade(portable_root, monkeypatch):
+    """Ein Schalter darf nie als Konfigurationseintrag gelesen werden.
+
+    ``KIM_LLM_PROVIDER=echo`` soll ``llm.provider`` setzen - so ist der
+    Mechanismus gemeint. Schalter wie ``KIM_UNBEAUFSICHTIGT`` oder
+    ``KIM_CARRIER_ID`` sind aber keine Konfigurationspfade. Sie greifen heute
+    nur deshalb nicht durch, weil es zufaellig keinen gleichnamigen Eintrag
+    gibt. Dieser Test haelt sie ausdruecklich heraus, damit sie nicht
+    kollidieren, sobald die Konfiguration einmal so einen Schluessel bekommt.
+    """
+    from pkc.config import Config, _env_overrides
+
+    for schalter in ("KIM_ROOT", "KIM_CHECKPOINT_DIR", "KIM_PASSPHRASE",
+                     "KIM_CARRIER_ID", "KIM_UNBEAUFSICHTIGT"):
+        monkeypatch.setenv(schalter, "wert")
+
+    # Eine Konfiguration, die genau die Namen der Schalter traegt.
+    falle = {
+        "root": "unveraendert",
+        "checkpoint": {"dir": "unveraendert"},
+        "passphrase": "unveraendert",
+        "carrier": {"id": "unveraendert"},
+        "unbeaufsichtigt": "unveraendert",
+        "llm": {"provider": "unveraendert"},
+    }
+    ergebnis = _env_overrides(falle)
+
+    assert ergebnis["root"] == "unveraendert"
+    assert ergebnis["checkpoint"]["dir"] == "unveraendert"
+    assert ergebnis["passphrase"] == "unveraendert"
+    assert ergebnis["carrier"]["id"] == "unveraendert"
+    assert ergebnis["unbeaufsichtigt"] == "unveraendert"
+
+    # Der Mechanismus selbst muss weiter funktionieren.
+    monkeypatch.setenv("KIM_LLM_PROVIDER", "echo")
+    assert _env_overrides(falle)["llm"]["provider"] == "echo"
+
+    # Und er darf nur bereits vorhandene Pfade anfassen, nichts erfinden.
+    monkeypatch.setenv("KIM_GIBT_ES_NICHT", "x")
+    assert "gibt" not in _env_overrides(falle)
+
+
+def test_config_kennt_alle_schalter_der_dokumentation():
+    """Die Schaltertabelle in ARCHITEKTUR.md muss vollstaendig sein.
+
+    Eine Tabelle, die Vollstaendigkeit behauptet und es nicht ist, ist
+    schlimmer als keine.
+    """
+    import re
+
+    dateien = sorted((ROOT / "src").rglob("*.py")) + [ROOT / "portable_buchhalter.py"]
+    dateien += sorted((ROOT / "tools").rglob("*.py")) if (ROOT / "tools").is_dir() else []
+    quelle = " ".join(
+        pfad.read_text(encoding="utf-8", errors="replace")
+        for pfad in dateien
+        if "__pycache__" not in pfad.parts
+    )
+    im_code = {name for name in re.findall(r"KIM_[A-Z][A-Z_]*", quelle)}
+
+    dokument = (ROOT / "ARCHITEKTUR.md").read_text(encoding="utf-8")
+    tabelle = dokument.split("## 5a. Schalter der Umgebung", 1)[1].split("\n## ", 1)[0]
+    dokumentiert = set(re.findall(r"KIM_[A-Z][A-Z_]*", tabelle))
+
+    fehlend = im_code - dokumentiert
+    assert not fehlend, f"nicht dokumentierte Schalter: {sorted(fehlend)}"
