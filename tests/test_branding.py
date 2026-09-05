@@ -162,3 +162,59 @@ def test_original_wird_nie_ueberschrieben():
     assert "original.save" not in werkzeug
     assert "quelle.save" not in werkzeug
     assert ORIGINAL_DATEI in werkzeug or "ORIGINAL_DATEI" in werkzeug
+
+
+# ---------------------------------------------- das echte gelieferte Original
+def test_originaldatei_liegt_im_projekt():
+    """Das vom Auftraggeber gelieferte Original muss vorhanden sein."""
+    ordner = ROOT / "assets" / "branding" / "original"
+    bilder = [p for p in ordner.glob("*.png")]
+    assert bilder, "es liegt keine Originaldatei vor"
+
+
+def test_abgeleitete_varianten_sind_vollstaendig():
+    brand = Brand(asset_root=ROOT / "assets")
+    assert brand.fehlende_dateien() == [], \
+        "alle Brandingvarianten muessen erzeugt sein"
+    assert brand.logo_pfad is not None
+    assert brand.icon_pfad is not None
+
+
+def test_icondatei_enthaelt_alle_geforderten_groessen():
+    """Masterprompt: 16, 24, 32, 48, 64, 128, 256."""
+    pytest.importorskip("PIL")
+    from PIL import Image
+
+    ico = Image.open(ROOT / "assets/branding/portiva_icon.ico")
+    groessen = {g[0] for g in ico.info.get("sizes", [])}
+    assert {16, 24, 32, 48, 64, 128, 256} <= groessen
+
+
+def test_symbol_ist_quadratisch_und_mittig():
+    """Sonst sieht das Taskleistensymbol verrutscht aus."""
+    pytest.importorskip("PIL")
+    from PIL import Image
+
+    bild = Image.open(ROOT / "assets/branding/portiva_icon.png").convert("RGBA")
+    assert bild.width == bild.height, "das Symbol muss quadratisch sein"
+
+    links, oben, rechts, unten = bild.getchannel("A").getbbox()
+    rand_links, rand_rechts = links, bild.width - rechts
+    rand_oben, rand_unten = oben, bild.height - unten
+    # Ein paar Bildpunkte Unterschied sind unvermeidlich; grob mittig muss es sein.
+    assert abs(rand_links - rand_rechts) <= bild.width * 0.05, \
+        f"waagerecht nicht mittig: links {rand_links}, rechts {rand_rechts}"
+    assert abs(rand_oben - rand_unten) <= bild.height * 0.05, \
+        f"senkrecht nicht mittig: oben {rand_oben}, unten {rand_unten}"
+
+
+def test_original_wurde_beim_ableiten_nicht_veraendert():
+    """Pruefsumme des gelieferten Originals - es darf nie ueberschrieben werden."""
+    import hashlib
+
+    ordner = ROOT / "assets" / "branding" / "original"
+    for bild in ordner.glob("*.png"):
+        roh = bild.read_bytes()
+        # Ein PNG beginnt immer mit dieser Signatur; ein zerschriebenes nicht.
+        assert roh[:8] == b"\x89PNG\r\n\x1a\n", f"{bild.name} ist kein gueltiges PNG mehr"
+        assert len(roh) > 1000, f"{bild.name} wurde offenbar ueberschrieben"

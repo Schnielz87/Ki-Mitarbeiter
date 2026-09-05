@@ -344,7 +344,7 @@ class AppController:
         fehlend = self.brand.fehlende_dateien()
         report.add(
             "Branding", not fehlend,
-            f"{self.brand.name} - {self.brand.titel(self.profile_display_name)}"
+            f"{self.brand.titel(self.profile_display_name)} · Logo und Symbole vorhanden"
             if not fehlend else
             f"{len(fehlend)} Brandingdatei(en) fehlen, u.a. {fehlend[0]}. "
             f"Die Anwendung laeuft; sie zeigt statt des Logos den Schriftzug. "

@@ -48,6 +48,16 @@ class _Widget:
     def title(self, *a, **k): return self
     def geometry(self, *a, **k): return self
     def minsize(self, *a, **k): return self
+    # Fenstersymbol: fuer den Test bedeutungslos, aber es wird aufgerufen,
+    # sobald eine Icondatei vorliegt. Wir merken uns die Aufrufe, damit ein
+    # Test pruefen kann, dass ueberhaupt ein Symbol gesetzt wird.
+    def iconbitmap(self, *a, **k):
+        self.options["iconbitmap"] = a[0] if a else k.get("default", "")
+        return self
+
+    def iconphoto(self, *a, **k):
+        self.options["iconphoto"] = a[1] if len(a) > 1 else None
+        return self
     def transient(self, *a, **k): return self
     def focus_set(self): return self
     def see(self, *a, **k): return self
@@ -192,6 +202,17 @@ class _TreeviewWidget(_Widget):
         self._selection = (keys[index],) if keys else ()
 
 
+class _PhotoImage:
+    """Bildplatzhalter - laedt nichts, merkt sich nur den Pfad."""
+
+    def __init__(self, file: str = "", **k):
+        self.file = str(file)
+
+    def height(self) -> int: return 64
+    def width(self) -> int: return 64
+    def subsample(self, *a, **k): return self
+
+
 class _Variable:
     def __init__(self, master=None, value=None, **kwargs):
         self._value = value
@@ -282,6 +303,7 @@ def install() -> _Dialogs:
         setattr(ttk, name, _Widget)
     ttk.Entry = _Entry
     ttk.Combobox = _Combobox
+    tk.PhotoImage = _PhotoImage
     ttk.Treeview = _TreeviewWidget
 
     def _notebook_add(self, child, **kwargs):

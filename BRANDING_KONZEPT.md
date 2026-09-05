@@ -110,16 +110,37 @@ Browsercache gelesen.
 | Ableitungswerkzeug, Original unangetastet | **umgesetzt und geprueft** |
 | Splashscreen mit Logo und Profil | umgesetzt, am Bildschirm noch nicht gesehen |
 | Fenster-, Taskleisten- und EXE-Symbol | umgesetzt, am Bildschirm noch nicht gesehen |
-| **Originallogo im Projekt** | **offen - die Datei fehlt, siehe unten** |
+| Originalsymbol im Projekt | **vorhanden** (`portiva_app_icon_512.png`, 512x512, RGBA) |
+| Abgeleitete Varianten | **erzeugt und geprueft** |
+| Icon 16 bis 256 Pixel | **erzeugt und geprueft** |
+| Breites Logo mit Schriftzug | **offen** - siehe unten |
+
+## Was geliefert wurde
+
+`assets/branding/original/portiva_app_icon_512.png` - das quadratische
+PORTIVA-Symbol, 512x512, mit Transparenz. Daraus sind alle Varianten
+erzeugt.
+
+Eine technische Anpassung war noetig und ist zulaessig: Im Original lag das
+Zeichen nicht mittig - 22 Bildpunkte Rand links, 125 rechts. Bei 16 Pixeln
+haette das Symbol sichtbar verrutscht ausgesehen. Das Werkzeug schneidet
+deshalb den durchsichtigen Rand ab und setzt das Zeichen mittig auf eine
+quadratische Flaeche mit gleichmaessigem Rand. **Das Zeichen selbst bleibt
+unveraendert**: gleiche Farben, gleiche Formen, gleiches
+Seitenverhaeltnis - es faellt nur der ungleiche Leerraum weg. Ein Test
+prueft, dass das Ergebnis quadratisch und mittig ist.
 
 ## Was noch fehlt
 
-Die Originaldatei `assets/branding/original/portiva_logo_original.png`.
+Das **breite Logo mit dem Schriftzug PORTIVA**. Es liegt nicht vor.
 
-Sie wurde im Gespraech als Bild uebermittelt, erreichte die
-Entwicklungsumgebung aber nur zur Ansicht und nicht als Datei. Ein
-nachgebautes Logo ist ausdruecklich untersagt - und waere auch das
-Falsche, weil es nicht die echte Marke waere. Deshalb steht dort nichts.
+Als Hauptlogo dient deshalb derzeit das Symbol; der Schriftzug wird in der
+Oberflaeche daneben als Text gesetzt (`PORTIVA - Buchhalter`). Das ist eine
+uebliche und zulaessige Darstellung - es wird ausdruecklich **kein**
+Schriftzug nachgebaut.
 
-Sobald die Datei abgelegt und `tools/branding_ableiten.py` einmal
-ausgefuehrt wurde, greift alles Uebrige ohne weitere Aenderung.
+Wird die breite Fassung nachgereicht - unter
+`assets/branding/original/`, ein Name wie `portiva_logo_original.png` -,
+genuegt ein erneuter Lauf von `tools/branding_ableiten.py`. Das Werkzeug
+erkennt beide Dateien getrennt und verwendet dann automatisch das breite
+Logo als Hauptlogo und das Symbol weiterhin fuer die Icons.

@@ -196,3 +196,15 @@ def test_gleicher_modus_loest_keine_meldung_aus(gui):
     window.mode_var.set(controller.mode.value)
     window._on_mode_changed()
     assert len(dialogs.messages) == vorher
+
+
+def test_fenstersymbol_wird_gesetzt(gui):
+    """Fenster- und Taskleistensymbol: PORTIVA statt Standardsymbol."""
+    window, controller, _, _ = gui
+    gesetzt = window.root.options.get("iconbitmap") or window.root.options.get("iconphoto")
+    assert gesetzt, "es muss ein Fenstersymbol gesetzt werden"
+
+
+def test_fenstertitel_traegt_marke_und_profil(gui):
+    window, controller, _, _ = gui
+    assert window.brand.titel(window.profil) == "PORTIVA - Buchhalter"

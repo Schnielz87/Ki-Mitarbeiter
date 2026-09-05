@@ -42,19 +42,51 @@ def _laden():
     return Image
 
 
-def _quadratisch(bild, kante: int):
+def _beschnitt(bild):
+    """Entfernt durchsichtige Raender rundherum.
+
+    Das Original kann ungleichmaessigen Leerraum haben - beim gelieferten
+    Symbol etwa 22 Bildpunkte links und 125 rechts. Ohne Beschnitt saehe das
+    Icon sichtbar verrutscht aus. Das Zeichen selbst wird dabei nicht
+    veraendert: gleiche Farben, gleiche Formen, gleiches Seitenverhaeltnis -
+    es faellt nur der leere Rand weg.
+    """
+    kasten = bild.getchannel("A").getbbox() if bild.mode == "RGBA" else bild.getbbox()
+    return bild.crop(kasten) if kasten else bild
+
+
+def _quadratisch(bild, kante: int, rand: float = 0.06):
     """Legt das Bild mittig auf eine durchsichtige quadratische Flaeche.
 
     Ohne das wuerde ein breites Logo beim Erzeugen des Icons gestaucht -
-    die Proportionen duerfen sich nicht aendern.
+    die Proportionen duerfen sich nicht aendern. Ein kleiner gleichmaessiger
+    Rand bleibt stehen, damit das Zeichen in der Taskleiste nicht am
+    Kachelrand klebt.
     """
     from PIL import Image
 
-    kopie = bild.copy()
-    kopie.thumbnail((kante, kante), Image.LANCZOS)
+    kopie = _beschnitt(bild.copy())
+    innen = max(1, int(kante * (1 - 2 * rand)))
+    kopie.thumbnail((innen, innen), Image.LANCZOS)
     flaeche = Image.new("RGBA", (kante, kante), (0, 0, 0, 0))
     flaeche.paste(kopie, ((kante - kopie.width) // 2, (kante - kopie.height) // 2), kopie)
     return flaeche
+
+
+def _erste_vorhandene(ordner, namen):
+    """Nimmt die erste vorhandene Datei aus einer Liste moeglicher Namen.
+
+    Der Auftraggeber soll seine Datei nicht umbenennen muessen, nur weil das
+    Werkzeug einen bestimmten Namen erwartet.
+    """
+    for name in namen:
+        pfad = ordner / name
+        if pfad.is_file():
+            return pfad
+    # Sonst: irgendein PNG im Ordner, das nicht die Anleitung ist.
+    for pfad in sorted(ordner.glob("*.png")):
+        return pfad
+    return None
 
 
 def _auf_grund(bild, farbe):
@@ -70,19 +102,48 @@ def main() -> int:
     Image = _laden()
 
     assets = REPO / "assets"
-    original = assets / ORIGINAL_DATEI
-    if not original.is_file():
-        print(f"Originallogo fehlt: {original}", file=sys.stderr)
+    ordner = assets / "branding" / "original"
+    ordner.mkdir(parents=True, exist_ok=True)
+
+    # Breites Logo mit Schriftzug und quadratisches Symbol getrennt suchen.
+    # Mehrere Namen sind erlaubt, damit niemand umbenennen muss.
+    breit = _erste_vorhandene(ordner, [
+        Path(ORIGINAL_DATEI).name,
+        "portiva_logo.png", "portiva_logo_breit.png", "portiva_wortmarke.png",
+    ])
+    symbol_datei = _erste_vorhandene(ordner, [
+        Path(ORIGINAL_ICON).name,
+        "portiva_app_icon_512.png", "portiva_app_icon.png",
+        "portiva_symbol.png", "portiva_icon.png",
+    ])
+
+    # Ist nur eine Datei da, entscheidet die Form: quadratisch = Symbol.
+    if breit is not None and symbol_datei is not None and breit == symbol_datei:
+        bild = Image.open(breit)
+        if abs(bild.width / max(1, bild.height) - 1.0) < 0.15:
+            breit = None                 # es ist ein Symbol, kein breites Logo
+        else:
+            symbol_datei = None
+
+    if breit is None and symbol_datei is None:
+        print(f"Kein Originallogo in {ordner}", file=sys.stderr)
         print("Siehe assets/branding/original/HIER_ORIGINAL_ABLEGEN.md", file=sys.stderr)
         return 1
 
-    quelle = Image.open(original).convert("RGBA")
-    print(f"Original: {original.name}  {quelle.width}x{quelle.height}")
+    if breit is not None:
+        original = breit
+        quelle = Image.open(original).convert("RGBA")
+        print(f"Hauptlogo   : {original.name}  {quelle.width}x{quelle.height}")
+    else:
+        original = symbol_datei
+        quelle = Image.open(original).convert("RGBA")
+        print(f"Hauptlogo   : {original.name}  {quelle.width}x{quelle.height}  "
+              f"(Symbol - ein breites Logo mit Schriftzug liegt nicht vor)")
 
     geschrieben = []
 
     # Hauptlogo: nur skaliert, Seitenverhaeltnis unveraendert.
-    haupt = quelle.copy()
+    haupt = _beschnitt(quelle.copy())
     if haupt.width > LOGO_BREITE:
         hoehe = round(haupt.height * LOGO_BREITE / haupt.width)
         haupt = haupt.resize((LOGO_BREITE, hoehe), Image.LANCZOS)
@@ -101,10 +162,9 @@ def main() -> int:
     # Symbol: quadratisch, ohne Verzerrung. Liegt ein eigenes Quadratsymbol
     # vor, wird es bevorzugt - aus einem breiten Logo abgeleitet wuerde der
     # Schriftzug bei 16 Pixeln unleserlich.
-    icon_original = assets / ORIGINAL_ICON
-    if icon_original.is_file():
-        print(f"Symbolquelle: {icon_original.name} (eigenes Quadratsymbol)")
-        symbol = _quadratisch(Image.open(icon_original).convert("RGBA"), 256)
+    if symbol_datei is not None:
+        print(f"Symbolquelle: {symbol_datei.name} (eigenes Quadratsymbol)")
+        symbol = _quadratisch(Image.open(symbol_datei).convert("RGBA"), 256)
     else:
         print("Symbolquelle: aus dem Hauptlogo abgeleitet "
               "(kein eigenes Quadratsymbol hinterlegt)")
@@ -119,7 +179,12 @@ def main() -> int:
     print()
     for pfad in geschrieben:
         print(f"  geschrieben: {pfad.relative_to(REPO)}  ({pfad.stat().st_size} Bytes)")
-    print(f"\nDas Original blieb unveraendert: {original.relative_to(REPO)}")
+    print(f"\nDie Originale blieben unveraendert.")
+    if breit is None:
+        print("\nHinweis: Ein breites Logo mit dem Schriftzug PORTIVA liegt nicht")
+        print("vor. Als Hauptlogo dient deshalb das Symbol; der Schriftzug wird")
+        print("in der Oberflaeche daneben als Text gesetzt. Wird das breite Logo")
+        print("nachgereicht, genuegt ein erneuter Lauf dieses Werkzeugs.")
     return 0
 
 
