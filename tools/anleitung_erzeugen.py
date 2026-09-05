@@ -139,12 +139,11 @@ lauf.font.color.rgb = GRAU
 doc.add_paragraph()
 kasten(
     "Bitte zuerst lesen",
-    "Diese Anleitung beschreibt die Bedienoberflaeche so, wie sie im Programm "
-    "angelegt ist. Sie wurde aus dem Programmcode erstellt, nicht aus einem "
-    "Bildschirmfoto - in der Entwicklungsumgebung stand kein Bildschirm zur "
-    "Verfuegung. Alle genannten Registerkarten, Schaltflaechen und Felder "
-    "tragen die Beschriftungen, die das Programm setzt. Weicht etwas ab, gilt "
-    "das Programm, und bitte geben Sie mir Bescheid.\n\n"
+    "Diese Anleitung wird aus dem Programmcode selbst erzeugt. Alle genannten "
+    "Registerkarten, Schaltflaechen und Felder tragen daher genau die "
+    "Beschriftungen, die das Programm setzt. Der beschriebene Aufbau wurde "
+    "am laufenden Programm abgeglichen. Weicht dennoch etwas ab, gilt das "
+    "Programm.\n\n"
     "Der Buchhalter ist eine fachliche Zuarbeit. Er ersetzt weder Steuerberater "
     "noch Rechtsanwalt. Verantwortung und Freigabe bleiben immer bei Ihnen.",
 )
@@ -155,14 +154,17 @@ doc.add_page_break()
 doc.add_heading("Inhalt", level=1)
 for nummer, kapitel in enumerate([
     "In fuenf Minuten startklar",
+    "Der Startbildschirm - was er Ihnen sagt",
     "Der Bildschirm: fuenf Registerkarten",
     "Schritt 1 - Ihr Unternehmen einrichten",
     "Schritt 2 - Fragen stellen",
     "Wie eine Antwort aufgebaut ist",
+    "Was automatisch gespeichert wird - und was nicht",
     "Belege hinzufuegen",
     "Unternehmenswissen pflegen",
     "Wissen aktualisieren",
     "Einstellungen und Status",
+    "Lizenz",
     "Was der Buchhalter nicht tut",
     "Wenn etwas nicht funktioniert",
 ], start=1):
@@ -207,7 +209,77 @@ absatz("Ob der Datentraeger als D:, E: oder F: erscheint, spielt keine Rolle. "
        "nichts auf dem jeweiligen Rechner.")
 
 # ================================================================ 2
-doc.add_heading("2.  Der Bildschirm: fuenf Registerkarten", level=1)
+doc.add_heading("2.  Der Startbildschirm - was er Ihnen sagt", level=1)
+
+absatz("Bevor der Buchhalter startet, prueft er sich selbst und zeigt das "
+       "Ergebnis an. Das ist keine Formalie: Sie sehen dort, ob er "
+       "arbeitsfaehig ist und was ihm gegebenenfalls fehlt. Jede Zeile hat "
+       "ein Ergebnis - OK oder HINWEIS.")
+
+tabelle_mit(
+    ["Zeile", "Was geprueft wird", "Was Sie sehen sollten"],
+    [
+        ["Datenverzeichnis",
+         "Wo Ihre Daten liegen und ob dorthin geschrieben werden kann",
+         "OK, dahinter der Pfad und \"(beschreibbar)\""],
+        ["Unternehmensgedaechtnis",
+         "Wie viele Angaben ueber Ihren Betrieb gespeichert sind",
+         "OK, Anzahl der Eintraege, \"Integritaet: ok\""],
+        ["Fachwissen",
+         "Die mitgelieferten Fachmodule",
+         "OK, 13 Dokumente, 57 Abschnitte"],
+        ["Suchindex",
+         "Ob die Suche ueber das Fachwissen einsatzbereit ist",
+         "OK, Anzahl der Abschnitte"],
+        ["Lokales Modell",
+         "Ob ein Sprachmodell vorhanden ist",
+         "HINWEIS, solange keines eingerichtet ist - siehe unten"],
+        ["Lizenz",
+         "Ob eine Lizenz noetig und gueltig ist",
+         "OK - siehe Kapitel 12"],
+        ["Quellenregister",
+         "Die hinterlegten amtlichen Quellen",
+         "OK, 12 Quellen, 32 Dokumente"],
+        ["Geheimnistresor",
+         "Der verschluesselte Speicher fuer Passwoerter und Zugaenge",
+         "OK, \"noch nicht angelegt\" ist voellig in Ordnung"],
+    ],
+    breiten=[3.8, 5.8, 5.4],
+)
+
+absatz("Darunter stehen vier Angaben zum Zustand:")
+punkt("Wissensstand - auf welchem Datum die gespeicherten Fachquellen stehen.")
+punkt("Internet - ob eine Verbindung besteht. Fuer die taegliche Arbeit "
+      "unerheblich; gebraucht wird sie nur zum Nachladen von Quellen.")
+punkt("Betriebsart - OFFLINE oder HYBRID. HYBRID heisst lediglich, dass "
+      "Internet verfuegbar ist. Gearbeitet wird trotzdem lokal.")
+punkt("Datenverzeichnis - der Ordner auf Ihrem Datentraeger.")
+
+absatz()
+absatz("Steht am Ende \"Der Buchhalter kann gestartet werden.\", ist alles "
+       "in Ordnung. Erst dann laesst sich die Schaltflaeche BUCHHALTER "
+       "STARTEN anklicken.", fett=True)
+
+doc.add_heading("HINWEIS ist kein Fehler", level=2)
+absatz("OK bedeutet: in Ordnung. HINWEIS bedeutet: es fehlt etwas, aber der "
+       "Buchhalter laeuft trotzdem. Der haeufigste Fall ist das Sprachmodell:")
+
+kasten(
+    "\"Lokales Modell: HINWEIS - Kein Sprachmodell verfuegbar\"",
+    "Das ist der Normalzustand, solange Sie kein Modell eingerichtet haben. "
+    "Der Buchhalter laeuft dann im sogenannten Notbetrieb: er recherchiert "
+    "in seinen Quellen und zeigt Ihnen die Fundstellen, formuliert aber "
+    "keine ausformulierte Fachantwort.\n\n"
+    "Das ist Absicht. Lieber sagt er ehrlich, dass er nichts formulieren "
+    "kann, als etwas zu erfinden. Wie Sie ein Modell einrichten, steht in "
+    "docs/MODELL_EINRICHTEN.md - einmalig, etwa 5 GB.",
+)
+
+absatz("Ein echter Fehler wuerde die Zeile mit FEHLER kennzeichnen und die "
+       "Schaltflaeche BUCHHALTER STARTEN gesperrt lassen.")
+
+# ================================================================ 3
+doc.add_heading("3.  Der Bildschirm: fuenf Registerkarten", level=1)
 absatz("Nach dem Start sehen Sie oben eine Zeile mit fuenf Registerkarten. "
        "Alles, was Sie tun, geschieht in einer davon.")
 
@@ -237,7 +309,7 @@ absatz("Ganz unten laeuft eine Statuszeile mit, die auch den Pfad Ihres "
        "Datentraegers nennt.")
 
 # ================================================================ 3
-doc.add_heading("3.  Schritt 1 - Ihr Unternehmen einrichten", level=1)
+doc.add_heading("4.  Schritt 1 - Ihr Unternehmen einrichten", level=1)
 
 absatz("Das ist das Erste, was Sie tun sollten. Der Buchhalter arbeitet umso "
        "besser, je mehr er ueber Ihren Betrieb weiss - und er merkt es sich "
@@ -274,7 +346,7 @@ kasten(
 )
 
 # ================================================================ 4
-doc.add_heading("4.  Schritt 2 - Fragen stellen", level=1)
+doc.add_heading("5.  Schritt 2 - Fragen stellen", level=1)
 
 absatz("Registerkarte Unterhaltung. Der Bildschirm ist geteilt:")
 punkt("Links oben: der bisherige Gespraechsverlauf.")
@@ -313,7 +385,7 @@ punkt("\"Wir haben einen Firmenwagen geleast. Welche Unterlagen brauchen wir "
       "fuer den Jahresabschluss?\"")
 
 # ================================================================ 5
-doc.add_heading("5.  Wie eine Antwort aufgebaut ist", level=1)
+doc.add_heading("6.  Wie eine Antwort aufgebaut ist", level=1)
 
 absatz("Der Buchhalter antwortet nach einem festen Schema. Nicht jeder "
        "Abschnitt kommt bei jeder Frage vor, aber die Reihenfolge ist immer "
@@ -355,8 +427,68 @@ absatz("Dann schreibt der Buchhalter offen: \"Hinweis: Es wurde keine "
        "erfinden. Die Einrichtung eines Sprachmodells ist in "
        "docs/MODELL_EINRICHTEN.md beschrieben (einmalig, etwa 5 GB).")
 
-# ================================================================ 6
-doc.add_heading("6.  Belege hinzufuegen", level=1)
+# ================================================================ 7
+doc.add_heading("7.  Was automatisch gespeichert wird - und was nicht", level=1)
+
+absatz("Die wichtigste Frage im taeglichen Umgang. Kurz: Ihre Unterhaltungen "
+       "werden automatisch gespeichert. Alles, was in Ihr "
+       "Unternehmensgedaechtnis soll, bestaetigen Sie ausdruecklich.")
+
+tabelle_mit(
+    ["Was", "Speichert sich das von selbst?", "Was Sie tun muessen"],
+    [
+        ["Ihre Frage und die Antwort",
+         "Ja, sofort",
+         "Nichts. Jede Frage und jede Antwort wird in dem Moment auf den "
+         "Datentraeger geschrieben, in dem sie entsteht."],
+        ["Die Unterhaltung als Ganzes",
+         "Ja",
+         "Nichts. Sie erscheint rechts unter \"Unterhaltungen\" und ist nach "
+         "einem Neustart wieder da."],
+        ["Angaben, die Sie im Gespraech nennen",
+         "Nein - es wird gefragt",
+         "Erkennt der Buchhalter eine dauerhafte Unternehmensangabe, fragt "
+         "er \"Dauerhaft merken?\". Erst mit Ja wird gespeichert."],
+        ["Onboarding-Fragebogen",
+         "Nein",
+         "Auf Speichern klicken."],
+        ["Eintrag unter Neu / Aendern",
+         "Nein",
+         "Auf Speichern klicken."],
+        ["Einstellungen",
+         "Nein",
+         "Auf Einstellungen speichern klicken."],
+        ["Beleg",
+         "Ja, beim Auswaehlen",
+         "Nichts weiter. Die Datei wird sofort auf den Datentraeger "
+         "uebernommen."],
+    ],
+    breiten=[3.8, 3.6, 7.6],
+)
+
+kasten(
+    "Es gibt keine Schaltflaeche \"Alles speichern\"",
+    "Und Sie brauchen auch keine. Der Buchhalter schreibt jede Aenderung "
+    "sofort und einzeln auf den Datentraeger - nicht erst beim Beenden. "
+    "Selbst wenn der Rechner mitten in der Arbeit ausgeht, ist alles bis zur "
+    "letzten abgeschickten Frage vorhanden.",
+)
+
+doc.add_heading("Wo das alles liegt", level=2)
+absatz("Ausschliesslich auf Ihrem Datentraeger, im Ordner, den der "
+       "Startbildschirm als Datenverzeichnis nennt. Nichts wird auf dem "
+       "jeweiligen PC abgelegt, nichts hochgeladen, nichts an Dritte "
+       "gesendet. Deshalb koennen Sie den Datentraeger abziehen, an einem "
+       "anderen Rechner einstecken und dort weiterarbeiten.")
+
+doc.add_heading("Trotzdem: Sicherungen", level=2)
+absatz("Automatisches Speichern schuetzt nicht vor einem Defekt des "
+       "Datentraegers. Legen Sie regelmaessig eine Sicherung an - "
+       "Registerkarte Wissen aktualisieren, Schaltflaeche Sicherung "
+       "erstellen - und bewahren Sie sie an einem anderen Ort auf.")
+
+# ================================================================ 8
+doc.add_heading("8.  Belege hinzufuegen", level=1)
 
 absatz("Sie koennen eigene Dokumente einlesen - Rechnungen, Vertraege, "
        "Kontoauszuege als Text. Der Buchhalter kann sich dann in seinen "
@@ -377,7 +509,7 @@ kasten(
 )
 
 # ================================================================ 7
-doc.add_heading("7.  Unternehmenswissen pflegen", level=1)
+doc.add_heading("9.  Unternehmenswissen pflegen", level=1)
 
 absatz("Registerkarte Unternehmenswissen. Hier steht alles, was sich der "
        "Buchhalter ueber Ihren Betrieb gemerkt hat - versioniert, mit "
@@ -423,7 +555,7 @@ tabelle_mit(
     [
         ["Verlauf", "Zeigt alle frueheren Fassungen des markierten Eintrags"],
         ["Archivieren", "Nimmt den Eintrag aus dem aktiven Bestand; er bleibt im Verlauf erhalten"],
-        ["Onboarding fortsetzen", "Oeffnet den gefuehrten Fragebogen aus Kapitel 3"],
+        ["Onboarding fortsetzen", "Oeffnet den gefuehrten Fragebogen aus Kapitel 4"],
         ["Profil exportieren", "Schreibt das gesamte Unternehmensprofil als lesbare Datei auf den Datentraeger"],
     ],
     breiten=[5.0, 10.0],
@@ -438,7 +570,7 @@ kasten(
 )
 
 # ================================================================ 8
-doc.add_heading("8.  Wissen aktualisieren", level=1)
+doc.add_heading("10.  Wissen aktualisieren", level=1)
 
 absatz("Registerkarte Wissen aktualisieren. Hier laedt der Buchhalter "
        "amtliche Quellen nach. Das ist der einzige Teil, der Internet "
@@ -468,7 +600,7 @@ kasten(
 )
 
 # ================================================================ 9
-doc.add_heading("9.  Einstellungen und Status", level=1)
+doc.add_heading("11.  Einstellungen und Status", level=1)
 
 absatz("Registerkarte Einstellungen und Status. Links stellen Sie ein, rechts "
        "sehen Sie den Zustand.")
@@ -503,8 +635,76 @@ absatz("Steht bei einem Punkt HINWEIS statt OK, ist das kein Fehler, sondern "
        "eine Einschraenkung - etwa \"Kein Sprachmodell verfuegbar\". Der Text "
        "daneben sagt, was das bedeutet und wie es zu beheben ist.")
 
-# ================================================================ 10
-doc.add_heading("10.  Was der Buchhalter nicht tut", level=1)
+# ================================================================ 12
+doc.add_heading("12.  Lizenz", level=1)
+
+doc.add_heading("Im Augenblick muessen Sie nichts tun", level=2)
+absatz("Der Startbildschirm zeigt in der Zeile Lizenz:")
+absatz("\"Diese Fassung laeuft ohne Lizenzpruefung (Vorab- bzw. "
+       "Pilotfassung).\"", kursiv=True)
+absatz("Genau so ist es gemeint. Diese Fassung braucht keine Lizenzdatei, "
+       "keine Aktivierung, keinen Schluessel und keine Registrierung. Sie "
+       "koennen sofort arbeiten.")
+
+doc.add_heading("Warum das so ist", level=2)
+absatz("Die Lizenzpruefung ist vollstaendig eingebaut und geprueft, aber "
+       "bewusst noch nicht scharf geschaltet. Dazu fehlt ein Stueck, das "
+       "nicht in der Software liegen kann: der oeffentliche Pruefschluessel "
+       "des Herausgebers. Solange der nicht eingebaut ist, taeuscht die "
+       "Anwendung keine Gueltigkeit vor - sie sagt offen, dass sie nicht "
+       "pruefen kann. Das ist der ehrlichere Zustand als eine Pruefung, die "
+       "nur so tut.")
+
+doc.add_heading("Wie es spaeter funktionieren wird", level=2)
+absatz("Damit Sie wissen, was auf Sie zukommt:")
+schritt("Sie erhalten eine Lizenzdatei - zwei kleine Dateien, license.json "
+        "und license.sig - und legen sie in den Ordner license auf dem "
+        "Datentraeger.")
+schritt("Beim Start prueft der Buchhalter die Signatur. Das geschieht "
+        "vollstaendig ohne Internet; es wird nichts uebertragen und nichts "
+        "gemeldet.")
+schritt("Die Lizenz ist an den Datentraeger gebunden, nicht an einen "
+        "bestimmten PC. Sie koennen die SSD also weiterhin an jeden Rechner "
+        "stecken - genau das soll erhalten bleiben.")
+
+absatz()
+tabelle_mit(
+    ["Fall", "Was dann passiert"],
+    [
+        ["Sie kopieren den Ordner auf einen zweiten Datentraeger",
+         "Die Kopie ist nicht lizenziert. Das Original bleibt gueltig."],
+        ["Jemand aendert die Lizenzdatei",
+         "Die Signatur passt nicht mehr, die Lizenz wird abgelehnt."],
+        ["Kein Internet",
+         "Ohne Bedeutung - die Pruefung laeuft rein oertlich."],
+        ["Der Datentraeger geht kaputt",
+         "Sie erhalten fuer den Ersatz eine neue Lizenz. Ein vorgesehener, "
+         "getesteter Vorgang."],
+        ["Die Lizenz fehlt oder ist ungueltig",
+         "Sie bekommen eine verstaendliche Meldung. Ihre Daten bleiben "
+         "unangetastet - siehe unten."],
+    ],
+    breiten=[6.2, 8.8],
+)
+
+kasten(
+    "Ihre Daten werden nie als Druckmittel benutzt",
+    "Fehlt die Lizenz oder ist sie ungueltig, wird nichts geloescht, nichts "
+    "gesperrt und nichts verschluesselt. Ihr Unternehmenswissen bleibt "
+    "lesbar, und Export und Sicherung funktionieren weiter. Eine "
+    "Lizenzfrage ist eine kaufmaennische Angelegenheit und darf sich nie "
+    "gegen Ihre Daten richten.",
+)
+
+doc.add_heading("Und die Software selbst?", level=2)
+absatz("Diese Fassung ist eine Vorab- bzw. Pilotfassung. Sie ist noch nicht "
+       "digital signiert - daher die Windows-Meldung beim ersten Start - und "
+       "sie ist nicht als kommerziell freigegeben erklaert. Was dafuer noch "
+       "fehlt, koennen Sie sich jederzeit selbst anzeigen lassen: "
+       "PORTABLE_BUCHHALTER_KONSOLE.exe reife")
+
+# ================================================================ 13
+doc.add_heading("13.  Was der Buchhalter nicht tut", level=1)
 
 absatz("Das ist kein Mangel, sondern bewusst so gebaut. Bitte lesen Sie es "
        "einmal in Ruhe.")
@@ -536,7 +736,7 @@ kasten(
 )
 
 # ================================================================ 11
-doc.add_heading("11.  Wenn etwas nicht funktioniert", level=1)
+doc.add_heading("14.  Wenn etwas nicht funktioniert", level=1)
 
 tabelle_mit(
     ["Was Sie sehen", "Was zu tun ist"],
@@ -590,4 +790,43 @@ lauf.font.color.rgb = GRAU
 
 ziel = REPO / "docs" / "BEDIENUNGSANLEITUNG.docx"
 doc.save(str(ziel))
+
+
+def zoom_reparieren(datei: Path) -> bool:
+    """Behebt einen Schemafehler der python-docx-Vorlage.
+
+    Deren word/settings.xml enthaelt <w:zoom w:val="none"/> ohne das laut
+    OOXML-Schema vorgeschriebene Attribut w:percent. Word ist nachsichtig
+    und oeffnet die Datei trotzdem; LibreOffice und andere Leseprogramme
+    weisen sie ab ("source file could not be loaded"). Deshalb wird das
+    Attribut hier nachgetragen.
+    """
+    import re
+    import shutil
+    import tempfile
+    import zipfile
+
+    with zipfile.ZipFile(datei) as archiv:
+        inhalte = {name: archiv.read(name) for name in archiv.namelist()}
+
+    settings = inhalte.get("word/settings.xml")
+    if settings is None:
+        return False
+    text = settings.decode("utf-8")
+    if "w:zoom" not in text or 'w:percent="' in text:
+        return False
+    text = re.sub(r"<w:zoom(?![^>]*w:percent)([^>]*?)/>",
+                  r'<w:zoom\1 w:percent="100"/>', text, count=1)
+    inhalte["word/settings.xml"] = text.encode("utf-8")
+
+    temp = Path(tempfile.mkstemp(suffix=".docx")[1])
+    with zipfile.ZipFile(temp, "w", zipfile.ZIP_DEFLATED) as archiv:
+        for name, rohdaten in inhalte.items():
+            archiv.writestr(name, rohdaten)
+    shutil.move(str(temp), str(datei))
+    return True
+
+
+if zoom_reparieren(ziel):
+    print("Schemafehler der Vorlage behoben (w:zoom ohne w:percent)")
 print("geschrieben:", ziel, ziel.stat().st_size, "Bytes")
