@@ -475,11 +475,55 @@ kasten(
 )
 
 doc.add_heading("Wo das alles liegt", level=2)
-absatz("Ausschliesslich auf Ihrem Datentraeger, im Ordner, den der "
-       "Startbildschirm als Datenverzeichnis nennt. Nichts wird auf dem "
-       "jeweiligen PC abgelegt, nichts hochgeladen, nichts an Dritte "
-       "gesendet. Deshalb koennen Sie den Datentraeger abziehen, an einem "
-       "anderen Rechner einstecken und dort weiterarbeiten.")
+absatz("Ausschliesslich auf Ihrem Datentraeger, unterhalb des Ordners, den "
+       "der Startbildschirm als Datenverzeichnis nennt - bei Ihnen zum "
+       "Beispiel E:\\Portable-Buchhalter-Windows. Nichts wird auf dem "
+       "jeweiligen PC abgelegt, nichts in die Windows-Registrierung "
+       "geschrieben, nichts hochgeladen, nichts an Dritte gesendet. Deshalb "
+       "koennen Sie den Datentraeger abziehen, an einem anderen Rechner "
+       "einstecken und dort weiterarbeiten.")
+
+absatz("Diese Ordner liegen dort - Sie duerfen jederzeit hineinschauen:")
+
+tabelle_mit(
+    ["Ordner", "Was darin liegt", "Ihre Daten?"],
+    [
+        ["database", "Die Datenbank company.db: Unternehmensgedaechtnis, "
+                     "alle Unterhaltungen, das Protokoll", "Ja - das Wichtigste"],
+        ["company", "Das Unternehmensprofil in lesbarer Form, sobald Sie es "
+                    "exportieren", "Ja"],
+        ["conversations", "Exportierte Unterhaltungen", "Ja"],
+        ["workspace", "Ihre eigenen Arbeitsdateien und aufgenommenen Belege", "Ja"],
+        ["backups", "Sicherungen, die Sie angelegt haben", "Ja"],
+        ["logs", "Protokolldateien, darunter startfehler.txt", "Betriebsdaten"],
+        ["config", "Ihre Einstellungen (settings.json), das Quellenregister "
+                   "und der verschluesselte Tresor (secrets.enc)", "Ja"],
+        ["license", "Die Lizenzdateien, sobald es welche gibt", "Vertragsdaten"],
+        ["resources", "Die abgerufenen amtlichen Quellen und der Suchindex", "Fachwissen"],
+        ["knowledge", "Die mitgelieferten Fachmodule", "Programmbestandteil"],
+        ["models", "Das Sprachmodell, sobald Sie eines einrichten", "Programmbestandteil"],
+        ["updates", "Sicherung und Bericht je Wissensupdate (fuer die Ruecknahme)", "Betriebsdaten"],
+        ["src, tools, docs", "Das Programm selbst und die Unterlagen", "Programmbestandteil"],
+    ],
+    breiten=[3.4, 8.6, 3.2],
+)
+
+kasten(
+    "Die eine Datei, auf die es ankommt",
+    "database\\company.db. Darin steht alles, was der Buchhalter ueber Ihr "
+    "Unternehmen weiss, samt Verlauf und allen Unterhaltungen. Wenn Sie nur "
+    "eine Sache sichern wollen, dann diese - besser aber ueber die "
+    "Schaltflaeche Sicherung erstellen, weil dabei auch eine Beschreibung "
+    "des Inhalts mitgeschrieben wird.",
+)
+
+doc.add_heading("Mehrere Unternehmen auf einem Datentraeger", level=2)
+absatz("Betreuen Sie mehrere Firmen, kann der Buchhalter getrennte "
+       "Kundenbereiche fuehren. Die oben genannten Ordner liegen dann "
+       "unterhalb von customers\\<Kennung>\\ - je Kunde ein eigener Baum. "
+       "Unternehmenswissen des einen Kunden kann so nicht beim anderen "
+       "auftauchen. Das allgemeine Fachwissen bleibt bewusst gemeinsam, denn "
+       "es enthaelt keine Unternehmensdaten.")
 
 doc.add_heading("Trotzdem: Sicherungen", level=2)
 absatz("Automatisches Speichern schuetzt nicht vor einem Defekt des "
@@ -694,6 +738,71 @@ kasten(
     "lesbar, und Export und Sicherung funktionieren weiter. Eine "
     "Lizenzfrage ist eine kaufmaennische Angelegenheit und darf sich nie "
     "gegen Ihre Daten richten.",
+)
+
+doc.add_heading("Was noch fehlt, damit die Lizenzierung greift", level=2)
+absatz("Damit Sie den Aufwand einschaetzen koennen - technisch ist alles "
+       "vorhanden und geprueft, es fehlen im Wesentlichen zwei "
+       "Entscheidungen und ein Schluesselpaar:")
+
+tabelle_mit(
+    ["Schritt", "Was zu tun ist", "Wer"],
+    [
+        ["1. Schluesselpaar erzeugen",
+         "Einmalig ein Ed25519-Schluesselpaar erzeugen. Der private "
+         "Schluessel bleibt beim Herausgeber und darf den Betrieb nie "
+         "verlassen; wer ihn hat, kann beliebige Lizenzen ausstellen.",
+         "Herausgeber"],
+        ["2. Oeffentlichen Schluessel einbauen",
+         "Der oeffentliche Teil wird in die Anwendung uebernommen. Nur er "
+         "wird ausgeliefert - er kann Lizenzen pruefen, aber keine "
+         "ausstellen.",
+         "Entwicklung"],
+        ["3. Lizenzpflicht einschalten",
+         "In der Konfiguration license.required auf true setzen. Bis dahin "
+         "laeuft die Pilotfassung bewusst ohne Pruefung.",
+         "Entscheidung"],
+        ["4. Lizenzmodell festlegen",
+         "Laufzeit, Zahl der Instanzen, enthaltene Fachmodule. Das steht "
+         "spaeter in der Lizenzdatei.",
+         "Kaufmaennisch"],
+        ["5. Programm signieren",
+         "Ein Code-Signing-Zertifikat beschaffen und die EXE signieren. "
+         "Danach entfaellt die SmartScreen-Meldung beim ersten Start.",
+         "Herausgeber"],
+    ],
+    breiten=[3.6, 8.4, 3.0],
+)
+
+absatz("Die Punkte 1 bis 4 sind Einrichtung, kein Programmierauftrag - das "
+       "Verfahren selbst ist fertig und mit 22 Tests abgesichert, "
+       "einschliesslich aller Faelle: Kopie auf einen zweiten Datentraeger, "
+       "veraenderte Lizenzdatei, fehlende Signatur, Ablauf, Ersatzgeraet.")
+
+doc.add_heading("Der Ablauf im Betrieb, wenn es soweit ist", level=2)
+absatz("Fuer Sie als Anwender bleibt es einfach:")
+schritt("Aktivierungsanfrage erzeugen: "
+        "PORTABLE_BUCHHALTER_KONSOLE.exe lizenz anfrage --kunde \"Ihre Firma\" "
+        "--datei anfrage.json. Darin steht die Kennung des Datentraegers, "
+        "keine Unternehmensdaten.")
+schritt("Die Datei an den Herausgeber schicken.")
+schritt("Sie erhalten license.json und license.sig zurueck.")
+schritt("Aufnehmen: PORTABLE_BUCHHALTER_KONSOLE.exe lizenz aufnehmen "
+        "--lizenz license.json --signatur license.sig. Die Dateien landen "
+        "im Ordner license auf dem Datentraeger.")
+schritt("Pruefen: PORTABLE_BUCHHALTER_KONSOLE.exe lizenz - zeigt den Zustand "
+        "an. Ab dann steht er auch im Startbildschirm.")
+
+absatz("Es wird dabei zu keinem Zeitpunkt etwas ins Internet uebertragen.")
+
+kasten(
+    "Solange der Pruefschluessel fehlt",
+    "Die Schritte funktionieren schon heute - eine Lizenz laesst sich "
+    "erzeugen und aufnehmen. Der Buchhalter meldet dann aber ehrlich "
+    "\"NICHT_PRUEFBAR: In dieser Fassung ist kein Pruefschluessel des "
+    "Herausgebers hinterlegt. Die Lizenz wird deshalb weder als gueltig noch "
+    "als ungueltig behandelt.\" Er tut also nicht so, als haette er "
+    "geprueft. Mit eingebautem Schluessel wird daraus GUELTIG.",
 )
 
 doc.add_heading("Und die Software selbst?", level=2)
