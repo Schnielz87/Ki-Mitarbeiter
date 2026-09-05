@@ -10,6 +10,7 @@ from __future__ import annotations
 import datetime as _dt
 import hashlib
 import json
+import shutil
 import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -33,7 +34,7 @@ from pkc.logging_setup import get_logger, setup_logging
 from pkc.memory import CaptureCandidate, MemoryCapture, MemoryStore
 from pkc.memory.schema_keys import CATEGORIES, WELL_KNOWN_KEYS
 from pkc.netstate import Mode, NetworkMonitor, NetStatus
-from pkc.paths import Paths, get_paths
+from pkc.paths import Paths, get_paths, sanitise_customer_id
 from pkc.profile import EmployeeProfile, load_profile
 from pkc.rag import AnswerResult, ContextBuilder, RagEngine
 from pkc.retrieval.embeddings import build_embedder
@@ -136,6 +137,11 @@ class AppController:
         console_logging: bool = True,
     ):
         self.paths = paths or get_paths()
+        # Kundenbereich aus der Konfiguration uebernehmen, sofern noch nicht gesetzt
+        if not self.paths.customer_id:
+            vorkonfiguriert = str((config or Config.load(self.paths)).get("customer.id", ""))
+            if vorkonfiguriert:
+                self.paths = self.paths.for_customer(vorkonfiguriert)
         self.paths.ensure_runtime_dirs()
         self.paths.write_marker()
         self.config = config or Config.load(self.paths)
@@ -350,10 +356,28 @@ class AppController:
         self.network.start()
 
     def shutdown(self) -> None:
-        self.network.stop()
-        self.audit.record("beenden", "anwendung", "")
-        self.knowledge_db.close()
-        self.company_db.close()
+        """Beendet die Anwendung geordnet.
+
+        Mehrfach aufrufbar und auch dann unkritisch, wenn der Datenbereich
+        inzwischen nicht mehr existiert - das Beenden darf nie der Grund fuer
+        einen Absturz sein.
+        """
+        if getattr(self, "_beendet", False):
+            return
+        self._beendet = True
+        try:
+            self.network.stop()
+        except Exception:      # pragma: no cover - defensiv
+            log.debug("Netzueberwachung liess sich nicht sauber beenden", exc_info=True)
+        try:
+            self.audit.record("beenden", "anwendung", "")
+        except Exception:
+            log.debug("Abschlusseintrag im Protokoll nicht moeglich", exc_info=True)
+        for datenbank in (self.knowledge_db, self.company_db):
+            try:
+                datenbank.close()
+            except Exception:  # pragma: no cover - defensiv
+                log.debug("Datenbank liess sich nicht sauber schliessen", exc_info=True)
 
     # ------------------------------------------------------------------
     # Zustand
@@ -818,6 +842,176 @@ class AppController:
 
     def update_runs(self, limit: int = 20) -> list[dict]:
         return self.updater.list_runs(limit) if self.updater else []
+
+    # ------------------------------------------------------------------
+    # Kundentrennung und Datenkontrolle (Masterprompt 61, 62)
+    # ------------------------------------------------------------------
+    @property
+    def customer_id(self) -> str:
+        return self.paths.customer_id
+
+    def customers(self) -> list[dict]:
+        """Alle Kundenbereiche auf diesem Datentraeger."""
+        eintraege = []
+        for kennung in self.paths.known_customers():
+            bereich = self.paths.for_customer(kennung)
+            datenbank = bereich.company_db
+            eintraege.append({
+                "kennung": kennung,
+                "verzeichnis": self.paths.relative(bereich.customer_root),
+                "angelegt": datenbank.is_file(),
+                "groesse_bytes": datenbank.stat().st_size if datenbank.is_file() else 0,
+                "aktiv": kennung == self.customer_id,
+            })
+        return eintraege
+
+    def create_customer(self, customer_id: str, name: str = "") -> dict:
+        """Legt einen neuen, leeren Kundenbereich an."""
+        kennung = sanitise_customer_id(customer_id)
+        if not kennung:
+            raise ValueError("Es wurde keine Kundenkennung angegeben.")
+        bereich = self.paths.for_customer(kennung)
+        if bereich.customer_root.exists():
+            raise ValueError(f"Der Kundenbereich '{kennung}' existiert bereits.")
+        bereich.ensure_runtime_dirs()
+        (bereich.customer_root / "KUNDE.txt").write_text(
+            f"Kundenbereich: {kennung}\n"
+            f"Name: {name or '(nicht angegeben)'}\n"
+            f"Angelegt: {utc_now()}\n\n"
+            "Dieser Ordner enthaelt ausschliesslich die Daten dieses Unternehmens.\n"
+            "Das allgemeine Fachwissen liegt gemeinsam ausserhalb dieses Ordners.\n",
+            encoding="utf-8",
+        )
+        self.audit.record("kunde_angelegt", "customer", kennung, name=name)
+        log.info("Kundenbereich angelegt: %s", kennung)
+        return {"kennung": kennung, "verzeichnis": self.paths.relative(bereich.customer_root)}
+
+    def export_customer(self, target: Path | str | None = None) -> dict:
+        """Exportiert alle Daten des aktiven Unternehmens (Masterprompt 62).
+
+        Das Ergebnis ist ein eigenstaendiges Verzeichnis: Datenbanken,
+        Unternehmensprofil, Gespraeche, Belege und Konfiguration. Es enthaelt
+        **kein** Fachwissen und keine Lizenz.
+        """
+        stempel = _dt.datetime.now().strftime("%Y%m%d-%H%M%S")
+        name = f"export-{self.customer_id or 'einzelinstanz'}-{stempel}"
+        ziel = Path(target) if target else (self.paths.get("backups") / name)
+        ziel.mkdir(parents=True, exist_ok=True)
+
+        self.export_company_profile()
+        geschrieben: list[str] = []
+        self.company_db.backup_to(ziel / "company.db")
+        geschrieben.append("company.db")
+
+        for verzeichnis in ("company", "conversations", "workspace"):
+            quelle = self.paths.get(verzeichnis)
+            if quelle.is_dir() and any(quelle.rglob("*")):
+                shutil.copytree(quelle, ziel / verzeichnis, dirs_exist_ok=True)
+                geschrieben.append(f"{verzeichnis}/")
+        for datei in ("settings.json",):
+            quelle = self.paths.get("config") / datei
+            if quelle.is_file():
+                (ziel / datei).write_bytes(quelle.read_bytes())
+                geschrieben.append(datei)
+
+        # Menschenlesbare Gesamtuebersicht des Unternehmenswissens
+        (ziel / "unternehmenswissen.json").write_text(
+            json.dumps(self.memory.export(), indent=2, ensure_ascii=False) + "\n",
+            encoding="utf-8",
+        )
+        geschrieben.append("unternehmenswissen.json")
+
+        (ziel / "EXPORT.json").write_text(json.dumps({
+            "kunde": self.customer_id or "einzelinstanz",
+            "exportiert_am": utc_now(),
+            "versionen": self.versions(),
+            "dateien": geschrieben,
+            "hinweis": "Enthaelt keine Lizenz und kein allgemeines Fachwissen.",
+        }, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+
+        self.audit.record("kunde_exportiert", "customer", self.customer_id,
+                          ziel=str(ziel), dateien=geschrieben)
+        return {"verzeichnis": str(ziel), "dateien": geschrieben}
+
+    def delete_conversation(self, uid: str, hard: bool = True) -> bool:
+        """Loescht einen Gespraechsverlauf samt Nachrichten und Quellenbelegen."""
+        zeile = self.company_db.one("SELECT id, title FROM conversations WHERE uid=?", (uid,))
+        if zeile is None:
+            return False
+        if not hard:
+            return self.archive_conversation(uid)
+        with self.company_db.transaction():
+            self.company_db.execute("DELETE FROM conversations WHERE uid=?", (uid,))
+        export = self.paths.get("conversations") / f"{uid}.md"
+        if export.is_file():
+            export.unlink()
+        if self.conversation_uid == uid:
+            self.conversation_uid = ""
+        self.audit.record("gespraech_geloescht", "conversation", uid, titel=zeile["title"])
+        return True
+
+    def delete_document(self, doc_uid: str) -> bool:
+        """Loescht einen Beleg samt Text und abgelegter Datei."""
+        zeile = self.company_db.one(
+            "SELECT id, title, path FROM user_documents WHERE doc_uid=?", (doc_uid,)
+        )
+        if zeile is None:
+            return False
+        with self.company_db.transaction():
+            self.company_db.execute("DELETE FROM user_documents WHERE doc_uid=?", (doc_uid,))
+        datei = self.paths.root / zeile["path"]
+        if datei.is_file():
+            try:
+                datei.unlink()
+            except OSError as exc:      # pragma: no cover - Rechteproblem
+                log.warning("Belegdatei nicht loeschbar: %s", exc)
+        self.audit.record("beleg_geloescht", "document", doc_uid, titel=zeile["title"])
+        return True
+
+    def delete_customer(
+        self, customer_id: str, confirm: str = "", export_first: bool = True
+    ) -> dict:
+        """Loescht einen kompletten Kundenbereich - bewusst schwer auszuloesen.
+
+        Es muss die Kundenkennung ausdruecklich als Bestaetigung wiederholt
+        werden. Vorher wird standardmaessig exportiert, damit ein Versehen
+        nicht zum Totalverlust fuehrt.
+        """
+        kennung = sanitise_customer_id(customer_id)
+        if not kennung:
+            raise ValueError("Ohne Kundenkennung wird nichts geloescht.")
+        if confirm != kennung:
+            raise ValueError(
+                f"Zur Bestaetigung muss die Kundenkennung '{kennung}' wiederholt werden."
+            )
+        bereich = self.paths.for_customer(kennung)
+        if not bereich.customer_root.is_dir():
+            raise ValueError(f"Der Kundenbereich '{kennung}' existiert nicht.")
+        if kennung == self.customer_id:
+            raise ValueError(
+                "Der gerade geoeffnete Kundenbereich kann nicht geloescht werden. "
+                "Bitte zuerst einen anderen Bereich oeffnen."
+            )
+
+        gesichert = None
+        if export_first:
+            fremd = AppController(
+                bereich, Config.load(bereich), NetworkMonitor([], enabled=False),
+                console_logging=False,
+            )
+            try:
+                gesichert = fremd.export_customer(
+                    self.paths.get("backups") / f"vor-loeschung-{kennung}"
+                )["verzeichnis"]
+            finally:
+                fremd.shutdown()
+
+        dateien = sum(1 for _ in bereich.customer_root.rglob("*") if _.is_file())
+        shutil.rmtree(bereich.customer_root)
+        self.audit.record("kunde_geloescht", "customer", kennung,
+                          dateien=dateien, export=gesichert)
+        log.warning("Kundenbereich geloescht: %s (%s Dateien)", kennung, dateien)
+        return {"kennung": kennung, "geloeschte_dateien": dateien, "export": gesichert}
 
     # ------------------------------------------------------------------
     # Einstellungen und Sicherung

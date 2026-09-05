@@ -20,6 +20,9 @@ from pkc.paths import Paths, get_paths
 
 def _controller(args) -> AppController:
     paths = Paths(Path(args.root).expanduser().resolve()) if args.root else get_paths()
+    kunde = getattr(args, "kunde_bereich", "") or ""
+    if kunde:
+        paths = paths.for_customer(kunde)
     config = Config.load(paths)
     if args.offline:
         config.set("network.check_on_start", False)
@@ -164,6 +167,51 @@ def cmd_update(args) -> int:
         controller.shutdown()
 
 
+def cmd_kunde(args) -> int:
+    """Kundenbereiche verwalten (Masterprompt 61, 62)."""
+    controller = _controller(args)
+    try:
+        if args.aktion == "liste":
+            bereiche = controller.customers()
+            if not bereiche:
+                print("Keine getrennten Kundenbereiche angelegt "
+                      "(die Anwendung laeuft als Einzelinstanz).")
+            for eintrag in bereiche:
+                marke = "*" if eintrag["aktiv"] else " "
+                groesse = eintrag["groesse_bytes"] / 1024
+                print(f" {marke} {eintrag['kennung']:24s} {groesse:8.1f} KiB  "
+                      f"{eintrag['verzeichnis']}")
+            return 0
+        if args.aktion == "anlegen":
+            ergebnis = controller.create_customer(args.kennung, args.name)
+            print(f"Kundenbereich angelegt: {ergebnis['kennung']}")
+            print(f"  {ergebnis['verzeichnis']}")
+            print("\nMit --kunde-bereich " + ergebnis["kennung"] + " arbeiten.")
+            return 0
+        if args.aktion == "export":
+            ergebnis = controller.export_customer(args.ziel or None)
+            print(f"Export: {ergebnis['verzeichnis']}")
+            for datei in ergebnis["dateien"]:
+                print(f"  {datei}")
+            return 0
+        if args.aktion == "loeschen":
+            ergebnis = controller.delete_customer(
+                args.kennung, confirm=args.bestaetigen,
+                export_first=not args.ohne_export,
+            )
+            print(f"Kundenbereich geloescht: {ergebnis['kennung']} "
+                  f"({ergebnis['geloeschte_dateien']} Dateien)")
+            if ergebnis["export"]:
+                print(f"Vorher gesichert nach: {ergebnis['export']}")
+            return 0
+        return 2
+    except ValueError as exc:
+        print(str(exc), file=sys.stderr)
+        return 2
+    finally:
+        controller.shutdown()
+
+
 def cmd_lizenz(args) -> int:
     """Lizenzangaben ansehen, Aktivierung vorbereiten, Lizenz aufnehmen."""
     controller = _controller(args)
@@ -261,7 +309,10 @@ def cmd_document(args) -> int:
     controller = _controller(args)
     try:
         controller.bootstrap(build_embeddings=False)
-        if args.datei:
+        if args.loeschen:
+            print("geloescht" if controller.delete_document(args.loeschen)
+                  else "nicht gefunden")
+        elif args.datei:
             result = controller.add_document(args.datei)
             print(json.dumps(result, indent=2, ensure_ascii=False))
         else:
@@ -364,6 +415,16 @@ def build_parser() -> argparse.ArgumentParser:
     lizenz.add_argument("--signatur", default="", help="Pfad zu license.sig")
     lizenz.set_defaults(func=cmd_lizenz)
 
+    kunde = neu("kunde", "Kundenbereiche verwalten")
+    kunde.add_argument("aktion", choices=["liste", "anlegen", "export", "loeschen"])
+    kunde.add_argument("kennung", nargs="?", default="")
+    kunde.add_argument("--name", default="")
+    kunde.add_argument("--ziel", default="")
+    kunde.add_argument("--bestaetigen", default="",
+                       help="zum Loeschen die Kundenkennung wiederholen")
+    kunde.add_argument("--ohne-export", dest="ohne_export", action="store_true")
+    kunde.set_defaults(func=cmd_kunde)
+
     version = neu("version", "Produkt-, Modul- und Wissensversionen")
     version.add_argument("--json", action="store_true")
     version.set_defaults(func=cmd_version)
@@ -379,6 +440,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     document = neu("beleg", "Beleg hinzufuegen oder auflisten")
     document.add_argument("datei", nargs="?")
+    document.add_argument("--loeschen", default="", help="Beleg-Kennung loeschen")
     document.set_defaults(func=cmd_document)
 
     approvals = neu("freigaben", "Freigaben anzeigen oder erteilen")

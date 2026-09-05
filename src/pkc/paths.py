@@ -25,7 +25,12 @@ import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 
+import re
+
 MARKER_NAME = ".portable_root"
+
+#: Zulaessige Kundenkennungen - sie werden zu Verzeichnisnamen.
+_CUSTOMER_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_\-]{1,63}$")
 
 #: Name -> Unterverzeichnis relativ zur Wurzel.
 LAYOUT: dict[str, str] = {
@@ -56,6 +61,20 @@ LAYOUT: dict[str, str] = {
 
 #: Verzeichnisse, die zum *Programm* gehoeren (nicht zu den Nutzdaten).
 PROGRAM_DIRS = frozenset({"app", "profiles", "tools", "docs"})
+
+#: Verzeichnisse mit **kundenbezogenen** Daten (Masterprompt 61).
+#:
+#: Ist eine Kundenkennung gesetzt, liegen diese Verzeichnisse unterhalb von
+#: ``customers/<kennung>/``. Damit koennen die Daten zweier Unternehmen nicht
+#: im selben Verzeichnis landen - und eine Kundeninstanz laesst sich als
+#: Ganzes exportieren oder loeschen.
+#:
+#: Bewusst NICHT kundenbezogen: das allgemeine Fachwissen (Gesetze, Erlasse,
+#: Fachmodule). Es ist fuer alle gleich und enthaelt keine Unternehmensdaten.
+CUSTOMER_DIRS = frozenset({
+    "company", "database", "conversations", "workspace", "backups",
+    "data", "logs", "config",
+})
 
 #: Verzeichnisse, die beim Start angelegt werden duerfen/sollen.
 RUNTIME_DIRS = (
@@ -115,6 +134,24 @@ def _source_root() -> Path | None:
     return None
 
 
+def sanitise_customer_id(value: str) -> str:
+    """Prueft eine Kundenkennung, die zum Verzeichnisnamen wird.
+
+    Ohne diese Pruefung koennte eine Kennung wie ``../andererkunde`` die
+    Trennung der Datenbereiche aushebeln - genau das, was Masterprompt 61
+    ausschliesst.
+    """
+    value = (value or "").strip()
+    if not value:
+        return ""
+    if not _CUSTOMER_ID.match(value) or ".." in value:
+        raise ValueError(
+            f"Unzulaessige Kundenkennung: {value!r}. Erlaubt sind Buchstaben, "
+            "Ziffern, Bindestrich und Unterstrich (2 bis 64 Zeichen)."
+        )
+    return value
+
+
 def detect_root() -> Path:
     """Ermittelt das portable Wurzelverzeichnis."""
     env = os.environ.get("KIM_ROOT")
@@ -141,13 +178,34 @@ def detect_root() -> Path:
 
 @dataclass(frozen=True)
 class Paths:
-    """Zugriff auf alle Verzeichnisse relativ zur portablen Wurzel."""
+    """Zugriff auf alle Verzeichnisse relativ zur portablen Wurzel.
+
+    ``customer_id`` trennt die Daten mehrerer Unternehmen auf demselben
+    Datentraeger (Masterprompt 61). Ohne Kennung verhaelt sich alles wie
+    bisher - eine Einzelinstanz.
+    """
 
     root: Path
+    customer_id: str = ""
 
     @classmethod
-    def detect(cls) -> "Paths":
-        return cls(detect_root())
+    def detect(cls, customer_id: str = "") -> "Paths":
+        return cls(detect_root(), customer_id)
+
+    def for_customer(self, customer_id: str) -> "Paths":
+        """Dieselbe Wurzel, aber der Datenbereich eines anderen Unternehmens."""
+        return Paths(self.root, sanitise_customer_id(customer_id))
+
+    @property
+    def customers_dir(self) -> Path:
+        return self.root / "customers"
+
+    @property
+    def customer_root(self) -> Path:
+        """Wurzel des kundenbezogenen Datenbereichs."""
+        if not self.customer_id:
+            return self.root
+        return self.customers_dir / self.customer_id
 
     def __getattr__(self, name: str) -> Path:
         """Bequemer Zugriff: ``paths.models`` entspricht ``paths.get("models")``.
@@ -163,6 +221,8 @@ class Paths:
         """Verzeichnis nach Layout-Name (explizite, typsichere Variante)."""
         if name in PROGRAM_DIRS:
             return self.program_root / LAYOUT[name]
+        if self.customer_id and name in CUSTOMER_DIRS:
+            return self.customer_root / LAYOUT[name]
         return self.root / LAYOUT[name]
 
     @property
@@ -213,6 +273,15 @@ class Paths:
             path.mkdir(parents=True, exist_ok=True)
             created.append(path)
         return created
+
+    def known_customers(self) -> list[str]:
+        """Alle auf diesem Datentraeger angelegten Kundenbereiche."""
+        if not self.customers_dir.is_dir():
+            return []
+        return sorted(
+            p.name for p in self.customers_dir.iterdir()
+            if p.is_dir() and not p.name.startswith(".")
+        )
 
     def relative(self, path: Path | str) -> str:
         """Pfad relativ zur Wurzel als String mit ``/`` (fuer Logs/Reports)."""
