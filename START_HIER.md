@@ -24,8 +24,11 @@ klicken.
 > 1. https://github.com/Schnielz87/Ki-Mitarbeiter/actions/runs/33973949251
 >    oeffnen (bei GitHub angemeldet sein - Artefakte sind sonst nicht
 >    sichtbar).
-> 2. Ganz unten unter **Artifacts** auf `Portable-Buchhalter-Windows`
->    klicken. Es kommt eine ZIP-Datei von rund 23 MB.
+> 2. Ganz unten im Kasten **Artefakte** (englisch *Artifacts*) **direkt auf
+>    den Namen** `Portable-Buchhalter-Windows` klicken - das Wort selbst ist
+>    der Link. Es kommt eine ZIP-Datei; GitHub zeigt die Groesse als
+>    **21,9 MB** an. Das Symbol neben dem `sha256:...` ist nicht der
+>    Download, damit kopiert man nur die Pruefsumme.
 > 3. ZIP **auf den Datentraeger entpacken**, nicht in den Download-Ordner.
 >    Windows blockiert sonst unter Umstaenden die Ausfuehrung.
 > 4. Rechtsklick auf die ZIP-Datei vor dem Entpacken → *Eigenschaften* →
