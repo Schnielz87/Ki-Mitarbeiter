@@ -163,6 +163,7 @@ for nummer, kapitel in enumerate([
     "Was automatisch gespeichert wird - und was nicht",
     "Belege hinzufuegen",
     "Unternehmenswissen pflegen",
+    "Betriebsmodus: HYBRID, OFFLINE, ONLINE",
     "Wissen aktualisieren",
     "Einstellungen und Status",
     "Lizenz",
@@ -200,6 +201,34 @@ kasten(
     "ist kein Fehler. Klicken Sie auf \"Weitere Informationen\" und dann auf "
     "\"Trotzdem ausfuehren\".",
 )
+
+doc.add_heading("Eine neuere Fassung holen", level=2)
+absatz("Die fertige Anwendung wird bei jeder Aenderung neu gebaut und liegt "
+       "als ZIP-Datei bereit. So kommen Sie daran - der Weg bleibt immer "
+       "derselbe:")
+schritt("Bei GitHub anmelden. Das ist zwingend: ohne Anmeldung sehen Sie das "
+        "Paket zwar, koennen es aber nicht herunterladen. Der Name ist dann "
+        "kein Link, und ein Klick tut schlicht nichts.")
+schritt("https://github.com/Schnielz87/Ki-Mitarbeiter/actions oeffnen.")
+schritt("Den obersten Ablauf mit gruenem Haken anklicken. Dort steht immer "
+        "die neueste Fassung.")
+schritt("Ganz unten im Kasten Artefakte auf den Namen "
+        "Portable-Buchhalter-Windows klicken. Der Download startet.")
+schritt("ZIP entsperren (Rechtsklick, Eigenschaften, Zulassen), auf den "
+        "Datentraeger entpacken, fertig.")
+
+kasten(
+    "Wichtig: Ihre Daten bleiben erhalten",
+    "Beim Einspielen einer neueren Fassung werden nur die Programmdateien "
+    "ersetzt. Ihr Unternehmensgedaechtnis, Ihre Unterhaltungen, Belege, "
+    "Einstellungen und Sicherungen liegen in eigenen Ordnern und bleiben "
+    "unberuehrt - siehe Kapitel 8. Legen Sie trotzdem vorher eine Sicherung "
+    "an.",
+)
+
+absatz("Ein Paket wird nach 30 Tagen von GitHub geloescht. Das ist kein "
+       "Problem: der naechste Ablauf legt ein frisches ab. Nehmen Sie dann "
+       "einfach wieder den obersten gruenen Ablauf.")
 
 doc.add_heading("Warum zwei Programmdateien?", level=2)
 absatz("Im Ordner liegen zwei Dateien mit fast gleichem Namen. Das ist "
@@ -271,7 +300,7 @@ tabelle_mit(
          "HINWEIS, solange keines eingerichtet ist - siehe unten"],
         ["Lizenz",
          "Ob eine Lizenz noetig und gueltig ist",
-         "OK - siehe Kapitel 13"],
+         "OK - siehe Kapitel 14"],
         ["Quellenregister",
          "Die hinterlegten amtlichen Quellen",
          "OK, 12 Quellen, 32 Dokumente"],
@@ -734,7 +763,81 @@ kasten(
 )
 
 # ================================================================ 8
-doc.add_heading("11.  Wissen aktualisieren", level=1)
+doc.add_heading("11.  Betriebsmodus: HYBRID, OFFLINE, ONLINE", level=1)
+
+absatz("Sie bestimmen, ob der Buchhalter ins Internet darf. Die Auswahl "
+       "steht oben rechts in der Kopfzeile und ist jederzeit erreichbar.")
+
+tabelle_mit(
+    ["Modus", "Was gilt", "Wann sinnvoll"],
+    [
+        ["HYBRID\n(Vorgabe)",
+         "Lokale Arbeit ist die Grundlage. Onlinequellen und Wissensupdates "
+         "duerfen zusaetzlich verwendet werden. Faellt die Verbindung aus, "
+         "geht es ohne Unterbrechung lokal weiter.",
+         "Der Normalfall."],
+        ["OFFLINE",
+         "Ausschliesslich lokal. Keine Webrecherche, keine externen "
+         "Schnittstellen, keine Cloud-KI, keine automatischen "
+         "Wissensupdates - auch dann nicht, wenn eine Verbindung besteht.",
+         "Beim Kunden, im Zug, in abgeschotteten Netzen, oder immer dann, "
+         "wenn nichts nach draussen gehen soll."],
+        ["ONLINE",
+         "Onlinefunktionen duerfen bevorzugt verwendet werden. Ihre lokalen "
+         "Daten, das Unternehmensgedaechtnis und das lokale Fachwissen "
+         "bleiben unveraendert verfuegbar.",
+         "Wenn Sie gezielt aktuelle Quellen heranziehen wollen."],
+    ],
+    breiten=[3.0, 7.4, 4.6],
+)
+
+kasten(
+    "ONLINE schaltet nichts ab",
+    "Ein haeufiges Missverstaendnis: ONLINE bedeutet nicht, dass lokale "
+    "Funktionen ausgehen. Ihr Unternehmensgedaechtnis, Ihre Belege und das "
+    "mitgelieferte Fachwissen sind in jedem Modus da. Der Modus regelt nur, "
+    "ob zusaetzlich nach draussen gegriffen werden darf.",
+)
+
+doc.add_heading("Betriebsmodus und Internet sind zweierlei", level=2)
+absatz("Das ist der wichtigste Punkt dieses Kapitels. In der Kopfzeile "
+       "stehen deshalb zwei Angaben nebeneinander:")
+
+tabelle_mit(
+    ["Was Sie sehen", "Bedeutung"],
+    [
+        ["Betriebsmodus: OFFLINE\nInternet: verfuegbar",
+         "Sie haben sich fuer OFFLINE entschieden. Es wird nichts abgerufen - "
+         "nicht einmal geprueft, ob eine Verbindung besteht, denn eine "
+         "solche Pruefung waere selbst ein Zugriff. Ihre Entscheidung gilt."],
+        ["Betriebsmodus: HYBRID\nInternet: nicht verfuegbar",
+         "Sie waeren bereit fuer Onlinefunktionen, aber es gibt gerade keine "
+         "Verbindung. Der Buchhalter arbeitet lokal weiter, ohne dass etwas "
+         "verloren geht. Sobald die Verbindung zurueck ist, geht es wieder."],
+    ],
+    breiten=[5.0, 10.0],
+)
+
+kasten(
+    "Ihre Wahl wird nie hinter Ihrem Ruecken aufgehoben",
+    "Wer OFFLINE gewaehlt hat, bleibt offline - auch wenn das Netz "
+    "zurueckkehrt, auch nach einem Neustart. Die Anwendung setzt sich nicht "
+    "selbst wieder auf Onlinebetrieb. Nur Sie aendern den Modus.",
+)
+
+doc.add_heading("Umschalten", level=2)
+schritt("Oben rechts das Feld Betriebsmodus aufklappen.")
+schritt("HYBRID, OFFLINE oder ONLINE waehlen.")
+schritt("Es erscheint eine kurze Ansage, was jetzt gilt. Mit OK bestaetigen.")
+absatz("Die Wahl wird sofort gespeichert und im Protokoll vermerkt - mit "
+       "vorherigem und neuem Modus, Zeitpunkt und Verbindungsstatus. Nach "
+       "einem Neustart gilt sie unveraendert weiter.")
+absatz("Ueber die Konsolenfassung geht es ebenso: "
+       "PORTABLE_BUCHHALTER_KONSOLE.exe modus zeigt den Stand, "
+       "PORTABLE_BUCHHALTER_KONSOLE.exe modus OFFLINE wechselt.")
+
+# ================================================================ 12
+doc.add_heading("12.  Wissen aktualisieren", level=1)
 
 absatz("Registerkarte Wissen aktualisieren. Hier laedt der Buchhalter "
        "amtliche Quellen nach. Das ist der einzige Teil, der Internet "
@@ -756,6 +859,46 @@ tabelle_mit(
     breiten=[4.6, 6.4, 5.0],
 )
 
+doc.add_heading("Automatische Aktualisierung", level=2)
+absatz("Der Buchhalter prueft von sich aus, ob der Wissensstand veraltet "
+       "ist. Vorgabe ist **woechentlich**. Einstellbar unter Einstellungen "
+       "und Status: taeglich, woechentlich, monatlich, benutzerdefiniert "
+       "oder gar nicht (manual).")
+
+absatz("Oben in der Registerkarte steht immer, woran Sie sind:")
+tabelle_mit(
+    ["Update-Status", "Bedeutung", "Was zu tun ist"],
+    [
+        ["AKTUELL", "Innerhalb des Intervalls aktualisiert.", "Nichts."],
+        ["UPDATE FAELLIG", "Das Intervall ist ueberschritten.",
+         "Bei Gelegenheit auf Wissen jetzt aktualisieren klicken."],
+        ["UPDATE UEBERFAELLIG", "Mehr als das doppelte Intervall - etwa nach "
+         "einer laengeren Offlinephase.", "Aktualisieren, sobald Sie online sind."],
+        ["NOCH NIE AKTUALISIERT", "Es gab noch keinen erfolgreichen Abruf. "
+         "Das mitgelieferte Fachwissen ist trotzdem nutzbar.",
+         "Einmal aktualisieren, wenn Sie online sind."],
+        ["OFFLINE - UPDATE PAUSIERT", "Sie haben den Offline-Modus gewaehlt. "
+         "Es wird nicht synchronisiert, auch nicht bei bestehender Verbindung.",
+         "Nichts - das ist so gewollt. Der vorhandene Stand bleibt nutzbar."],
+        ["KEINE VERBINDUNG", "Faellig, aber gerade kein Netz.",
+         "Spaeter erneut."],
+        ["AUTOMATIK AUS", "Der Zeitplan steht auf manual.",
+         "Nichts, sofern gewollt."],
+    ],
+    breiten=[4.2, 6.4, 4.4],
+)
+
+absatz("Daneben stehen die Zahlen dazu: eingestellter Zeitplan, Intervall in "
+       "Tagen, Datum der letzten Aktualisierung und der naechsten Pruefung.")
+
+kasten(
+    "Es wird nie behauptet, das Wissen sei aktuell",
+    "Gab es noch keinen erfolgreichen Abruf, steht dort \"noch nie "
+    "aktualisiert\" - nicht etwa \"aktuell\". Auch in den Antworten wird der "
+    "Wissensstand mit Datum genannt. Sie sollen jederzeit erkennen koennen, "
+    "wie alt die Grundlage ist, auf der geantwortet wird.",
+)
+
 kasten(
     "Sicherungen gehoeren nicht auf denselben Datentraeger",
     "Geht die SSD verloren oder kaputt, ist eine Sicherung darauf ebenfalls "
@@ -764,7 +907,7 @@ kasten(
 )
 
 # ================================================================ 9
-doc.add_heading("12.  Einstellungen und Status", level=1)
+doc.add_heading("13.  Einstellungen und Status", level=1)
 
 absatz("Registerkarte Einstellungen und Status. Links stellen Sie ein, rechts "
        "sehen Sie den Zustand.")
@@ -800,7 +943,7 @@ absatz("Steht bei einem Punkt HINWEIS statt OK, ist das kein Fehler, sondern "
        "daneben sagt, was das bedeutet und wie es zu beheben ist.")
 
 # ================================================================ 12
-doc.add_heading("13.  Lizenz", level=1)
+doc.add_heading("14.  Lizenz", level=1)
 
 doc.add_heading("Im Augenblick muessen Sie nichts tun", level=2)
 absatz("Der Startbildschirm zeigt in der Zeile Lizenz:")
@@ -933,7 +1076,7 @@ absatz("Diese Fassung ist eine Vorab- bzw. Pilotfassung. Sie ist noch nicht "
        "PORTABLE_BUCHHALTER_KONSOLE.exe reife")
 
 # ================================================================ 13
-doc.add_heading("14.  Was der Buchhalter nicht tut", level=1)
+doc.add_heading("15.  Was der Buchhalter nicht tut", level=1)
 
 absatz("Das ist kein Mangel, sondern bewusst so gebaut. Bitte lesen Sie es "
        "einmal in Ruhe.")
@@ -965,7 +1108,7 @@ kasten(
 )
 
 # ================================================================ 11
-doc.add_heading("15.  Wenn etwas nicht funktioniert", level=1)
+doc.add_heading("16.  Wenn etwas nicht funktioniert", level=1)
 
 tabelle_mit(
     ["Was Sie sehen", "Was zu tun ist"],

@@ -25,8 +25,10 @@ klicken.
 >    an angemeldete Nutzer aus. Nicht angemeldet sehen Sie den Kasten zwar,
 >    der Name ist dann aber **kein Link** - ein Klick tut schlicht nichts.
 >    Oben rechts pruefen: steht dort Ihr Profilbild oder *Sign in*?
-> 2. https://github.com/Schnielz87/Ki-Mitarbeiter/actions/runs/33973949251
->    oeffnen.
+> 2. https://github.com/Schnielz87/Ki-Mitarbeiter/actions oeffnen und den
+>    **obersten Ablauf mit gruenem Haken** anklicken. Dort steht immer die
+>    neueste Fassung - so brauchen Sie sich keinen Link zu merken und
+>    bekommen nie eine veraltete Fassung.
 > 3. Ganz unten im Kasten **Artefakte** (englisch *Artifacts*) **direkt auf
 >    den Namen** `Portable-Buchhalter-Windows` klicken. Das Wort selbst ist
 >    der Link; angemeldet ist es blau. Es kommt eine ZIP-Datei, GitHub zeigt
