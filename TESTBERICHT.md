@@ -4,7 +4,7 @@ Stand: 05.09.2026 · Branch `claude/portable-ki-buchhalter-xr1qlj`
 
 ## Zusammenfassung
 
-**214 automatische Tests bestanden, 1 uebersprungen** (unter Windows 213 bestanden, 2 uebersprungen). Ausfuehrungszeit rund
+**219 automatische Tests bestanden, 1 uebersprungen** (unter Windows einer mehr uebersprungen). Ausfuehrungszeit rund
 10 Sekunden. Reproduzierbar mit:
 
 ```
@@ -15,7 +15,8 @@ python -m pytest tests -q
 |---|---|---|
 | `test_updater_pipeline.py` | 13 bestanden | Wissensupdate gegen einen echten lokalen HTTP-Server |
 | `test_controller.py` | 10 bestanden | Anwendungssteuerung von Ende zu Ende |
-| `test_portability.py` | 17 bestanden, 1 uebersprungen | Portabilitaet und Robustheit |
+| `test_portability.py` | 17 bestanden, 1 uebersprungen |
+| `test_checkpoints.py` | 5 bestanden | Checkpoints nach Masterprompt 44: beide Orte, Wiedereinstiegszeiger, Pruefsummen | Portabilitaet und Robustheit |
 | `test_gui_logic.py` | 10 bestanden | Oberflaechenlogik gegen ein Tkinter-Doppel |
 | `test_llm_providers.py` | 8 bestanden | Sprachmodellanbindung gegen einen echten lokalen Modelldienst |
 | `test_sicherheit_freigaben.py` | 17 bestanden | Tresor, Freigaben, Protokoll, Connectoren, Pfadgrenzen |
@@ -247,6 +248,7 @@ aufgefuehrt, weil ein Testbericht ohne Fundstellen wenig wert ist.
 
 | Fund | Ursache | Behebung |
 |---|---|---|
+| Der Checkpointmechanismus war ungetestet, und das Werkzeug verlor Testergebnisse | Masterprompt 44 ist verbindlich, doch kein einziger Test deckte ihn ab. Dabei verwarf ein zweites `--test-result` das erste stillschweigend: im Checkpoint 25 stand zunaechst nur das Windows-Ergebnis, die Zahl der Tests fehlte | `--test-result` ist mehrfach angebbar und wird zusammengefuehrt. Fuenf neue Tests pruefen, dass der Checkpoint an **beiden** Orten wirklich liegt, dass `LETZTER_STAND.json` auf eine existierende Datei zeigt, dass Pruefsummen ueber die echte Datei gebildet werden und dass ein fehlgeschlagener Ort gemeldet statt verschwiegen wird. Gegenprobe gemacht |
 | Die Schaltertabelle behauptete Vollstaendigkeit und war unvollstaendig | Beim Dokumentieren der Umgebungsschalter fehlten `KIM_LLM_PROVIDER` und `KIM_PASSPHRASE`. Eine Tabelle, die Vollstaendigkeit behauptet und es nicht ist, ist schlimmer als keine | Tabelle vervollstaendigt; ein Test vergleicht die im Produktcode vorkommenden Schalter mit der Tabelle und schlaegt fehl, sobald einer fehlt |
 | Zwei Schalter waren nicht als Schalter gekennzeichnet | `KIM_CARRIER_ID` und `KIM_UNBEAUFSICHTIGT` fehlten in der Liste der reservierten Namen. Sie greifen heute nur deshalb nicht als Konfigurationseintrag durch, weil es zufaellig keinen gleichnamigen Eintrag gibt | Beide reserviert; ein Test setzt eine Konfiguration auf, die genau diese Namen traegt, und weist nach, dass kein Schalter sie ueberschreibt - der allgemeine Mechanismus aber weiter funktioniert |
 | Ein Test war nur unter Linux gueltig | Er loeschte den Datenbereich bei laufender Anwendung. Unter Linux geht das - eine geoeffnete Datei laesst sich abhaengen; unter Windows nicht: `PermissionError [WinError 32]`. Der Mangel lag im Test, nicht im Programm | Die Pruefabsicht - der wirkliche Fall ist der im Betrieb abgezogene Datentraeger - wird jetzt plattformunabhaengig geprueft: jeder einzelne Schritt des Beendens wird zum Scheitern gebracht, das Beenden muss trotzdem durchlaufen. Nachgewiesen durch Gegenprobe: entfernt man eine der Absicherungen, schlaegt der Test fehl. Die Fassung am echten Dateisystem laeuft weiter, unter Windows uebersprungen |

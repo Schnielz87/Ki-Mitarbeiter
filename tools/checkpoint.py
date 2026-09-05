@@ -30,7 +30,10 @@ def main(argv: list[str] | None = None) -> int:
     create.add_argument("--work", action="append", default=[])
     create.add_argument("--file", action="append", default=[])
     create.add_argument("--test", action="append", default=[])
-    create.add_argument("--test-result", default="")
+    # Mehrfach angebbar: frueher hat ein zweites --test-result das erste
+    # stillschweigend verworfen. Ein Checkpoint, der ein Testergebnis
+    # verliert, taugt nichts (Masterprompt 44).
+    create.add_argument("--test-result", action="append", default=[])
     create.add_argument("--open", action="append", default=[])
     create.add_argument("--next", dest="next_task", default="")
     create.add_argument("--resume", default="")
@@ -47,7 +50,7 @@ def main(argv: list[str] | None = None) -> int:
         checkpoint, written, warnings = manager.create(
             args.task, args.name, args.status,
             work_done=args.work, files=args.file, tests=args.test,
-            test_result=args.test_result, open_points=args.open,
+            test_result=" | ".join(args.test_result), open_points=args.open,
             next_task=args.next_task, resume_hint=args.resume,
             checksum_files=[ROOT / c for c in args.checksum], notes=args.notes,
         )

@@ -14,7 +14,7 @@ Der portable KI-Mitarbeiter ist als **lauffaehige Anwendung** umgesetzt:
 Offline-Kern, hybrider Betrieb, persistentes Unternehmensgedaechtnis, lokale
 Fachwissensbasis mit Quellenbelegen, Wissensupdate mit Ruecknahme,
 Geheimnistresor, Freigabepflicht, Connector-Rahmen, grafische Oberflaeche und
-Kommandozeile - abgesichert durch **214 automatische Tests**.
+Kommandozeile - abgesichert durch **219 automatische Tests**.
 
 **Noch nicht abgenommen** sind die Schritte, die zwingend Windows, eine
 echte grafische Oberflaeche, ein echtes Sprachmodell oder Zugriff auf die
@@ -72,7 +72,7 @@ Er lautet: **fertig zur Abnahme**. Der Weg dorthin steht in
 
 ## 4. Was tatsaechlich geprueft ist
 
-**214 Tests bestanden, 1 uebersprungen** (`python -m pytest tests -q`).
+**219 Tests bestanden, 1 uebersprungen** (`python -m pytest tests -q`).
 Auf einem echten Windows-Rechner sind alle 13 Schritte des Bauablaufs
 bestanden - zuletzt
 https://github.com/Schnielz87/Ki-Mitarbeiter/actions/runs/33973017177

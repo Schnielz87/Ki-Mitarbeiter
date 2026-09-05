@@ -11,7 +11,7 @@ Datentraeger.
 | Branch | `claude/portable-ki-buchhalter-xr1qlj` |
 | Letzter Commit | siehe `git log -1` |
 | Gepusht | ja |
-| Tests | **214 gruen, 1 uebersprungen** (`python -m pytest tests -q`) |
+| Tests | **219 gruen, 1 uebersprungen** (`python -m pytest tests -q`) |
 | Windows | alle 13 Schritte bestanden, Ablauf https://github.com/Schnielz87/Ki-Mitarbeiter/actions/runs/33973017177 |
 | Tasks 01 bis 18 | abgeschlossen (Masterprompt 48) |
 | Tasks 19 bis 25 | abgeschlossen (Erweiterung, Masterprompt 58 bis 97) |

@@ -2,8 +2,8 @@
   "task_number": "25",
   "task_name": "Windows-Ablauf wieder gruen",
   "status": "abgeschlossen",
-  "created_at": "2026-09-05T14:53:29+00:00",
-  "git_commit": "b9253b766bc2a8f0cda8ad7aa2ecdfb54a13c06b",
+  "created_at": "2026-09-05T15:01:43+00:00",
+  "git_commit": "fce4af59dcbc7f2df259c5918a9e50873e5a58d5",
   "next_task": "Abnahme und Pilotbetrieb",
   "resume_hint": "Status bleibt 'fertig zur Abnahme' - nicht MVP FERTIG, nicht COMMERCIAL READY",
   "checkpoint_file": "TASK_25_windows_ablauf_wieder_gruen.json"
