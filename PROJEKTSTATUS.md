@@ -14,7 +14,7 @@ Der portable KI-Mitarbeiter ist als **lauffaehige Anwendung** umgesetzt:
 Offline-Kern, hybrider Betrieb, persistentes Unternehmensgedaechtnis, lokale
 Fachwissensbasis mit Quellenbelegen, Wissensupdate mit Ruecknahme,
 Geheimnistresor, Freigabepflicht, Connector-Rahmen, grafische Oberflaeche und
-Kommandozeile - abgesichert durch **112 automatische Tests**.
+Kommandozeile - abgesichert durch **210 automatische Tests**.
 
 **Noch nicht abgenommen** sind die Schritte, die zwingend Windows, eine
 echte grafische Oberflaeche, ein echtes Sprachmodell oder Zugriff auf die
@@ -72,7 +72,7 @@ Er lautet: **fertig zur Abnahme**. Der Weg dorthin steht in
 
 ## 4. Was tatsaechlich geprueft ist
 
-**112 Tests bestanden, 1 uebersprungen** (`python -m pytest tests -q`).
+**210 Tests bestanden, 1 uebersprungen** (`python -m pytest tests -q`).
 Einzelheiten in `TESTBERICHT.md`. Besonders hervorzuheben:
 
 * Die **vollstaendige Nutzungskette** aus Masterprompt 49 laeuft in einem
