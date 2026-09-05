@@ -17,13 +17,30 @@ Es oeffnet sich ein Fenster mit einer Systempruefung. Wenn dort
 „Der Buchhalter kann gestartet werden" steht, auf **BUCHHALTER STARTEN**
 klicken.
 
-> Liegt hier noch keine `PORTABLE_BUCHHALTER.exe`, wurde sie fuer diesen
-> Datentraeger noch nicht aufgespielt. Das fertige Paket kann fertig gebaut
-> heruntergeladen werden (Artefakt `Portable-Buchhalter-Windows` unter
-> https://github.com/Schnielz87/Ki-Mitarbeiter/actions/runs/33970160321), oder Sie bauen
-> es selbst nach `docs/ABNAHME.md`. Zum Ausprobieren genuegt auch
-> `PORTABLE_BUCHHALTER.bat` - dafuer braucht der PC allerdings eine
-> Python-Installation.
+> **Liegt hier noch keine `PORTABLE_BUCHHALTER.exe`?** Dann wurde sie fuer
+> diesen Datentraeger noch nicht aufgespielt. Das fertige Paket gibt es
+> gebaut zum Herunterladen:
+>
+> 1. https://github.com/Schnielz87/Ki-Mitarbeiter/actions/runs/33973949251
+>    oeffnen (bei GitHub angemeldet sein - Artefakte sind sonst nicht
+>    sichtbar).
+> 2. Ganz unten unter **Artifacts** auf `Portable-Buchhalter-Windows`
+>    klicken. Es kommt eine ZIP-Datei von rund 23 MB.
+> 3. ZIP **auf den Datentraeger entpacken**, nicht in den Download-Ordner.
+>    Windows blockiert sonst unter Umstaenden die Ausfuehrung.
+> 4. Rechtsklick auf die ZIP-Datei vor dem Entpacken → *Eigenschaften* →
+>    falls dort **Zulassen** oder *Entsperren* steht, anhaken. Das ist die
+>    uebliche Windows-Sperre fuer heruntergeladene Dateien.
+> 5. Danach `PORTABLE_BUCHHALTER.exe` doppelklicken.
+>
+> Die Anwendung ist **nicht signiert** (Code-Signing steht noch aus). Windows
+> SmartScreen meldet sich deshalb beim ersten Start mit
+> *"Der Computer wurde durch Windows geschuetzt"*. Dort auf
+> **Weitere Informationen** → **Trotzdem ausfuehren**.
+>
+> Alternativ selbst bauen nach `docs/ABNAHME.md`, oder zum blossen
+> Ausprobieren `PORTABLE_BUCHHALTER.bat` - dafuer braucht der PC allerdings
+> eine Python-Installation.
 
 ## Was Sie **nicht** brauchen
 
