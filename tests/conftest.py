@@ -88,3 +88,21 @@ def http_server():
     finally:
         server.shutdown()
         server.server_close()
+
+
+@pytest.fixture(autouse=True, scope="session")
+def _keine_meldungsfenster():
+    """Kein Test darf ein modales Fenster oeffnen.
+
+    Der Startpunkt meldet Startfehler unter anderem als Meldungsfenster.  Ein
+    solches Fenster wartet auf den Klick auf "OK" - in einem automatischen Lauf
+    klickt niemand.  Unter Linux ohne Bildschirm faellt das nicht auf, weil
+    Tkinter dort gar nicht erst startet; unter Windows steht ein Fenstersystem
+    zur Verfuegung, und der Lauf bleibt haengen.  Genau das ist passiert: die
+    Ablaeufe 11 bis 16 blieben im Schritt "Tests auf Windows" stehen.
+
+    Diese Vorkehrung gilt fuer den ganzen Lauf, damit sie auch kuenftige Tests
+    schuetzt, die den Startpunkt anfassen.
+    """
+    os.environ["KIM_UNBEAUFSICHTIGT"] = "1"
+    yield

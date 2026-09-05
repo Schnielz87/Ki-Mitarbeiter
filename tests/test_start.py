@@ -73,3 +73,64 @@ def test_arguments_go_to_the_command_line(monkeypatch):
     monkeypatch.setitem(sys.modules, "ui.cli", CliDouble)
     assert modul.main(["check", "--quiet"]) == 0
     assert gerufen["argv"] == ["check", "--quiet"]
+
+
+def test_no_dialog_in_unattended_mode(monkeypatch, tmp_path, capsys):
+    """Ohne Aufsicht darf kein Fenster aufgehen - es wartet sonst endlos.
+
+    Der Fehler dahinter hat die Windows-Ablaeufe 11 bis 16 stundenlang im
+    Schritt "Tests auf Windows" haengen lassen: ein modales Meldungsfenster,
+    auf dessen "OK" niemand klickt.
+    """
+    modul = _startpunkt()
+    monkeypatch.setattr(modul, "ROOT", tmp_path)
+    monkeypatch.setenv(modul.UNBEAUFSICHTIGT, "1")
+
+    geoeffnet = []
+    monkeypatch.setattr(modul, "_meldungsfenster",
+                        lambda titel, text: geoeffnet.append(titel))
+
+    modul._melden("Titel", "Text")
+
+    assert geoeffnet == [], "im unbeaufsichtigten Betrieb darf kein Fenster aufgehen"
+    assert "Titel" in capsys.readouterr().err, "die Meldung muss trotzdem ankommen"
+    assert (tmp_path / "logs" / "startfehler.txt").is_file()
+
+
+def test_dialog_is_shown_when_someone_can_click(monkeypatch, tmp_path):
+    """Beim Doppelklick ist das Fenster der einzige sichtbare Weg."""
+    modul = _startpunkt()
+    monkeypatch.setattr(modul, "ROOT", tmp_path)
+    monkeypatch.delenv(modul.UNBEAUFSICHTIGT, raising=False)
+
+    geoeffnet = []
+    monkeypatch.setattr(modul, "_meldungsfenster",
+                        lambda titel, text: geoeffnet.append(titel))
+
+    modul._melden("Titel", "Text")
+
+    assert geoeffnet == ["Titel"]
+
+
+@pytest.mark.parametrize("wert, erwartet", [
+    ("1", True), ("ja", True), ("wahr", True), ("true", True),
+    ("", False), ("0", False), ("nein", False), ("false", False),
+])
+def test_unattended_switch_reads_the_usual_spellings(monkeypatch, wert, erwartet):
+    modul = _startpunkt()
+    monkeypatch.setenv(modul.UNBEAUFSICHTIGT, wert)
+    assert modul._unbeaufsichtigt() is erwartet
+
+
+def test_start_tests_never_reach_the_real_dialog(monkeypatch, tmp_path, capsys):
+    """Die Vorkehrung aus conftest.py greift auch ohne eigenes Zutun.
+
+    Ohne sie wuerde dieser Test unter Windows haengen statt fehlzuschlagen -
+    deshalb wird hier bewusst nichts gepatcht ausser der Wurzel.
+    """
+    modul = _startpunkt()
+    monkeypatch.setattr(modul, "ROOT", tmp_path)
+    monkeypatch.setitem(sys.modules, "ui.tk_app", None)
+
+    assert modul.main([]) == 3
+    assert modul._unbeaufsichtigt(), "conftest.py muss den unbeaufsichtigten Betrieb setzen"

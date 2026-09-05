@@ -4,7 +4,7 @@ Stand: 05.09.2026 · Branch `claude/portable-ki-buchhalter-xr1qlj`
 
 ## Zusammenfassung
 
-**199 automatische Tests bestanden, 1 uebersprungen.** Ausfuehrungszeit rund
+**210 automatische Tests bestanden, 1 uebersprungen.** Ausfuehrungszeit rund
 10 Sekunden. Reproduzierbar mit:
 
 ```
@@ -22,7 +22,7 @@ python -m pytest tests -q
 | `test_fachliche_faelle.py` | 48 bestanden | 22 fachliche Sachverhalte nach Masterprompt 47 |
 | `test_abnahme_kette.py` | 3 bestanden | Die vollstaendige Nutzungskette aus Masterprompt 49 |
 | `test_cli.py` | 12 bestanden | Kommandozeile: alle allgemeinen Schalter an allen Unterbefehlen |
-| `test_start.py` | 3 bestanden | Startfehler bleiben nicht stumm |
+| `test_start.py` | 14 bestanden | Startfehler bleiben nicht stumm, ohne den Lauf anzuhalten |
 | `test_lizenzierung.py` | 22 bestanden | Lizenzierung und Kopierschutz, alle sieben Faelle aus § 96 |
 | `test_kundentrennung.py` | 13 bestanden | Kundentrennung, Datenexport, Loeschung, Sicherungsziel |
 | `test_softwareupdate.py` | 11 bestanden | Softwareupdates getrennt vom Wissensupdate |
@@ -234,6 +234,7 @@ aufgefuehrt, weil ein Testbericht ohne Fundstellen wenig wert ist.
 
 | Fund | Ursache | Behebung |
 |---|---|---|
+| Der Windows-Lauf blieb stundenlang stehen statt zu scheitern | Der Startpunkt meldet einen Startfehler auch als Meldungsfenster. Ein solches Fenster ist **modal**: es wartet auf den Klick auf "OK". Unter Linux ohne Bildschirm startet Tkinter gar nicht erst, der Aufruf kehrt sofort zurueck - unter Windows steht ein Fenstersystem zur Verfuegung, das Fenster ging auf, und niemand klickte. Die Ablaeufe 11 bis 16 hingen im Schritt "Tests auf Windows" | Schalter `KIM_UNBEAUFSICHTIGT` fuer den Betrieb ohne Aufsicht; `tests/conftest.py` setzt ihn fuer den ganzen Testlauf, damit kein kuenftiger Test dasselbe ausloest. Zusaetzlich Zeitgrenzen im Bauablauf, damit ein Haenger nach zehn Minuten scheitert statt nach sechs Stunden, und `cancel-in-progress`, damit ein neuer Stand die alten Ablaeufe beendet |
 | Mitarbeiterprofil wurde nicht gefunden, wenn der Datenbereich getrennt lag | Programm- und Datenwurzel waren gleichgesetzt | Getrennte `program_root`; Vorgabedateien werden in neue Datenbereiche uebernommen |
 | Dokumenttitel waren nicht durchsuchbar | Nur Text, Ueberschrift und Fundstelle im Volltextindex | Abschnitte ohne eigene Fundstelle tragen den Dokumenttitel |
 | Normen eines Fachmoduls waren nur in dessen kurzer Einleitung auffindbar | Die `Massgeblich`-Zeile bildete einen eigenen, kurzen Abschnitt | Die tragenden Normen werden jedem Abschnitt des Moduls mitgegeben |

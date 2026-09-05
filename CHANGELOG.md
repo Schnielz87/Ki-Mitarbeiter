@@ -48,7 +48,7 @@ Erweiterung um die kommerzielle Produktperspektive und die Lizenzierung
 
 ### Tests
 
-199 bestanden, 1 uebersprungen.
+210 bestanden, 1 uebersprungen.
 
 ## [0.1.0] - 2026-09-04
 

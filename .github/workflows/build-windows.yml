@@ -9,10 +9,18 @@ on:
   pull_request:
   workflow_dispatch:
 
+# Ein neuer Stand macht den vorherigen Ablauf gegenstandslos. Ohne diese
+# Angabe laufen bei mehreren Pushes hintereinander alle Ablaeufe weiter und
+# blockieren einander die Windows-Rechner.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   tests-linux:
     name: Tests (Linux)
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -23,11 +31,13 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -r requirements-dev.txt
       - name: Tests
+        timeout-minutes: 10
         run: python -m pytest tests -q
 
   build-windows:
     name: EXE bauen und pruefen (Windows)
     runs-on: windows-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
 
@@ -44,6 +54,7 @@ jobs:
           python -m pip install -r requirements-dev.txt
 
       - name: Tests auf Windows
+        timeout-minutes: 10
         run: python -m pytest tests -q
 
       - name: Portablen Ordner bauen

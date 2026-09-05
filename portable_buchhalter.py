@@ -8,12 +8,48 @@ zugleich der Einstiegspunkt fuer den Windows-Build (PORTABLE_BUCHHALTER.exe).
 
 from __future__ import annotations
 
+import os
 import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
 if str(ROOT / "src") not in sys.path:
     sys.path.insert(0, str(ROOT / "src"))
+
+#: Umgebungsvariable fuer den unbeaufsichtigten Betrieb.  Ist sie gesetzt,
+#: unterbleibt jedes Meldungsfenster - die Meldung geht dann nur nach stderr
+#: und in die Protokolldatei.  Notwendig ueberall dort, wo niemand auf "OK"
+#: klicken kann: automatische Tests, Bauablaeufe, Dienste.  Ein modales
+#: Fenster wartet sonst endlos.
+UNBEAUFSICHTIGT = "KIM_UNBEAUFSICHTIGT"
+
+
+def _unbeaufsichtigt() -> bool:
+    wert = os.environ.get(UNBEAUFSICHTIGT, "").strip().lower()
+    return wert not in ("", "0", "nein", "false")
+
+
+def _meldungsfenster(titel: str, text: str) -> None:
+    """Zeigt die Meldung als Fenster - blockiert bis zum Klick auf OK."""
+    try:
+        import tkinter
+        from tkinter import messagebox
+
+        fenster = tkinter.Tk()
+        fenster.withdraw()
+        messagebox.showerror(titel, text)
+        fenster.destroy()
+        return
+    except Exception:
+        pass
+    # Kein Tkinter vorhanden - unter Windows bleibt das Meldungsfeld
+    # des Betriebssystems als letzter Weg.
+    try:
+        import ctypes
+
+        ctypes.windll.user32.MessageBoxW(None, text, titel, 0x10)
+    except Exception:
+        pass
 
 
 def _melden(titel: str, text: str) -> None:
@@ -30,23 +66,9 @@ def _melden(titel: str, text: str) -> None:
         protokoll.write_text(f"{titel}\n\n{text}\n", encoding="utf-8")
     except OSError:
         pass
-    try:
-        import tkinter
-        from tkinter import messagebox
-
-        fenster = tkinter.Tk()
-        fenster.withdraw()
-        messagebox.showerror(titel, text)
-        fenster.destroy()
-    except Exception:
-        # Kein Tkinter vorhanden - unter Windows bleibt das Meldungsfeld
-        # des Betriebssystems als letzter Weg.
-        try:
-            import ctypes
-
-            ctypes.windll.user32.MessageBoxW(None, text, titel, 0x10)
-        except Exception:
-            pass
+    if _unbeaufsichtigt():
+        return
+    _meldungsfenster(titel, text)
 
 
 def main(argv: list[str] | None = None) -> int:
