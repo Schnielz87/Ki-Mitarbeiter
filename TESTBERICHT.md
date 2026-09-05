@@ -1,10 +1,10 @@
 # Testbericht
 
-Stand: 04.09.2026 · Branch `claude/portable-ki-buchhalter-xr1qlj`
+Stand: 05.09.2026 · Branch `claude/portable-ki-buchhalter-xr1qlj`
 
 ## Zusammenfassung
 
-**192 automatische Tests bestanden, 1 uebersprungen.** Ausfuehrungszeit rund
+**199 automatische Tests bestanden, 1 uebersprungen.** Ausfuehrungszeit rund
 10 Sekunden. Reproduzierbar mit:
 
 ```
@@ -13,20 +13,20 @@ python -m pytest tests -q
 
 | Testdatei | Ergebnis | Gegenstand |
 |---|---|---|
-| `test_updater_pipeline.py` | 8 bestanden | Wissensupdate gegen einen echten lokalen HTTP-Server |
+| `test_updater_pipeline.py` | 13 bestanden | Wissensupdate gegen einen echten lokalen HTTP-Server |
 | `test_controller.py` | 10 bestanden | Anwendungssteuerung von Ende zu Ende |
-| `test_portability.py` | 12 bestanden, 1 uebersprungen | Portabilitaet und Robustheit |
+| `test_portability.py` | 15 bestanden, 1 uebersprungen | Portabilitaet und Robustheit |
 | `test_gui_logic.py` | 10 bestanden | Oberflaechenlogik gegen ein Tkinter-Doppel |
 | `test_llm_providers.py` | 8 bestanden | Sprachmodellanbindung gegen einen echten lokalen Modelldienst |
-| `test_sicherheit_freigaben.py` | 13 bestanden | Tresor, Freigaben, Protokoll, Connectoren |
+| `test_sicherheit_freigaben.py` | 17 bestanden | Tresor, Freigaben, Protokoll, Connectoren, Pfadgrenzen |
 | `test_fachliche_faelle.py` | 48 bestanden | 22 fachliche Sachverhalte nach Masterprompt 47 |
-| `test_abnahme_kette.py` | 3 bestanden | Die vollstaendige Nutzungskette aus Masterprompt 49 in einem Durchlauf |
-| `test_cli.py` | 7 bestanden | Kommandozeile: Schalter vor und nach dem Unterbefehl |
+| `test_abnahme_kette.py` | 3 bestanden | Die vollstaendige Nutzungskette aus Masterprompt 49 |
+| `test_cli.py` | 12 bestanden | Kommandozeile: alle allgemeinen Schalter an allen Unterbefehlen |
 | `test_start.py` | 3 bestanden | Startfehler bleiben nicht stumm |
 | `test_lizenzierung.py` | 22 bestanden | Lizenzierung und Kopierschutz, alle sieben Faelle aus § 96 |
-| `test_kundentrennung.py` | 13 bestanden | Kundentrennung, Datenexport und Loeschung |
+| `test_kundentrennung.py` | 13 bestanden | Kundentrennung, Datenexport, Loeschung, Sicherungsziel |
 | `test_softwareupdate.py` | 11 bestanden | Softwareupdates getrennt vom Wissensupdate |
-| `test_produktreife.py` | 12 bestanden | Telemetriefreiheit, Lizenzregister, SBOM, Reifegrad |
+| `test_produktreife.py` | 14 bestanden | Telemetriefreiheit, Lizenzregister, SBOM, Reifegrad, Schluesselschutz |
 
 Der uebersprungene Test prueft das Verhalten bei schreibgeschuetztem
 Verzeichnis. Als `root` sind Dateirechte nicht wirksam einschraenkbar; der

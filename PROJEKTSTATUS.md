@@ -3,7 +3,7 @@
 > **Diese Datei ist die massgebliche Quelle des Projektstands, nicht der Chat.**
 > Sie wird nach jedem abgeschlossenen Task aktualisiert (Masterprompt 44/45).
 
-Stand: 04.09.2026 · Branch `claude/portable-ki-buchhalter-xr1qlj` ·
+Stand: 05.09.2026 · Branch `claude/portable-ki-buchhalter-xr1qlj` ·
 Version 0.1.0
 
 ---
