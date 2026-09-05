@@ -5,7 +5,7 @@ Diese Angaben erfasst der Buchhalter beim Onboarding. Sie werden dauerhaft in
 
 Ausfuellen entweder in der Anwendung (**Unternehmenswissen → Onboarding
 fortsetzen**), auf der Kommandozeile
-(`PORTABLE_BUCHHALTER.exe onboarding --interaktiv`) oder beilaeufig im Chat -
+(`PORTABLE_BUCHHALTER_KONSOLE.exe onboarding --interaktiv`) oder beilaeufig im Chat -
 der Buchhalter fragt dann nach, ob er sich die Angabe merken soll.
 
 Alle Felder duerfen leer bleiben und spaeter ergaenzt werden.
@@ -80,7 +80,7 @@ er sich das dauerhaft merken soll.
 Der aktuelle Stand wird jederzeit lesbar exportiert:
 
 ```
-PORTABLE_BUCHHALTER.exe wissen export
+PORTABLE_BUCHHALTER_KONSOLE.exe wissen export
 ```
 
 Ergebnis: `company/unternehmensprofil.md` (lesbar) und

@@ -21,7 +21,7 @@ In der Anwendung: Registerkarte **Wissen aktualisieren** →
 Auf der Kommandozeile:
 
 ```
-PORTABLE_BUCHHALTER.exe sicherung --name monatsende
+PORTABLE_BUCHHALTER_KONSOLE.exe sicherung --name monatsende
 ```
 
 Ergebnis: `backups/<Zeitstempel>-<Name>/` mit `company.db`, `knowledge.db`,
@@ -52,8 +52,8 @@ Datentraeger oder in ein gesichertes Netzlaufwerk.
 Kein Grund fuer eine Wiederherstellung - Loeschen ist Archivieren:
 
 ```
-PORTABLE_BUCHHALTER.exe wissen list --status archived
-PORTABLE_BUCHHALTER.exe wissen history <schluessel>
+PORTABLE_BUCHHALTER_KONSOLE.exe wissen list --status archived
+PORTABLE_BUCHHALTER_KONSOLE.exe wissen history <schluessel>
 ```
 
 In der Oberflaeche steht der Verlauf unter **Unternehmenswissen → Verlauf**.
@@ -86,7 +86,7 @@ zurueck.
 ### Fall 5: Ein Wissensupdate hat etwas verschlechtert
 
 ```
-PORTABLE_BUCHHALTER.exe update --zuruecknehmen <Lauf-ID>
+PORTABLE_BUCHHALTER_KONSOLE.exe update --zuruecknehmen <Lauf-ID>
 ```
 
 Die Lauf-ID steht im Ordnernamen unter `updates/`. Das

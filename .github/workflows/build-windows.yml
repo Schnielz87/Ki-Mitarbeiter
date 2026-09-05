@@ -52,16 +52,18 @@ jobs:
       - name: EXE existiert wirklich
         shell: pwsh
         run: |
-          $exe = "dist\Portable-Buchhalter\PORTABLE_BUCHHALTER.exe"
-          if (-not (Test-Path $exe)) { throw "Die EXE wurde nicht erzeugt." }
-          $groesse = (Get-Item $exe).Length
-          Write-Host "EXE vorhanden, $([math]::Round($groesse/1MB,1)) MB"
+          foreach ($datei in @("PORTABLE_BUCHHALTER.exe", "PORTABLE_BUCHHALTER_KONSOLE.exe")) {
+            $pfad = "dist\Portable-Buchhalter\$datei"
+            if (-not (Test-Path $pfad)) { throw "$datei wurde nicht erzeugt." }
+            $groesse = (Get-Item $pfad).Length
+            Write-Host "$datei vorhanden, $([math]::Round($groesse/1MB,1)) MB"
+          }
 
       - name: Systempruefung der gebauten EXE
         shell: pwsh
         run: |
           Set-Location dist\Portable-Buchhalter
-          .\PORTABLE_BUCHHALTER.exe check | Tee-Object -Variable zeilen
+          .\PORTABLE_BUCHHALTER_KONSOLE.exe check | Tee-Object -Variable zeilen
           if ($LASTEXITCODE -gt 2) { throw "Die EXE liess sich nicht ausfuehren." }
           # Tee-Object liefert ein Array von Zeilen. "-notmatch" wuerde darauf
           # filtern statt zu pruefen und waere praktisch immer wahr - daher
@@ -74,7 +76,7 @@ jobs:
         shell: pwsh
         run: |
           Set-Location dist\Portable-Buchhalter
-          $antwort = .\PORTABLE_BUCHHALTER.exe --offline frage "Welche Pflichtangaben muss eine Rechnung enthalten?" | Out-String
+          $antwort = .\PORTABLE_BUCHHALTER_KONSOLE.exe --offline frage "Welche Pflichtangaben muss eine Rechnung enthalten?" | Out-String
           Write-Host $antwort
           if ($antwort -notmatch "QUELLEN") { throw "Die Antwort enthielt keinen Quellenteil." }
           if ($antwort -notmatch "Rechnung") { throw "Die lokale Recherche lieferte nichts Passendes." }
@@ -84,14 +86,14 @@ jobs:
         run: |
           Set-Location dist\Portable-Buchhalter
           Write-Host "--- speichern (eigener Programmlauf) ---"
-          .\PORTABLE_BUCHHALTER.exe wissen set company.chart_of_accounts "Das Unternehmen verwendet SKR03." --titel Kontenrahmen --kategorie accounting
+          .\PORTABLE_BUCHHALTER_KONSOLE.exe wissen set company.chart_of_accounts "Das Unternehmen verwendet SKR03." --titel Kontenrahmen --kategorie accounting
           if ($LASTEXITCODE -ne 0) { throw "Das Speichern schlug fehl (Code $LASTEXITCODE)." }
 
           Write-Host "--- Datenbank auf der Platte ---"
           Get-ChildItem database -ErrorAction SilentlyContinue | Format-Table Name, Length | Out-String | Write-Host
 
           Write-Host "--- lesen (neuer Programmlauf) ---"
-          $zeilen = .\PORTABLE_BUCHHALTER.exe wissen get company.chart_of_accounts
+          $zeilen = .\PORTABLE_BUCHHALTER_KONSOLE.exe wissen get company.chart_of_accounts
           $code = $LASTEXITCODE
           $wert = ($zeilen -join "`n")
           Write-Host "Rueckgabe (Code $code): '$wert'"
@@ -99,8 +101,8 @@ jobs:
           if ($code -ne 0) { throw "Das Lesen schlug fehl (Code $code)." }
           if ($wert -notmatch "SKR03") {
             Write-Host "--- zur Fehlersuche: gesamter Bestand ---"
-            .\PORTABLE_BUCHHALTER.exe wissen list | Out-String | Write-Host
-            .\PORTABLE_BUCHHALTER.exe status | Out-String | Write-Host
+            .\PORTABLE_BUCHHALTER_KONSOLE.exe wissen list | Out-String | Write-Host
+            .\PORTABLE_BUCHHALTER_KONSOLE.exe status | Out-String | Write-Host
             throw "Das Unternehmenswissen wurde nicht dauerhaft gespeichert."
           }
 
@@ -114,12 +116,12 @@ jobs:
           subst X: "$env:RUNNER_TEMP\Zweiter PC"
           try {
             Set-Location "X:\Portable Buchhalter"
-            $wert = .\PORTABLE_BUCHHALTER.exe wissen get company.chart_of_accounts | Out-String
+            $wert = .\PORTABLE_BUCHHALTER_KONSOLE.exe wissen get company.chart_of_accounts | Out-String
             Write-Host "Auf X: gelesen: $wert"
             if ($wert -notmatch "SKR03") {
               throw "Nach Laufwerkswechsel war das Unternehmenswissen nicht verfuegbar."
             }
-            .\PORTABLE_BUCHHALTER.exe check
+            .\PORTABLE_BUCHHALTER_KONSOLE.exe check
             if ($LASTEXITCODE -gt 2) { throw "Auf dem anderen Laufwerk startete die EXE nicht." }
           } finally {
             Set-Location $env:GITHUB_WORKSPACE

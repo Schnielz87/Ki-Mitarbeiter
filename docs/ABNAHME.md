@@ -45,8 +45,12 @@ Das Skript prueft Python und Tkinter, installiert die Abhaengigkeiten, laesst
 die Tests laufen, baut die EXE und stellt den fertigen portablen Ordner unter
 `dist\Portable-Buchhalter\` her.
 
-**Erfuellt, wenn:** `dist\Portable-Buchhalter\PORTABLE_BUCHHALTER.exe`
-existiert und das Skript ohne Fehler endet.
+**Erfuellt, wenn:** `dist\Portable-Buchhalter\PORTABLE_BUCHHALTER.exe` **und**
+`PORTABLE_BUCHHALTER_KONSOLE.exe` existieren und das Skript ohne Fehler endet.
+
+Es sind zwei Programme mit demselben Code: das erste fuer den Doppelklick
+(ohne Konsolenfenster), das zweite fuer die Eingabeaufforderung. Ein Programm
+ohne Konsole hat unter Windows keine Ausgabe - deshalb die Trennung.
 
 Danach den kompletten Ordnerinhalt auf den Datentraeger kopieren.
 
@@ -85,7 +89,7 @@ Nach `docs\MODELL_EINRICHTEN.md` vorgehen, dann:
 
 ```
 python tools\modell_einrichten.py pruefen
-PORTABLE_BUCHHALTER.exe check
+PORTABLE_BUCHHALTER_KONSOLE.exe check
 ```
 
 **Erwartung:** Das Werkzeug gibt eine sinnvolle Antwort auf die Testfrage
@@ -211,7 +215,7 @@ das ebenfalls.
 ## I. Sicherung und Wiederherstellung (DoD 19)
 
 ```
-PORTABLE_BUCHHALTER.exe sicherung --name abnahme
+PORTABLE_BUCHHALTER_KONSOLE.exe sicherung --name abnahme
 ```
 
 Dann pruefen: Liegt `backups\<Zeitstempel>-abnahme\company.db`? Stimmen die

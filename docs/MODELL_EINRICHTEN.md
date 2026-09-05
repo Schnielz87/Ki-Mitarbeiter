@@ -106,7 +106,7 @@ eingerichtet.
 Anschliessend:
 
 ```
-PORTABLE_BUCHHALTER.exe check
+PORTABLE_BUCHHALTER_KONSOLE.exe check
 ```
 
 Die Zeile „Lokales Modell" muss **OK** zeigen, nicht **HINWEIS**.

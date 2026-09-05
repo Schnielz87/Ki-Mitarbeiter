@@ -42,21 +42,29 @@ Ausfuehrlich: **[ARCHITEKTUR.md](ARCHITEKTUR.md)**
 Die Kommandozeile kann alles, was die Oberflaeche kann - nuetzlich fuer
 Automatisierung und zur Fehlersuche.
 
+Dafuer gibt es ein **zweites Programm**: `PORTABLE_BUCHHALTER_KONSOLE.exe`.
+Beide enthalten denselben Code. Der Unterschied liegt allein in der Ausgabe:
+
+| Programm | Wofuer |
+|---|---|
+| `PORTABLE_BUCHHALTER.exe` | Doppelklick. Oeffnet nur das Fenster, ohne schwarzes Konsolenfenster daneben. |
+| `PORTABLE_BUCHHALTER_KONSOLE.exe` | Eingabeaufforderung und PowerShell. Ein Programm ohne Konsole hat unter Windows keine Ausgabe - `check` bliebe dort stumm. |
+
 ```
-PORTABLE_BUCHHALTER.exe check                      Systempruefung
-PORTABLE_BUCHHALTER.exe frage "..."                eine Fachfrage
-PORTABLE_BUCHHALTER.exe chat                       Unterhaltung
-PORTABLE_BUCHHALTER.exe wissen list                Unternehmenswissen anzeigen
-PORTABLE_BUCHHALTER.exe wissen set <schluessel> "<wert>"
-PORTABLE_BUCHHALTER.exe wissen history <schluessel>   Aenderungsverlauf
-PORTABLE_BUCHHALTER.exe onboarding --interaktiv    Unternehmensdaten erfassen
-PORTABLE_BUCHHALTER.exe update                     Wissen aktualisieren
-PORTABLE_BUCHHALTER.exe update --trocken           Trockenlauf ohne Schreiben
-PORTABLE_BUCHHALTER.exe update --zuruecknehmen <ID>
-PORTABLE_BUCHHALTER.exe beleg <datei>              Beleg aufnehmen
-PORTABLE_BUCHHALTER.exe freigaben                  offene Freigaben
-PORTABLE_BUCHHALTER.exe sicherung                  Sicherung erstellen
-PORTABLE_BUCHHALTER.exe status                     Lagebericht als JSON
+PORTABLE_BUCHHALTER_KONSOLE.exe check                      Systempruefung
+PORTABLE_BUCHHALTER_KONSOLE.exe frage "..."                eine Fachfrage
+PORTABLE_BUCHHALTER_KONSOLE.exe chat                       Unterhaltung
+PORTABLE_BUCHHALTER_KONSOLE.exe wissen list                Unternehmenswissen anzeigen
+PORTABLE_BUCHHALTER_KONSOLE.exe wissen set <schluessel> "<wert>"
+PORTABLE_BUCHHALTER_KONSOLE.exe wissen history <schluessel>   Aenderungsverlauf
+PORTABLE_BUCHHALTER_KONSOLE.exe onboarding --interaktiv    Unternehmensdaten erfassen
+PORTABLE_BUCHHALTER_KONSOLE.exe update                     Wissen aktualisieren
+PORTABLE_BUCHHALTER_KONSOLE.exe update --trocken           Trockenlauf ohne Schreiben
+PORTABLE_BUCHHALTER_KONSOLE.exe update --zuruecknehmen <ID>
+PORTABLE_BUCHHALTER_KONSOLE.exe beleg <datei>              Beleg aufnehmen
+PORTABLE_BUCHHALTER_KONSOLE.exe freigaben                  offene Freigaben
+PORTABLE_BUCHHALTER_KONSOLE.exe sicherung                  Sicherung erstellen
+PORTABLE_BUCHHALTER_KONSOLE.exe status                     Lagebericht als JSON
 ```
 
 Ohne gebaute EXE: `python portable_buchhalter.py <befehl>`.

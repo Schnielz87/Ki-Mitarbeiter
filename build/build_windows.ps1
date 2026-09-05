@@ -53,8 +53,10 @@ Schritt "EXE bauen"
 if ($LASTEXITCODE -ne 0) { throw "PyInstaller ist fehlgeschlagen." }
 
 $Ausgabe = "dist\PORTABLE_BUCHHALTER"
-if (-not (Test-Path "$Ausgabe\PORTABLE_BUCHHALTER.exe")) {
-    throw "Die EXE wurde nicht erzeugt - Build gilt als fehlgeschlagen."
+foreach ($datei in @("PORTABLE_BUCHHALTER.exe", "PORTABLE_BUCHHALTER_KONSOLE.exe")) {
+    if (-not (Test-Path (Join-Path $Ausgabe $datei))) {
+        throw "$datei wurde nicht erzeugt - Build gilt als fehlgeschlagen."
+    }
 }
 
 Schritt "Portablen Ordner zusammenstellen"
@@ -91,7 +93,9 @@ foreach ($ordner in @("models","knowledge","resources\raw","resources\normalized
     Set-Content -Path (Join-Path $Ziel ".portable_root") -Encoding UTF8
 
 Schritt "Rauchtest der gebauten EXE"
-$exe = Join-Path $Ziel "PORTABLE_BUCHHALTER.exe"
+# Bewusst die Konsolenfassung: die Fensterfassung hat unter Windows keine
+# Standardausgabe, ihr Ergebnis waere hier nicht pruefbar.
+$exe = Join-Path $Ziel "PORTABLE_BUCHHALTER_KONSOLE.exe"
 & $exe check --quiet | Tee-Object -Variable zeilen
 if ($LASTEXITCODE -gt 2) { throw "Die gebaute EXE liess sich nicht ausfuehren." }
 if (($zeilen -join "`n") -notmatch "Systempruefung") {
@@ -101,4 +105,6 @@ if (($zeilen -join "`n") -notmatch "Systempruefung") {
 Schritt "Fertig"
 Write-Host "  Portabler Ordner: $Ziel" -ForegroundColor Green
 Write-Host "  Diesen Ordner vollstaendig auf die externe SSD kopieren."
+Write-Host "  Doppelklick: PORTABLE_BUCHHALTER.exe"
+Write-Host "  Kommandozeile: PORTABLE_BUCHHALTER_KONSOLE.exe <befehl>"
 Write-Host "  Danach fehlt nur noch das Sprachmodell in .\models (docs\MODELL_EINRICHTEN.md)."

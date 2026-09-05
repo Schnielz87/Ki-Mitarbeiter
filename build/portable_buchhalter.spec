@@ -73,27 +73,42 @@ analysis = Analysis(
 
 pyz = PYZ(analysis.pure, analysis.zipped_data, cipher=block_cipher)
 
-exe = EXE(
-    pyz,
-    analysis.scripts,
-    [],
-    exclude_binaries=True,
-    name="PORTABLE_BUCHHALTER",
-    debug=False,
-    bootloader_ignore_signals=False,
-    strip=False,
-    upx=False,
-    console=False,          # kein Konsolenfenster beim Doppelklick
-    disable_windowed_traceback=False,
-    argv_emulation=False,
-    target_arch=None,
-    codesign_identity=None,
-    entitlements_file=None,
-    icon=None,
-)
+def _exe(name: str, console: bool):
+    return EXE(
+        pyz,
+        analysis.scripts,
+        [],
+        exclude_binaries=True,
+        name=name,
+        debug=False,
+        bootloader_ignore_signals=False,
+        strip=False,
+        upx=False,
+        console=console,
+        disable_windowed_traceback=False,
+        argv_emulation=False,
+        target_arch=None,
+        codesign_identity=None,
+        entitlements_file=None,
+        icon=None,
+    )
+
+
+# Zwei Programme aus demselben Code - wie python.exe und pythonw.exe:
+#
+#   PORTABLE_BUCHHALTER.exe          fuer den Doppelklick. Ohne Konsole, damit
+#                                    kein schwarzes Fenster mit aufgeht.
+#   PORTABLE_BUCHHALTER_KONSOLE.exe  fuer die Kommandozeile. MIT Konsole, denn
+#                                    ein Programm ohne Konsole hat unter Windows
+#                                    keine Ausgabe: "check" oder "wissen get"
+#                                    wuerden in der Eingabeaufforderung stumm
+#                                    bleiben.
+exe_gui = _exe("PORTABLE_BUCHHALTER", console=False)
+exe_cli = _exe("PORTABLE_BUCHHALTER_KONSOLE", console=True)
 
 collection = COLLECT(
-    exe,
+    exe_gui,
+    exe_cli,
     analysis.binaries,
     analysis.zipfiles,
     analysis.datas,

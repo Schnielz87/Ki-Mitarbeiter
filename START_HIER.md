@@ -84,11 +84,18 @@ Problem.
 
 | Beobachtung | Was zu tun ist |
 |---|---|
-| Die EXE startet nicht | `PORTABLE_BUCHHALTER.exe check` in der Eingabeaufforderung ausfuehren - die Ausgabe nennt den Grund |
+| Die EXE startet nicht | `PORTABLE_BUCHHALTER_KONSOLE.exe check` in der Eingabeaufforderung ausfuehren - die Ausgabe nennt den Grund |
 | „Kein Sprachmodell verfuegbar" | `docs/MODELL_EINRICHTEN.md` |
 | Antworten ohne Quellen | Registerkarte **Wissen aktualisieren** ausfuehren (braucht Internet) |
 | Der Datentraeger ist voll | Alte Ordner unter `updates\` und `backups\` loeschen |
 | Etwas ging verloren | `BACKUP_WIEDERHERSTELLUNG.md` |
+
+## Die beiden Programme
+
+| Datei | Wofuer |
+|---|---|
+| `PORTABLE_BUCHHALTER.exe` | **Das normale Programm.** Doppelklick genuegt. |
+| `PORTABLE_BUCHHALTER_KONSOLE.exe` | Nur fuer die Eingabeaufforderung, etwa zur Fehlersuche. Beide enthalten denselben Buchhalter. |
 
 ## Wichtige Dateien in diesem Ordner
 
