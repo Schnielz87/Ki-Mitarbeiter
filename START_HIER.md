@@ -21,20 +21,22 @@ klicken.
 > diesen Datentraeger noch nicht aufgespielt. Das fertige Paket gibt es
 > gebaut zum Herunterladen:
 >
-> 1. https://github.com/Schnielz87/Ki-Mitarbeiter/actions/runs/33973949251
->    oeffnen (bei GitHub angemeldet sein - Artefakte sind sonst nicht
->    sichtbar).
-> 2. Ganz unten im Kasten **Artefakte** (englisch *Artifacts*) **direkt auf
->    den Namen** `Portable-Buchhalter-Windows` klicken - das Wort selbst ist
->    der Link. Es kommt eine ZIP-Datei; GitHub zeigt die Groesse als
->    **21,9 MB** an. Das Symbol neben dem `sha256:...` ist nicht der
->    Download, damit kopiert man nur die Pruefsumme.
-> 3. ZIP **auf den Datentraeger entpacken**, nicht in den Download-Ordner.
+> 1. **Bei GitHub anmelden.** Das ist zwingend: GitHub liefert Artefakte nur
+>    an angemeldete Nutzer aus. Nicht angemeldet sehen Sie den Kasten zwar,
+>    der Name ist dann aber **kein Link** - ein Klick tut schlicht nichts.
+>    Oben rechts pruefen: steht dort Ihr Profilbild oder *Sign in*?
+> 2. https://github.com/Schnielz87/Ki-Mitarbeiter/actions/runs/33973949251
+>    oeffnen.
+> 3. Ganz unten im Kasten **Artefakte** (englisch *Artifacts*) **direkt auf
+>    den Namen** `Portable-Buchhalter-Windows` klicken. Das Wort selbst ist
+>    der Link; angemeldet ist es blau. Es kommt eine ZIP-Datei, GitHub zeigt
+>    die Groesse als **21,9 MB** an.
+> 4. ZIP **auf den Datentraeger entpacken**, nicht in den Download-Ordner.
 >    Windows blockiert sonst unter Umstaenden die Ausfuehrung.
-> 4. Rechtsklick auf die ZIP-Datei vor dem Entpacken → *Eigenschaften* →
+> 5. Rechtsklick auf die ZIP-Datei vor dem Entpacken → *Eigenschaften* →
 >    falls dort **Zulassen** oder *Entsperren* steht, anhaken. Das ist die
 >    uebliche Windows-Sperre fuer heruntergeladene Dateien.
-> 5. Danach `PORTABLE_BUCHHALTER.exe` doppelklicken.
+> 6. Danach `PORTABLE_BUCHHALTER.exe` doppelklicken.
 >
 > Die Anwendung ist **nicht signiert** (Code-Signing steht noch aus). Windows
 > SmartScreen meldet sich deshalb beim ersten Start mit
@@ -132,3 +134,18 @@ Problem.
 | `company\` | Ihr Unternehmensprofil, lesbar exportiert |
 | `database\company.db` | Unternehmensgedaechtnis - **die wichtigste Datei** |
 | `logs\` | Protokolle bei Problemen |
+
+## Wenn das Artefakt sich nicht herunterladen laesst
+
+Der haeufigste Fall: **nicht bei GitHub angemeldet**. Artefakte werden nur an
+angemeldete Nutzer ausgeliefert. Der Kasten ist trotzdem zu sehen, der Name
+ist aber kein Link - der Klick bleibt wirkungslos. Woran man es erkennt: die
+uebrigen Verweise der Seite sind blau, der Artefaktname schwarz.
+
+Zweiter Fall: **das Artefakt ist abgelaufen.** Artefakte werden nach 30 Tagen
+geloescht. Dann einfach den neuesten Ablauf unter
+https://github.com/Schnielz87/Ki-Mitarbeiter/actions nehmen - jeder
+erfolgreiche Ablauf legt ein frisches Paket ab.
+
+Das Symbol neben der Pruefsumme (`sha256:...`) ist **nicht** der Download; es
+kopiert nur die Pruefsumme in die Zwischenablage.
