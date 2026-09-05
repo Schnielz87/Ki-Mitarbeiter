@@ -30,8 +30,12 @@ def _controller(args) -> AppController:
     return AppController(paths, config, console_logging=not args.quiet)
 
 
-def _print_report(report) -> None:
-    print(report.as_text())
+def _print_report(report, controller=None) -> None:
+    """Ueberschrift ist der Markentitel, z. B. ``PORTIVA - Buchhalter``."""
+    titel = "PORTIVA"
+    if controller is not None:
+        titel = controller.brand.titel(controller.profile_display_name)
+    print(report.as_text(titel))
 
 
 def cmd_check(args) -> int:
@@ -41,7 +45,7 @@ def cmd_check(args) -> int:
         if args.json:
             print(json.dumps(report.as_dict(), indent=2, ensure_ascii=False))
         else:
-            _print_report(report)
+            _print_report(report, controller)
         return 0 if report.usable else 2
     finally:
         controller.shutdown()

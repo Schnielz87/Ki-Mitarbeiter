@@ -1,0 +1,15 @@
+{
+  "_hinweis": [
+    "Marke und Berufsprofil sind getrennt. PORTIVA ist fest, der",
+    "Mitarbeitername kommt aus dem aktiven Profil. Daraus entsteht der",
+    "Fenstertitel, zum Beispiel 'PORTIVA - Buchhalter'.",
+    "Alle Pfade sind relativ zum Ordner 'assets' und muessen es bleiben:",
+    "absolute Pfade ueberleben den Wechsel des Laufwerksbuchstabens nicht."
+  ],
+  "brand": {
+    "name": "PORTIVA",
+    "claim": "Portable KI-Mitarbeiter-Plattform",
+    "logo": "branding/portiva_logo_primary.png",
+    "icon": "branding/portiva_icon.ico"
+  }
+}

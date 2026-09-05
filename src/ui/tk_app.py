@@ -21,6 +21,7 @@ import tkinter as tk
 from tkinter import filedialog, messagebox, scrolledtext, ttk
 
 from app.controller import AppController, AskOutcome, StartupReport
+from pkc.branding import load_brand, profilname
 from pkc.audit import ApprovalState
 from pkc.memory.schema_keys import CATEGORIES
 
@@ -74,7 +75,75 @@ class BackgroundTask:
         done(result, error)
 
 
+def _logo_bild(brand, hoehe: int = 84):
+    """Laedt das Logo als Tk-Bild - oder None, wenn es fehlt.
+
+    Tkinter kann von Haus aus nur GIF und PNG. Reicht das nicht, oder fehlt
+    die Datei, wird None geliefert; der Aufrufer zeigt dann den Schriftzug.
+    Ein fehlendes Logo darf nie ein Startproblem sein.
+    """
+    pfad = brand.logo_pfad
+    if pfad is None:
+        return None
+    try:
+        bild = tk.PhotoImage(file=str(pfad))
+    except Exception as exc:            # unlesbar, unbekanntes Format
+        log.warning("Logo nicht darstellbar (%s): %s", pfad.name, exc)
+        return None
+    # Nur ganzzahlig verkleinern - Tk kann nichts anderes, und Strecken
+    # wuerde die Proportionen verletzen.
+    if bild.height() > hoehe:
+        faktor = max(1, round(bild.height() / hoehe))
+        try:
+            bild = bild.subsample(faktor, faktor)
+        except Exception:               # pragma: no cover - defensiv
+            pass
+    return bild
+
+
+def _fenstericon(fenster, brand) -> None:
+    """Setzt Fenster- und Taskleistensymbol, soweit das System es zulaesst."""
+    ico = brand.icon_pfad
+    if ico is not None:
+        try:
+            fenster.iconbitmap(default=str(ico))
+            return
+        except Exception as exc:        # unter Linux kennt Tk kein .ico
+            log.debug("iconbitmap nicht moeglich (%s)", exc)
+    png = brand.variante("icon")
+    if png is None:
+        return
+    try:
+        bild = tk.PhotoImage(file=str(png))
+        fenster.iconphoto(True, bild)
+        # Referenz halten, sonst raeumt der Sammler das Bild weg und das
+        # Symbol verschwindet wieder.
+        fenster._portiva_icon = bild
+    except Exception as exc:            # pragma: no cover - defensiv
+        log.debug("iconphoto nicht moeglich (%s)", exc)
+
+
+class _BrandKopf:
+    """Logo links, darunter Marke und Claim - oder nur der Schriftzug."""
+
+    def __init__(self, eltern, brand, profil: str = "", gross: bool = True):
+        rahmen = ttk.Frame(eltern)
+        self.frame = rahmen
+        bild = _logo_bild(brand, hoehe=72 if gross else 40)
+        if bild is not None:
+            label = ttk.Label(rahmen, image=bild)
+            label.image = bild          # Referenz halten
+            label.pack(side="left", padx=(0, PAD))
+        schrift = ttk.Frame(rahmen)
+        schrift.pack(side="left", anchor="w")
+        ttk.Label(schrift, text=brand.titel(profil),
+                  font=FONT_TITLE if gross else ("Segoe UI", 12, "bold")).pack(anchor="w")
+        if gross:
+            ttk.Label(schrift, text=brand.claim, foreground="#555555").pack(anchor="w")
+
+
 class StartupWindow:
+
     """Fenster der Systempruefung (Masterprompt 38)."""
 
     def __init__(self, controller: AppController):
@@ -82,18 +151,25 @@ class StartupWindow:
         self.report: StartupReport | None = None
         self.proceed = False
 
-        self.root = tk.Tk()
-        self.root.title("Portabler Buchhalter - Systempruefung")
-        self.root.geometry("820x560")
-        self.root.minsize(640, 420)
+        self.brand = load_brand(controller.paths, controller.config)
+        self.profil = profilname(controller.profile)
 
-        ttk.Label(self.root, text="PORTABLER BUCHHALTER", font=FONT_TITLE).pack(
-            anchor="w", padx=PAD * 2, pady=(PAD * 2, 0)
-        )
+        self.root = tk.Tk()
+        self.root.title(f"{self.brand.titel(self.profil)} - Systempruefung")
+        self.root.geometry("820x600")
+        self.root.minsize(640, 460)
+        _fenstericon(self.root, self.brand)
+
+        # Marke, Claim und Profil - das Logo, soweit vorhanden.
+        kopf = _BrandKopf(self.root, self.brand, self.profil, gross=True)
+        kopf.frame.pack(anchor="w", padx=PAD * 2, pady=(PAD * 2, PAD // 2))
+        if self.profil:
+            ttk.Label(self.root, text=f"Profil: {self.profil}",
+                      font=("Segoe UI", 10, "bold")).pack(anchor="w", padx=PAD * 2)
         ttk.Label(
             self.root,
             text="Die Anwendung prueft ihren eigenen Zustand. Bitte einen Moment warten.",
-        ).pack(anchor="w", padx=PAD * 2, pady=(0, PAD))
+        ).pack(anchor="w", padx=PAD * 2, pady=(PAD // 2, PAD))
 
         self.text = scrolledtext.ScrolledText(
             self.root, font=FONT_MONO, wrap="word", height=18, state="disabled"
@@ -107,7 +183,9 @@ class StartupWindow:
         buttons = ttk.Frame(self.root)
         buttons.pack(fill="x", padx=PAD * 2, pady=PAD * 2)
         self.start_button = ttk.Button(
-            buttons, text="BUCHHALTER STARTEN", command=self._start, state="disabled"
+            buttons,
+            text=f"{(self.profil or self.brand.name).upper()} STARTEN",
+            command=self._start, state="disabled",
         )
         self.start_button.pack(side="right")
         ttk.Button(buttons, text="Beenden", command=self.root.destroy).pack(
@@ -158,7 +236,12 @@ class MainWindow:
         self.pending_candidates: list = []
 
         self.root = tk.Tk()
-        self.root.title(str(controller.config.get("app.name", "Portabler Buchhalter")))
+        self.brand = load_brand(controller.paths, controller.config)
+        self.profil = profilname(controller.profile)
+        # PORTIVA ist fest, der Profilname kommt aus dem aktiven Profil -
+        # nach einem Profilwechsel heisst das Fenster automatisch anders.
+        self.root.title(self.brand.titel(self.profil))
+        _fenstericon(self.root, self.brand)
         self.root.geometry("1180x760")
         self.root.minsize(900, 600)
         self.root.protocol("WM_DELETE_WINDOW", self._on_close)
@@ -185,7 +268,7 @@ class MainWindow:
     def _build_header(self) -> None:
         header = ttk.Frame(self.root)
         header.pack(fill="x", padx=PAD, pady=(PAD, 0))
-        ttk.Label(header, text="PORTABLER BUCHHALTER", font=FONT_TITLE).pack(side="left")
+        _BrandKopf(header, self.brand, self.profil, gross=False).frame.pack(side="left")
         self.mode_label = ttk.Label(header, text="", font=("Segoe UI", 10, "bold"))
         self.mode_label.pack(side="right")
         self.knowledge_label = ttk.Label(header, text="")

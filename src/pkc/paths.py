@@ -35,6 +35,7 @@ _CUSTOMER_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_\-]{1,63}$")
 #: Name -> Unterverzeichnis relativ zur Wurzel.
 LAYOUT: dict[str, str] = {
     "app": "src",
+    "assets": "assets",
     "config": "config",
     "models": "models",
     "knowledge": "knowledge",
@@ -60,7 +61,9 @@ LAYOUT: dict[str, str] = {
 }
 
 #: Verzeichnisse, die zum *Programm* gehoeren (nicht zu den Nutzdaten).
-PROGRAM_DIRS = frozenset({"app", "profiles", "tools", "docs"})
+# Das Branding gehoert zum Programm, nicht zum Kunden: bei mehreren
+# Kundenbereichen auf einem Datentraeger gibt es trotzdem nur ein Logo.
+PROGRAM_DIRS = frozenset({"app", "profiles", "tools", "docs", "assets"})
 
 #: Verzeichnisse mit **kundenbezogenen** Daten (Masterprompt 61).
 #:

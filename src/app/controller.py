@@ -80,7 +80,7 @@ class StartupReport:
     def add(self, name: str, ok: bool, detail: str, critical: bool = False) -> None:
         self.items.append(CheckItem(name, ok, detail, critical))
 
-    def as_text(self, app_name: str = "PORTABLER BUCHHALTER") -> str:
+    def as_text(self, app_name: str = "PORTIVA") -> str:
         lines = [app_name.upper(), "", "Systempruefung", ""]
         width = max((len(i.name) for i in self.items), default=10)
         for item in self.items:
@@ -183,6 +183,12 @@ class AppController:
             required=bool(self.config.get("license.required", False)),
         )
         self.license_status = self.license.check()
+
+        # Marke und Profilname - getrennt gehalten (Masterprompt PORTIVA)
+        from pkc.branding import load_brand, profilname as _profilname
+
+        self.brand = load_brand(self.paths, self.config)
+        self.profile_display_name = _profilname(self.profile)
 
         # Tresor
         self.vault = SecretVault(self.paths.secrets_file)
@@ -324,6 +330,17 @@ class AppController:
             self.license_status.productive_allowed,
             self.license_status.message,
             critical=self.license_status.required,
+        )
+
+        fehlend = self.brand.fehlende_dateien()
+        report.add(
+            "Branding", not fehlend,
+            f"{self.brand.name} - {self.brand.titel(self.profile_display_name)}"
+            if not fehlend else
+            f"{len(fehlend)} Brandingdatei(en) fehlen, u.a. {fehlend[0]}. "
+            f"Die Anwendung laeuft; sie zeigt statt des Logos den Schriftzug. "
+            f"Siehe assets/branding/original/HIER_ORIGINAL_ABLEGEN.md",
+            critical=False,
         )
 
         report.add(

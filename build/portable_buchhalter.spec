@@ -66,11 +66,24 @@ try:
 except ImportError:
     pass
 
+# Branding: Logo, Symbole und Markenangaben gehoeren ins Paket. Ohne sie
+# faellt die Anwendung auf den Schriftzug zurueck - sie stuerzt nicht ab,
+# sieht aber nackt aus.
+branding = []
+_branding_dir = ROOT / "assets" / "branding"
+if _branding_dir.is_dir():
+    branding = [(str(_branding_dir), "assets/branding")]
+
+# EXE-Symbol, sofern die Icondatei erzeugt wurde. Fehlt sie, baut
+# PyInstaller mit seinem Standardsymbol - kein Grund, den Bau abzubrechen.
+_ico = _branding_dir / "portiva_icon.ico"
+ICON = str(_ico) if _ico.is_file() else None
+
 analysis = Analysis(
     [str(ROOT / "portable_buchhalter.py")],
     pathex=[str(ROOT / "src")],
     binaries=[],
-    datas=zertifikate,
+    datas=zertifikate + branding,
     hiddenimports=hidden_imports,
     hookspath=[],
     hooksconfig={},
@@ -101,7 +114,7 @@ def _exe(name: str, console: bool):
         target_arch=None,
         codesign_identity=None,
         entitlements_file=None,
-        icon=None,
+        icon=ICON,
     )
 
 
