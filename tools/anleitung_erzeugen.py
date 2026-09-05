@@ -156,8 +156,9 @@ for nummer, kapitel in enumerate([
     "In fuenf Minuten startklar",
     "Der Startbildschirm - was er Ihnen sagt",
     "Der Bildschirm: fuenf Registerkarten",
-    "Schritt 1 - Ihr Unternehmen einrichten",
-    "Schritt 2 - Fragen stellen",
+    "Fachfragen ohne Unternehmensdaten - geht sofort",
+    "Ihr Unternehmen einrichten - empfohlen, nicht Pflicht",
+    "Fragen stellen",
     "Wie eine Antwort aufgebaut ist",
     "Was automatisch gespeichert wird - und was nicht",
     "Belege hinzufuegen",
@@ -236,7 +237,7 @@ tabelle_mit(
          "HINWEIS, solange keines eingerichtet ist - siehe unten"],
         ["Lizenz",
          "Ob eine Lizenz noetig und gueltig ist",
-         "OK - siehe Kapitel 12"],
+         "OK - siehe Kapitel 13"],
         ["Quellenregister",
          "Die hinterlegten amtlichen Quellen",
          "OK, 12 Quellen, 32 Dokumente"],
@@ -309,11 +310,96 @@ absatz("Ganz unten laeuft eine Statuszeile mit, die auch den Pfad Ihres "
        "Datentraegers nennt.")
 
 # ================================================================ 3
-doc.add_heading("4.  Schritt 1 - Ihr Unternehmen einrichten", level=1)
+doc.add_heading("4.  Fachfragen ohne Unternehmensdaten - geht sofort", level=1)
 
-absatz("Das ist das Erste, was Sie tun sollten. Der Buchhalter arbeitet umso "
-       "besser, je mehr er ueber Ihren Betrieb weiss - und er merkt es sich "
-       "dauerhaft auf dem Datentraeger.")
+absatz("Sie muessen dem Buchhalter nichts ueber Ihren Betrieb erzaehlen, um "
+       "ihn fachlich zu befragen. Das Fachwissen und das "
+       "Unternehmensgedaechtnis sind zwei getrennte Bestaende. Das Fachwissen "
+       "ist vollstaendig mitgeliefert und vom ersten Start an nutzbar.")
+
+kasten(
+    "Kurz gesagt",
+    "Datentraeger anstecken, starten, fragen. Kein Onboarding, keine "
+    "Registrierung, keine Angabe zu Ihrem Unternehmen. Wer nur wissen will, "
+    "was fachlich gilt, kann das sofort tun - und muss dabei nichts "
+    "preisgeben.",
+)
+
+doc.add_heading("Was mitgeliefert ist", level=2)
+absatz("13 Fachmodule mit 57 Abschnitten, dazu ein Quellenregister mit 12 "
+       "amtlichen Quellen. Der Startbildschirm zeigt das in den Zeilen "
+       "Fachwissen und Quellenregister an. Die Module decken unter anderem "
+       "ab:")
+punkt("Rechnungspflichtangaben und Rechnungspruefung (§ 14 UStG)")
+punkt("Vorsteuerabzug (§ 15 UStG)")
+punkt("GoBD, Aufbewahrung und Dokumentation (§§ 145-147 AO, § 257 HGB, § 14b UStG)")
+punkt("Steuerschuldnerschaft des Leistungsempfaengers, Reverse Charge (§ 13b UStG)")
+punkt("Kleinunternehmerregelung (§ 19 UStG)")
+punkt("E-Rechnung, Jahresabschlussvorbereitung und weitere")
+
+doc.add_heading("Ein nachgeprueftes Beispiel", level=2)
+absatz("In einem voellig leeren Datenbereich - null Eintraege im "
+       "Unternehmensgedaechtnis - wurde gefragt:")
+absatz("\"Wie lange muessen Eingangsrechnungen aufbewahrt werden?\"", kursiv=True)
+absatz("Der Buchhalter fand acht Fundstellen. Darunter aus dem Modul GoBD "
+       "die Fristentabelle: Buecher, Aufzeichnungen, Jahresabschluesse, "
+       "Buchungsbelege und Inventare zehn Jahre nach § 147 Abs. 3 AO und "
+       "§ 257 HGB; empfangene und abgesandte Handels- und Geschaeftsbriefe "
+       "sechs Jahre nach § 147 Abs. 3 AO; Rechnungen umsatzsteuerlich zehn "
+       "Jahre nach § 14b Abs. 1 UStG. Ohne eine einzige Angabe ueber das "
+       "Unternehmen.")
+
+doc.add_heading("Fragen veraendert Ihr Unternehmensgedaechtnis nicht", level=2)
+absatz("Nach dieser Frage stand im Unternehmensgedaechtnis weiterhin "
+       "\"Kein Unternehmenswissen gespeichert\". Eine Fachfrage legt dort "
+       "nichts an. Gespeichert wird eine Angabe nur, wenn Sie sie selbst "
+       "eintragen oder die Rueckfrage \"Dauerhaft merken?\" mit Ja "
+       "beantworten (siehe Kapitel 8).")
+
+doc.add_heading("Wo Unternehmensdaten dann doch etwas bringen", level=2)
+absatz("Bei allgemeinen Fragen - was gilt, welche Frist, welche "
+       "Pflichtangaben - aendern Unternehmensdaten nichts. Sie helfen dort, "
+       "wo die Antwort vom Betrieb abhaengt. Der Buchhalter sagt das auch "
+       "selbst: im Modul Vorsteuerabzug steht woertlich \"Ohne bekannten "
+       "Kontenrahmen sind die Konten ...\" - er nennt dann keine konkreten "
+       "Kontonummern, statt welche zu erfinden.")
+
+tabelle_mit(
+    ["Art der Frage", "Ohne Unternehmensdaten", "Mit Unternehmensdaten"],
+    [
+        ["Welche Pflichtangaben braucht eine Rechnung?",
+         "Vollstaendig beantwortbar", "Kein Unterschied"],
+        ["Wie lange sind Belege aufzubewahren?",
+         "Vollstaendig beantwortbar", "Kein Unterschied"],
+        ["Wann greift Reverse Charge?",
+         "Vollstaendig beantwortbar", "Kein Unterschied"],
+        ["Auf welches Konto buche ich das?",
+         "Buchungslogik ja, Kontonummern nein",
+         "Konkrete Konten, sobald der Kontenrahmen hinterlegt ist"],
+        ["Muessen wir Umsatzsteuer ausweisen?",
+         "Die Regel ja, Ihr Fall nein",
+         "Auf Ihren Umsatzsteuerstatus bezogen"],
+        ["Wer muss das bei uns freigeben?",
+         "Nicht beantwortbar", "Aus Ihren Freigaberegeln"],
+    ],
+    breiten=[5.4, 4.8, 4.8],
+)
+
+doc.add_heading("Fuer den Einstieg empfohlen", level=2)
+absatz("Nutzen Sie den Buchhalter ruhig erst eine Weile rein fachlich. Sie "
+       "sehen dann, wie er arbeitet und wie belastbar die Fundstellen sind, "
+       "bevor Sie ihm etwas ueber Ihren Betrieb anvertrauen. Das Einrichten "
+       "koennen Sie jederzeit spaeter nachholen - und Schritt fuer Schritt, "
+       "es ist keine Alles-oder-nichts-Entscheidung.")
+
+# ================================================================ 5
+doc.add_heading("5.  Ihr Unternehmen einrichten - empfohlen, nicht Pflicht", level=1)
+
+absatz("Alles in diesem Kapitel ist freiwillig. Der Buchhalter arbeitet "
+       "fachlich auch ohne (Kapitel 4). Je mehr er ueber Ihren Betrieb "
+       "weiss, desto konkreter werden allerdings die Antworten, die vom "
+       "Betrieb abhaengen - und er merkt es sich dauerhaft auf dem "
+       "Datentraeger.")
 
 doc.add_heading("Der gefuehrte Weg", level=2)
 schritt("Registerkarte Unternehmenswissen oeffnen.")
@@ -346,7 +432,7 @@ kasten(
 )
 
 # ================================================================ 4
-doc.add_heading("5.  Schritt 2 - Fragen stellen", level=1)
+doc.add_heading("6.  Fragen stellen", level=1)
 
 absatz("Registerkarte Unterhaltung. Der Bildschirm ist geteilt:")
 punkt("Links oben: der bisherige Gespraechsverlauf.")
@@ -385,7 +471,7 @@ punkt("\"Wir haben einen Firmenwagen geleast. Welche Unterlagen brauchen wir "
       "fuer den Jahresabschluss?\"")
 
 # ================================================================ 5
-doc.add_heading("6.  Wie eine Antwort aufgebaut ist", level=1)
+doc.add_heading("7.  Wie eine Antwort aufgebaut ist", level=1)
 
 absatz("Der Buchhalter antwortet nach einem festen Schema. Nicht jeder "
        "Abschnitt kommt bei jeder Frage vor, aber die Reihenfolge ist immer "
@@ -428,7 +514,7 @@ absatz("Dann schreibt der Buchhalter offen: \"Hinweis: Es wurde keine "
        "docs/MODELL_EINRICHTEN.md beschrieben (einmalig, etwa 5 GB).")
 
 # ================================================================ 7
-doc.add_heading("7.  Was automatisch gespeichert wird - und was nicht", level=1)
+doc.add_heading("8.  Was automatisch gespeichert wird - und was nicht", level=1)
 
 absatz("Die wichtigste Frage im taeglichen Umgang. Kurz: Ihre Unterhaltungen "
        "werden automatisch gespeichert. Alles, was in Ihr "
@@ -532,7 +618,7 @@ absatz("Automatisches Speichern schuetzt nicht vor einem Defekt des "
        "erstellen - und bewahren Sie sie an einem anderen Ort auf.")
 
 # ================================================================ 8
-doc.add_heading("8.  Belege hinzufuegen", level=1)
+doc.add_heading("9.  Belege hinzufuegen", level=1)
 
 absatz("Sie koennen eigene Dokumente einlesen - Rechnungen, Vertraege, "
        "Kontoauszuege als Text. Der Buchhalter kann sich dann in seinen "
@@ -553,7 +639,7 @@ kasten(
 )
 
 # ================================================================ 7
-doc.add_heading("9.  Unternehmenswissen pflegen", level=1)
+doc.add_heading("10.  Unternehmenswissen pflegen", level=1)
 
 absatz("Registerkarte Unternehmenswissen. Hier steht alles, was sich der "
        "Buchhalter ueber Ihren Betrieb gemerkt hat - versioniert, mit "
@@ -599,7 +685,7 @@ tabelle_mit(
     [
         ["Verlauf", "Zeigt alle frueheren Fassungen des markierten Eintrags"],
         ["Archivieren", "Nimmt den Eintrag aus dem aktiven Bestand; er bleibt im Verlauf erhalten"],
-        ["Onboarding fortsetzen", "Oeffnet den gefuehrten Fragebogen aus Kapitel 4"],
+        ["Onboarding fortsetzen", "Oeffnet den gefuehrten Fragebogen aus Kapitel 5"],
         ["Profil exportieren", "Schreibt das gesamte Unternehmensprofil als lesbare Datei auf den Datentraeger"],
     ],
     breiten=[5.0, 10.0],
@@ -614,7 +700,7 @@ kasten(
 )
 
 # ================================================================ 8
-doc.add_heading("10.  Wissen aktualisieren", level=1)
+doc.add_heading("11.  Wissen aktualisieren", level=1)
 
 absatz("Registerkarte Wissen aktualisieren. Hier laedt der Buchhalter "
        "amtliche Quellen nach. Das ist der einzige Teil, der Internet "
@@ -644,7 +730,7 @@ kasten(
 )
 
 # ================================================================ 9
-doc.add_heading("11.  Einstellungen und Status", level=1)
+doc.add_heading("12.  Einstellungen und Status", level=1)
 
 absatz("Registerkarte Einstellungen und Status. Links stellen Sie ein, rechts "
        "sehen Sie den Zustand.")
@@ -680,7 +766,7 @@ absatz("Steht bei einem Punkt HINWEIS statt OK, ist das kein Fehler, sondern "
        "daneben sagt, was das bedeutet und wie es zu beheben ist.")
 
 # ================================================================ 12
-doc.add_heading("12.  Lizenz", level=1)
+doc.add_heading("13.  Lizenz", level=1)
 
 doc.add_heading("Im Augenblick muessen Sie nichts tun", level=2)
 absatz("Der Startbildschirm zeigt in der Zeile Lizenz:")
@@ -813,7 +899,7 @@ absatz("Diese Fassung ist eine Vorab- bzw. Pilotfassung. Sie ist noch nicht "
        "PORTABLE_BUCHHALTER_KONSOLE.exe reife")
 
 # ================================================================ 13
-doc.add_heading("13.  Was der Buchhalter nicht tut", level=1)
+doc.add_heading("14.  Was der Buchhalter nicht tut", level=1)
 
 absatz("Das ist kein Mangel, sondern bewusst so gebaut. Bitte lesen Sie es "
        "einmal in Ruhe.")
@@ -845,7 +931,7 @@ kasten(
 )
 
 # ================================================================ 11
-doc.add_heading("14.  Wenn etwas nicht funktioniert", level=1)
+doc.add_heading("15.  Wenn etwas nicht funktioniert", level=1)
 
 tabelle_mit(
     ["Was Sie sehen", "Was zu tun ist"],
