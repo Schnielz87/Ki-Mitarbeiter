@@ -83,9 +83,26 @@ jobs:
         shell: pwsh
         run: |
           Set-Location dist\Portable-Buchhalter
+          Write-Host "--- speichern (eigener Programmlauf) ---"
           .\PORTABLE_BUCHHALTER.exe wissen set company.chart_of_accounts "Das Unternehmen verwendet SKR03." --titel Kontenrahmen --kategorie accounting
-          $wert = .\PORTABLE_BUCHHALTER.exe wissen get company.chart_of_accounts | Out-String
-          if ($wert -notmatch "SKR03") { throw "Das Unternehmenswissen wurde nicht dauerhaft gespeichert." }
+          if ($LASTEXITCODE -ne 0) { throw "Das Speichern schlug fehl (Code $LASTEXITCODE)." }
+
+          Write-Host "--- Datenbank auf der Platte ---"
+          Get-ChildItem database -ErrorAction SilentlyContinue | Format-Table Name, Length | Out-String | Write-Host
+
+          Write-Host "--- lesen (neuer Programmlauf) ---"
+          $zeilen = .\PORTABLE_BUCHHALTER.exe wissen get company.chart_of_accounts
+          $code = $LASTEXITCODE
+          $wert = ($zeilen -join "`n")
+          Write-Host "Rueckgabe (Code $code): '$wert'"
+
+          if ($code -ne 0) { throw "Das Lesen schlug fehl (Code $code)." }
+          if ($wert -notmatch "SKR03") {
+            Write-Host "--- zur Fehlersuche: gesamter Bestand ---"
+            .\PORTABLE_BUCHHALTER.exe wissen list | Out-String | Write-Host
+            .\PORTABLE_BUCHHALTER.exe status | Out-String | Write-Host
+            throw "Das Unternehmenswissen wurde nicht dauerhaft gespeichert."
+          }
 
       - name: Portabilitaet - anderes Laufwerk, Pfad mit Leerzeichen
         shell: pwsh
