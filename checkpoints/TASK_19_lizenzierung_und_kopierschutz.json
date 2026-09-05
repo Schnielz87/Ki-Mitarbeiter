@@ -1,0 +1,31 @@
+{
+  "task_number": "19",
+  "task_name": "Lizenzierung und Kopierschutz",
+  "status": "abgeschlossen",
+  "work_done": [
+    "Ed25519-signierte Lizenz, offline pruefbar, gebunden an den Datentraeger statt an den PC",
+    "Kopie auf zweiten Datentraeger ist nicht lizenziert, Original bleibt gueltig",
+    "Ohne Lizenz wird nur die Nutzung gesperrt - keine Daten beschaedigt"
+  ],
+  "files": [
+    "src/pkc/licensing/verify.py",
+    "src/pkc/licensing/instance.py",
+    "tools/lizenz_ausstellen.py",
+    "LIZENZKONZEPT.md"
+  ],
+  "tests": [
+    "tests/test_lizenzierung.py"
+  ],
+  "test_result": "22 Tests gruen, alle sieben Faelle aus Abschnitt 96",
+  "open_points": [
+    "Pruefschluessel des Herausgebers noch nicht hinterlegt - geschaeftliche Entscheidung"
+  ],
+  "next_task": "TASK 20",
+  "resume_hint": "Kundentrennung",
+  "git_commit": "4350f7b3032575173b3387c553ba7d45c777b686",
+  "created_at": "2026-09-05T14:29:44+00:00",
+  "checksums": {
+    "LIZENZKONZEPT.md": "04e85e577891af5b3a6a19dcd3b032f9f9f2cf8aa045d64405b984f0571df0ba"
+  },
+  "notes": ""
+}

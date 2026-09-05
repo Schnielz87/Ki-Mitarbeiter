@@ -4,7 +4,7 @@ Stand: 04.09.2026 · Branch `claude/portable-ki-buchhalter-xr1qlj`
 
 ## Zusammenfassung
 
-**134 automatische Tests bestanden, 1 uebersprungen.** Ausfuehrungszeit rund
+**192 automatische Tests bestanden, 1 uebersprungen.** Ausfuehrungszeit rund
 10 Sekunden. Reproduzierbar mit:
 
 ```
@@ -21,6 +21,12 @@ python -m pytest tests -q
 | `test_sicherheit_freigaben.py` | 13 bestanden | Tresor, Freigaben, Protokoll, Connectoren |
 | `test_fachliche_faelle.py` | 48 bestanden | 22 fachliche Sachverhalte nach Masterprompt 47 |
 | `test_abnahme_kette.py` | 3 bestanden | Die vollstaendige Nutzungskette aus Masterprompt 49 in einem Durchlauf |
+| `test_cli.py` | 7 bestanden | Kommandozeile: Schalter vor und nach dem Unterbefehl |
+| `test_start.py` | 3 bestanden | Startfehler bleiben nicht stumm |
+| `test_lizenzierung.py` | 22 bestanden | Lizenzierung und Kopierschutz, alle sieben Faelle aus § 96 |
+| `test_kundentrennung.py` | 13 bestanden | Kundentrennung, Datenexport und Loeschung |
+| `test_softwareupdate.py` | 11 bestanden | Softwareupdates getrennt vom Wissensupdate |
+| `test_produktreife.py` | 12 bestanden | Telemetriefreiheit, Lizenzregister, SBOM, Reifegrad |
 
 Der uebersprungene Test prueft das Verhalten bei schreibgeschuetztem
 Verzeichnis. Als `root` sind Dateirechte nicht wirksam einschraenkbar; der
@@ -204,6 +210,23 @@ Nicht Teil dieses Ablaufs: das tatsaechliche Oeffnen des Fensters per
 Doppelklick, ein echtes Sprachmodell, die echten amtlichen Quellen und ein
 physisch zweiter Rechner.
 
+## Kommerzielle Anforderungen (Masterprompt 58 bis 97)
+
+| Bereich | Ergebnis |
+|---|---|
+| **Kopierschutz** | Kopie des Programmordners auf einen zweiten Datentraeger ist **nicht lizenziert**; das Original bleibt gueltig |
+| **Manipulationsschutz** | Jede Aenderung an der Lizenzdatei laesst die Ed25519-Signatur fehlschlagen - geprueft fuer Kunde, Instanzenzahl, Ablaufdatum, Module und Fingerabdruck |
+| **Portabilitaet trotz Lizenz** | Dieselbe Datentraegerkennung an drei verschiedenen Orten: Lizenz bleibt gueltig |
+| **Offline-Lizenzpruefung** | Ein Test faengt jeden Netzzugriff ab - die Pruefung fasst das Netz nicht an |
+| **Keine Sanktion gegen Daten** | Ohne Lizenz bleiben Unternehmensdaten unveraendert; Export und Sicherung bleiben moeglich |
+| **Ersatz bei Defekt** | Neuer Datentraeger, neue Instanz-ID, neue signierte Lizenz - getestet |
+| **Kundentrennung** | Unternehmenswissen von Kunde A taucht weder bei Kunde B noch im gemeinsamen Fachwissen auf |
+| **Telemetrie** | Ein vollstaendiger Arbeitsgang - Start, Fachfrage, Wissen speichern, Export, Sicherung - baut **keine** ausgehende Verbindung auf |
+| **Fernzugriff** | Im Programmcode nicht vorhanden |
+| **Softwareupdate** | Ein mittendrin scheiterndes Update setzt automatisch zurueck; die Installation bleibt unversehrt |
+| **Kundendatenschutz beim Update** | Ein Paket, das an `database/` will, wird abgewiesen |
+| **Commercial Ready** | Wird **nicht** automatisch vergeben - ein Test stellt das sicher |
+
 ## Waehrend der Tests gefundene und behobene Maengel
 
 Diese Punkte fielen den Tests auf und wurden korrigiert - sie sind hier
@@ -216,6 +239,10 @@ aufgefuehrt, weil ein Testbericht ohne Fundstellen wenig wert ist.
 | Normen eines Fachmoduls waren nur in dessen kurzer Einleitung auffindbar | Die `Massgeblich`-Zeile bildete einen eigenen, kurzen Abschnitt | Die tragenden Normen werden jedem Abschnitt des Moduls mitgegeben |
 | Gute Volltexttreffer wurden von schwachen Vektortreffern verdraengt | Vektorliste zu hoch gewichtet | Gewicht gesenkt; haeufige deutsche Woerter fliessen nicht mehr in die Einbettung ein |
 | Der Quellenteil fehlte in manchen Antworten | Die Pruefung fand das Wort „Quellen" im Fliesstext und hielt es fuer eine Ueberschrift | Abschnittserkennung nur noch am Zeilenanfang |
+| Zwei Sicherungen in derselben Sekunde ueberschrieben sich | Der Ordnername war nur sekundengenau | Es wird ein freier Name gesucht - betraf sowohl Softwareupdates als auch die Datensicherung, in beiden Faellen waere der Ruecksetzpunkt verloren gewesen |
+| Das Beenden war weder mehrfach aufrufbar noch robust | Ein zweiter Aufruf oeffnete das Protokoll erneut, auch bei entferntem Datenbereich | Beenden ist jetzt idempotent und faengt Fehler ab |
+| Datei-Connectoren konnten aus ihrem Verzeichnis ausbrechen | Der Dateiname wurde ungeprueft angehaengt | Zielpfad wird aufgeloest und muss unterhalb des konfigurierten Verzeichnisses liegen |
+| Kennungen des Quellenregisters konnten aus dem Ablagebereich fuehren | `source_id` und `doc_uid` werden zu Dateinamen | Zeichensatz eingeschraenkt, Pfadangaben abgewiesen |
 | Ein Fensterprogramm liefert unter Windows weder Ausgabe noch Rueckgabecode | Die EXE war mit `console=False` gepackt. PowerShell wartet auf ein solches Programm gar nicht erst: der Rueckgabecode blieb leer und die Ausgabe traf erst Sekunden spaeter ein - ein Wettlauf, der mal gut ging und mal nicht | Aus demselben Code entstehen zwei Programme: `PORTABLE_BUCHHALTER.exe` (Fenster, fuer den Doppelklick) und `PORTABLE_BUCHHALTER_KONSOLE.exe` (Konsole, fuer die Kommandozeile) |
 | Datei-Connectoren konnten aus ihrem Verzeichnis ausbrechen | Der Dateiname wurde ungeprueft angehaengt, `../geheim.csv` und absolute Pfade funktionierten | Zielpfad wird aufgeloest und muss nachweislich unterhalb des konfigurierten Verzeichnisses liegen |
 | Kennungen des Quellenregisters konnten aus dem Ablagebereich fuehren | `source_id` und `doc_uid` werden zu Dateinamen und wurden ungeprueft uebernommen | Erlaubt sind nur Buchstaben, Ziffern, Punkt, Bindestrich und Unterstrich |

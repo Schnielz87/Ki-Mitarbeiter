@@ -59,6 +59,17 @@ Er lautet: **fertig zur Abnahme**. Der Weg dorthin steht in
 | 17 | Sicherheit, Freigaben, Audit, Packaging, EXE | **GEBAUT** | 13 Sicherheitstests gruen; beide Programme auf echtem Windows gebaut und ausgefuehrt |
 | 18 | Gesamtintegration, Praxistest, Endabnahme | TEILWEISE | Nutzungskette automatisch **und auf echtem Windows** durchlaufen; Endabnahme mit Modell offen |
 
+### Erweiterung: kommerzielle Produktperspektive (Masterprompt 58 bis 97)
+
+| Task | Inhalt | Status | Nachweis |
+|---|---|---|---|
+| 19 | Lizenzierung und Kopierschutz | GETESTET | 22 Tests, alle sieben Faelle aus § 96 |
+| 20 | Kundentrennung und Datenkontrolle | GETESTET | 13 Tests; Daten zweier Kunden vermischen sich nachweislich nicht |
+| 21 | Lizenzregister, SBOM, Release-Dossier | GETESTET | 12 Tests; Unterlagen aus der echten Installation erzeugt |
+| 22 | Softwareupdates getrennt vom Wissensupdate | GETESTET | 11 Tests; fehlerhaftes Update setzt automatisch zurueck |
+| 23 | Produktversionierung, gefuehrte Einrichtung, zweites Sicherungsziel | GETESTET | Befehle `version`, `einrichten`, `sicherung --ziel` |
+| 24 | Commercial-Readiness-Gate | GETESTET | `reife`; COMMERCIAL READY wird nie automatisch vergeben |
+
 ## 4. Was tatsaechlich geprueft ist
 
 **112 Tests bestanden, 1 uebersprungen** (`python -m pytest tests -q`).
@@ -87,6 +98,25 @@ und mit stark eingeschraenktem Netzzugang** statt.
 | Amtliche Quellen | `gesetze-im-internet.de`, `bundesfinanzministerium.de` und weitere waren durch die Netzrichtlinie gesperrt (403 des Proxys). Die Abrufkette ist gegen einen lokalen Server vollstaendig geprueft, **nicht gegen die echten Quellen**. Alle Registereintraege tragen `verified: false`. | G |
 | Zweiter PC, echter Laufwerkswechsel | Der **Laufwerkswechsel ist auf echtem Windows geprueft** (`subst`, Zielpfad mit Leerzeichen) - das Unternehmenswissen war dort vorhanden. Ein physisch zweiter Rechner und ein echter USB-Datentraeger standen nicht zur Verfuegung. | F |
 | Fachliche Qualitaet der Antworten | Haengt vom eingesetzten Sprachmodell ab. Geprueft ist, dass das **richtige Material** gefunden wird. | D |
+
+## 5a. Stand der kommerziellen Anforderungen
+
+`ANFORDERUNGSNACHWEIS.md` ordnet jedem der 97 Abschnitte zu, wo er umgesetzt
+und wo er geprueft ist. Der Reifegrad laesst sich jederzeit abfragen:
+
+```
+PORTABLE_BUCHHALTER_KONSOLE.exe reife
+```
+
+**Der Status lautet NICHT COMMERCIAL READY** und wird niemals automatisch
+vergeben. Die wichtigsten offenen Punkte:
+
+1. Rechtliche Pruefung, insbesondere die Abgrenzung zur Steuerberatung nach
+   StBerG (§ 71, 72) - nur extern leistbar
+2. Pilotbetrieb bei einem realen Kunden (§ 76)
+3. Externe Sicherheitspruefung und Datenschutzkonzept (§ 70, 71)
+4. Pruefschluessel des Herausgebers und Code-Signing (§ 86, 92)
+5. Klaerung der Weitergabe des Sprachmodells (§ 63)
 
 ## 6. Naechste Schritte
 

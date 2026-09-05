@@ -1,0 +1,25 @@
+{
+  "task_number": "23",
+  "task_name": "Versionierung, gefuehrte Einrichtung, zweites Sicherungsziel",
+  "status": "abgeschlossen",
+  "work_done": [
+    "Getrennte Versionsangaben fuer Software, Fachmodul, Wissen, Profil und Modell",
+    "Befehl einrichten mit sieben Schritten bis zur Betriebsbereitschaft",
+    "Sicherung auf ein Ziel ausserhalb des Datentraegers"
+  ],
+  "files": [
+    "src/app/controller.py",
+    "src/ui/cli.py"
+  ],
+  "tests": [
+    "tests/test_kundentrennung.py"
+  ],
+  "test_result": "13 Tests gruen",
+  "open_points": [],
+  "next_task": "TASK 24",
+  "resume_hint": "Reifegrad",
+  "git_commit": "4350f7b3032575173b3387c553ba7d45c777b686",
+  "created_at": "2026-09-05T14:29:44+00:00",
+  "checksums": {},
+  "notes": ""
+}

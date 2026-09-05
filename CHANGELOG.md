@@ -3,6 +3,53 @@
 Format angelehnt an „Keep a Changelog". Versionierung nach Bedeutung, nicht
 nach Zeitplan.
 
+## [0.2.0] - 2026-09-05
+
+Erweiterung um die kommerzielle Produktperspektive und die Lizenzierung
+(Masterprompt 58 bis 97).
+
+### Lizenzierung und Kopierschutz
+
+* Ed25519-signierte Lizenz, offline pruefbar, gebunden an den **Datentraeger**
+  statt an den PC - die SSD laeuft weiter an jedem Rechner, eine Kopie auf
+  einen zweiten Datentraeger ist nicht lizenziert
+* Privater Signaturschluessel niemals im Produkt; ohne Pruefschluessel meldet
+  die Anwendung ehrlich "nicht pruefbar"
+* Ohne Lizenz wird nur die produktive Nutzung gesperrt - Daten bleiben
+  unveraendert, Export und Sicherung moeglich
+* Ersatzprozess bei Defekt; Werkzeug zur Lizenzausstellung fuer den Hersteller
+
+### Kundentrennung und Datenkontrolle
+
+* Getrennte Datenbereiche unter `customers/<kennung>/`
+* Vollstaendiger Datenexport, Loeschen einzelner Gespraeche und Belege,
+  kontrolliertes Loeschen einer ganzen Kundeninstanz mit Sicherung
+
+### Produktunterlagen
+
+* Lizenzregister und SBOM aus der tatsaechlichen Installation
+* Release-Dossier mit Testbericht, bekannten Einschraenkungen und Pruefsummen
+* Commercial-Readiness-Gate - wird nie automatisch vergeben
+
+### Betrieb beim Kunden
+
+* Softwareupdates getrennt vom Wissensupdate, signierbar, ruecksetzbar; ein
+  fehlerhaftes Update setzt automatisch zurueck
+* Zweites Sicherungsziel ausserhalb des Datentraegers
+* Gefuehrte Einrichtung in sieben Schritten
+* Getrennte Versionsangaben fuer Software, Fachmodul, Wissen, Modell, Profil
+
+### Belegt statt behauptet
+
+* Kein Fernzugriff und keine Telemetrie - durch Tests nachgewiesen
+* Vier Pfadausbrueche gefunden und geschlossen
+* Der Auftrag selbst liegt jetzt auf dem Datentraeger (`MASTERPROMPT.md`),
+  mit Anforderungsnachweis je Abschnitt
+
+### Tests
+
+192 bestanden, 1 uebersprungen.
+
 ## [0.1.0] - 2026-09-04
 
 Erste vollstaendige Fassung des portablen KI-Mitarbeiters mit der

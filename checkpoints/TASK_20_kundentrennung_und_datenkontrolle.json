@@ -1,0 +1,24 @@
+{
+  "task_number": "20",
+  "task_name": "Kundentrennung und Datenkontrolle",
+  "status": "abgeschlossen",
+  "work_done": [
+    "Getrennte Datenbereiche unter customers/<kennung>/, Fachwissen bleibt gemeinsam",
+    "Vollstaendiger Export, Loeschen von Gespraechen, Belegen und ganzen Kundeninstanzen"
+  ],
+  "files": [
+    "src/pkc/paths.py",
+    "src/app/controller.py"
+  ],
+  "tests": [
+    "tests/test_kundentrennung.py"
+  ],
+  "test_result": "13 Tests gruen",
+  "open_points": [],
+  "next_task": "TASK 21",
+  "resume_hint": "Produktunterlagen",
+  "git_commit": "4350f7b3032575173b3387c553ba7d45c777b686",
+  "created_at": "2026-09-05T14:29:44+00:00",
+  "checksums": {},
+  "notes": ""
+}

@@ -4,7 +4,26 @@ Diese Datei ist der Wiedereinstiegspunkt. Sie wurde geschrieben, weil die
 Arbeit auf Wunsch des Auftraggebers unterbrochen wurde (Limit). Der Chat wird
 zum Fortsetzen **nicht** benoetigt.
 
-## Erledigt seit dem Wiedereinstieg
+## Erledigt seit dem Wiedereinstieg (Fassung 0.2.0)
+
+**Die Erweiterung des Masterprompts um die Abschnitte 58 bis 97 ist
+umgesetzt** - kommerzielle Produktperspektive und Lizenzierung. Einzelheiten
+in `ANFORDERUNGSNACHWEIS.md`, Tasks 19 bis 24 in `checkpoints/`.
+
+Der Auftrag selbst liegt jetzt als `MASTERPROMPT.md` auf dem Datentraeger.
+
+### Naechster Schritt
+
+1. `docs/ABNAHME.md` Punkte B bis G auf einem Windows-Rechner - Punkt A ist
+   durch den Windows-Ablauf belegt, das fertige Paket kann dort
+   heruntergeladen werden.
+2. `PORTABLE_BUCHHALTER_KONSOLE.exe reife` zeigt den Stand auf dem Weg zur
+   kommerziellen Freigabe.
+3. Danach in dieser Reihenfolge: rechtliche Pruefung (Abgrenzung zur
+   Steuerberatung), Pilotkunde, externe Sicherheitspruefung, Pruefschluessel
+   und Code-Signing.
+
+## Frueherer Wiedereinstiegspunkt
 
 Der als naechstes vorgesehene Schritt - „Baut die EXE durch?" - ist
 **beantwortet: ja**. Ablauf https://github.com/Schnielz87/Ki-Mitarbeiter/actions/runs/33970160321
