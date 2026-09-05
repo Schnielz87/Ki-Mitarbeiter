@@ -201,3 +201,54 @@ def test_readiness_text_nennt_den_status_klar():
     text = check_readiness(ROOT).as_text()
     assert "NOCH NICHT COMMERCIAL READY" in text
     assert "Pilotbetrieb" in text and "Rechtliche Pruefung" in text
+
+
+def test_kein_privater_schluessel_im_repository():
+    """Ein privater Signaturschluessel im Repository waere ein Totalschaden.
+
+    Wer ihn haette, koennte beliebige Lizenzen ausstellen. Dieser Test ist
+    das Sicherheitsnetz gegen ein Versehen.
+    """
+    import subprocess
+
+    ergebnis = subprocess.run(
+        ["git", "ls-files"], cwd=ROOT, capture_output=True, text=True, check=False
+    )
+    verdaechtig = [
+        zeile for zeile in ergebnis.stdout.splitlines()
+        if re.search(r"(privat|private|secret)\.pem$|\.key$|id_rsa", zeile)
+    ]
+    assert not verdaechtig, f"Moegliche Schluesseldateien im Repository: {verdaechtig}"
+
+    # Und kein PEM-Block mit privatem Schluessel im eingecheckten Inhalt.
+    # Die Suchmuster werden zur Laufzeit zusammengesetzt, damit diese Testdatei
+    # sich nicht selbst meldet.
+    marker = ("BEGIN " + "PRIVATE KEY", "BEGIN " + "OPENSSH " + "PRIVATE KEY",
+              "BEGIN " + "RSA " + "PRIVATE KEY")
+    treffer = []
+    for datei in ergebnis.stdout.splitlines():
+        pfad = ROOT / datei
+        if not pfad.is_file() or pfad.suffix in (".png", ".zip", ".db"):
+            continue
+        try:
+            inhalt = pfad.read_text(encoding="utf-8", errors="ignore")
+        except OSError:
+            continue
+        if any(m in inhalt for m in marker):
+            treffer.append(datei)
+    assert not treffer, f"Privater Schluessel im Inhalt eingecheckter Dateien: {treffer}"
+
+
+def test_keine_kundendaten_im_repository():
+    """Kundenbereiche und Lizenzen duerfen nicht eingecheckt sein."""
+    import subprocess
+
+    ergebnis = subprocess.run(
+        ["git", "ls-files"], cwd=ROOT, capture_output=True, text=True, check=False
+    )
+    verdaechtig = [
+        zeile for zeile in ergebnis.stdout.splitlines()
+        if zeile.startswith(("customers/", "license/", "lizenzen/"))
+        or zeile.endswith(("company.db", "license.json", "license.sig"))
+    ]
+    assert not verdaechtig, f"Kundendaten oder Lizenzen im Repository: {verdaechtig}"

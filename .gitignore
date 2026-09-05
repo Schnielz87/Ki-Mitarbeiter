@@ -25,3 +25,14 @@ __pycache__/
 .pytest_cache/
 /build/pyinstaller/
 /dist/
+
+# Kundendaten und Lizenzen - gehoeren niemals ins Repository
+/customers/
+/license/
+/lizenzen/
+/RELEASE/
+
+# Private Signaturschluessel des Herausgebers - NIEMALS einchecken
+/geheim/
+*_privat.pem
+*private*.pem
