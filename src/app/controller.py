@@ -1024,10 +1024,22 @@ class AppController:
                           geaendert=list((changes or {}).keys()))
         return target
 
-    def backup(self, label: str = "") -> dict:
-        """Sichert beide Datenbanken und die Konfiguration auf die SSD."""
+    def backup(self, label: str = "", target: Path | str | None = None) -> dict:
+        """Sichert beide Datenbanken und die Konfiguration.
+
+        ``target`` erlaubt ein **zweites Ziel** ausserhalb des Datentraegers
+        (Masterprompt 75): eine zweite verschluesselte SSD, ein NAS oder ein
+        freigegebener Unternehmensspeicher. Eine Sicherung, die nur auf
+        demselben Datentraeger liegt, hilft bei dessen Verlust nicht.
+        """
         stamp = _dt.datetime.now().strftime("%Y%m%d-%H%M%S")
-        directory = self.paths.get("backups") / (f"{stamp}-{label}" if label else stamp)
+        name = f"{stamp}-{label}" if label else stamp
+        basis = Path(target) if target else self.paths.get("backups")
+        directory = basis / name
+        laufende_nummer = 1
+        while directory.exists():
+            laufende_nummer += 1
+            directory = basis / f"{name}-{laufende_nummer}"
         directory.mkdir(parents=True, exist_ok=True)
         written: list[str] = []
         self.company_db.backup_to(directory / "company.db")
@@ -1048,9 +1060,81 @@ class AppController:
                         "pruefsummen": checksums}, indent=2, ensure_ascii=False) + "\n",
             encoding="utf-8",
         )
-        self.audit.record("sicherung", "backup", str(directory), dateien=written)
-        return {"verzeichnis": self.paths.relative(directory), "dateien": written,
-                "pruefsummen": checksums}
+        self.audit.record("sicherung", "backup", str(directory), dateien=written,
+                          extern=bool(target))
+        return {"verzeichnis": self.paths.relative(directory) if not target
+                else str(directory),
+                "pfad": str(directory), "extern": bool(target),
+                "dateien": written, "pruefsummen": checksums}
+
+    def setup_wizard_steps(self) -> list[dict]:
+        """Gefuehrte Einrichtung eines neuen Unternehmens (Masterprompt 74).
+
+        Nicht jeder Kunde darf durch individuelle Entwicklerarbeit eingerichtet
+        werden muessen. Diese Schritte beschreiben den reproduzierbaren Weg und
+        melden je Schritt, ob er bereits erledigt ist.
+        """
+        beantwortet, gesamt = self.onboarding_progress()
+        modelle = discover_models(self.paths.get("models"))
+        wissen = self.knowledge.stats()
+        sicherungen = (
+            [p for p in self.paths.get("backups").iterdir() if p.is_dir()]
+            if self.paths.get("backups").is_dir() else []
+        )
+        return [
+            {
+                "nummer": 1, "schritt": "Portable KI installieren",
+                "erledigt": self.paths.is_writable() and wissen["documents"] > 0,
+                "hinweis": f"Datenverzeichnis {self.paths.root}, "
+                           f"{wissen['documents']} Fachdokumente aufgenommen",
+                "befehl": "check",
+            },
+            {
+                "nummer": 2, "schritt": "Sprachmodell einrichten",
+                "erledigt": bool(modelle),
+                "hinweis": f"{len(modelle)} Modell(e) in "
+                           f"{self.paths.relative(self.paths.get('models'))}"
+                           if modelle else
+                           "Kein Modell vorhanden - siehe docs/MODELL_EINRICHTEN.md",
+                "befehl": "python tools/modell_einrichten.py empfehlen",
+            },
+            {
+                "nummer": 3, "schritt": "Unternehmen anlegen",
+                "erledigt": bool(self.customer_id) or bool(self.memory.get("company.name")),
+                "hinweis": f"Kundenbereich '{self.customer_id}'" if self.customer_id
+                           else "Einzelinstanz (fuer mehrere Unternehmen: kunde anlegen)",
+                "befehl": "kunde anlegen <kennung> --name \"Firma\"",
+            },
+            {
+                "nummer": 4, "schritt": "Onboarding durchfuehren",
+                "erledigt": beantwortet >= max(5, gesamt // 3),
+                "hinweis": f"{beantwortet} von {gesamt} Angaben beantwortet",
+                "befehl": "onboarding --interaktiv",
+            },
+            {
+                "nummer": 5, "schritt": "Fachregeln hinterlegen",
+                "erledigt": self.memory.get("company.approval_rules") is not None,
+                "hinweis": "Freigaberegeln und unternehmenseigene Vorgaben",
+                "befehl": "wissen set company.approval_rules \"...\"",
+            },
+            {
+                "nummer": 6, "schritt": "Connectoren einrichten (optional)",
+                "erledigt": bool(self.connectors.configured_ids()),
+                "hinweis": f"eingerichtet: {', '.join(self.connectors.configured_ids()) or 'keine'}",
+                "befehl": "siehe ERP_CONNECTOR_KONZEPT.md",
+            },
+            {
+                "nummer": 7, "schritt": "Sicherung einrichten",
+                "erledigt": bool(sicherungen),
+                "hinweis": f"{len(sicherungen)} Sicherung(en) vorhanden. Eine Kopie "
+                           "gehoert auf ein zweites Ziel.",
+                "befehl": "sicherung --ziel <pfad>",
+            },
+        ]
+
+    def setup_progress(self) -> tuple[int, int]:
+        schritte = self.setup_wizard_steps()
+        return sum(1 for s in schritte if s["erledigt"]), len(schritte)
 
     def restore_info(self) -> dict:
         """Woran ein Nutzer den Projekt-/Datenstand erkennt (Masterprompt 45)."""

@@ -305,12 +305,31 @@ def cmd_onboarding(args) -> int:
         controller.shutdown()
 
 
+def cmd_einrichten(args) -> int:
+    """Zeigt den Stand der Einrichtung (Masterprompt 74)."""
+    controller = _controller(args)
+    try:
+        controller.bootstrap(build_embeddings=False)
+        erledigt, gesamt = controller.setup_progress()
+        print(f"Einrichtung: {erledigt} von {gesamt} Schritten erledigt\n")
+        for schritt in controller.setup_wizard_steps():
+            marke = "x" if schritt["erledigt"] else " "
+            print(f"  [{marke}] {schritt['nummer']}. {schritt['schritt']}")
+            print(f"        {schritt['hinweis']}")
+            if not schritt["erledigt"]:
+                print(f"        -> {schritt['befehl']}")
+        return 0
+    finally:
+        controller.shutdown()
+
+
 def cmd_backup(args) -> int:
     controller = _controller(args)
     try:
         controller.bootstrap(build_embeddings=False)
-        info = controller.backup(args.name)
-        print(f"Sicherung: {info['verzeichnis']}")
+        info = controller.backup(args.name, args.ziel or None)
+        print(f"Sicherung: {info['pfad']}"
+              + ("  (ausserhalb des Datentraegers)" if info["extern"] else ""))
         for name, checksum in info["pruefsummen"].items():
             print(f"  {name:24s} {checksum[:16]}...")
         return 0
@@ -454,7 +473,12 @@ def build_parser() -> argparse.ArgumentParser:
 
     backup = neu("sicherung", "Sicherung erstellen")
     backup.add_argument("--name", default="")
+    backup.add_argument("--ziel", default="",
+                        help="zweites Sicherungsziel, z.B. eine andere SSD oder ein NAS")
     backup.set_defaults(func=cmd_backup)
+
+    einrichten = neu("einrichten", "Gefuehrte Einrichtung: was fehlt noch?")
+    einrichten.set_defaults(func=cmd_einrichten)
 
     document = neu("beleg", "Beleg hinzufuegen oder auflisten")
     document.add_argument("datei", nargs="?")

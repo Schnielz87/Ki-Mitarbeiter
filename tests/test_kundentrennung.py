@@ -205,3 +205,63 @@ def test_beenden_ist_mehrfach_und_nach_loeschung_unkritisch(portable_root):
     zweiter.bootstrap()
     shutil.rmtree(portable_root.get("database"))
     zweiter.shutdown()             # Datenbereich weg - trotzdem kein Absturz
+
+
+def test_sicherung_auf_zweites_ziel(portable_root, tmp_path):
+    """Masterprompt 75: eine Sicherung nur auf demselben Datentraeger hilft nicht."""
+    controller = make_controller(portable_root)
+    controller.bootstrap()
+    try:
+        controller.remember_manual("company.name", "Name", "Muster GmbH", "profile")
+        zweites_ziel = tmp_path.parent / "NAS" / "sicherungen"
+        info = controller.backup("monatsende", target=zweites_ziel)
+
+        assert info["extern"] is True
+        ordner = Path(info["pfad"])
+        assert ordner.is_relative_to(zweites_ziel)
+        assert not ordner.is_relative_to(portable_root.root), \
+            "die Sicherung darf nicht auf demselben Datentraeger liegen"
+        assert (ordner / "company.db").is_file()
+        assert (ordner / "MANIFEST.json").is_file()
+    finally:
+        controller.shutdown()
+
+
+def test_zwei_sicherungen_in_derselben_sekunde(portable_root):
+    """Zwei Sicherungen kurz hintereinander duerfen sich nicht ueberschreiben."""
+    controller = make_controller(portable_root)
+    controller.bootstrap()
+    try:
+        erste = controller.backup("a")
+        zweite = controller.backup("a")
+        assert erste["pfad"] != zweite["pfad"]
+        assert Path(erste["pfad"]).is_dir() and Path(zweite["pfad"]).is_dir()
+    finally:
+        controller.shutdown()
+
+
+def test_gefuehrte_einrichtung_zeigt_offene_schritte(portable_root):
+    """Masterprompt 74: das Onboarding muss reproduzierbar sein."""
+    controller = make_controller(portable_root)
+    controller.bootstrap()
+    try:
+        schritte = controller.setup_wizard_steps()
+        assert len(schritte) == 7
+        assert schritte[0]["erledigt"] is True, "die Installation steht"
+        # Ohne Modell und ohne Onboarding sind die Schritte offen - und benannt
+        offen = [s for s in schritte if not s["erledigt"]]
+        assert any("Sprachmodell" in s["schritt"] for s in offen)
+        assert all(s["befehl"] for s in offen), "jeder offene Schritt nennt den Weg"
+
+        erledigt_vorher, gesamt = controller.setup_progress()
+        controller.answer_onboarding("company.name", "Muster GmbH")
+        for schluessel in ("company.legal_form", "company.industry",
+                           "company.fiscal_year", "company.chart_of_accounts",
+                           "company.vat_status", "company.erp"):
+            controller.answer_onboarding(schluessel, "Angabe")
+        controller.remember_manual("company.approval_rules", "Freigabe",
+                                   "Ab 5.000 EUR Geschaeftsfuehrung.", "approval")
+        erledigt_nachher, _ = controller.setup_progress()
+        assert erledigt_nachher > erledigt_vorher, "der Fortschritt muss sichtbar werden"
+    finally:
+        controller.shutdown()
