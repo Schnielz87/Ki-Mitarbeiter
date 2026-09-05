@@ -76,6 +76,13 @@ oeffnet sich das Hauptfenster.
 > Windows SmartScreen kann beim ersten Start warnen, weil die EXE nicht
 > signiert ist. Ueber „Weitere Informationen" → „Trotzdem ausfuehren".
 
+> **Wichtig fuer die Eingabeaufforderung:** Fuer Befehle immer
+> `PORTABLE_BUCHHALTER_KONSOLE.exe` verwenden. Die Fensterfassung
+> `PORTABLE_BUCHHALTER.exe` hat unter Windows keine Ausgabe, und die
+> Eingabeaufforderung wartet nicht einmal auf sie - sie kehrt sofort zurueck.
+> Das ist kein Fehler, sondern der Unterschied zwischen einem Fenster- und
+> einem Konsolenprogramm (wie `pythonw.exe` und `python.exe`).
+
 - [ ] B1 Doppelklick oeffnet die Systempruefung
 - [ ] B2 Hauptfenster oeffnet sich
 - [ ] B3 Registerkarten Unterhaltung, Unternehmenswissen, Belege, Wissen
