@@ -15,6 +15,7 @@ from pathlib import Path
 from app.controller import AppController, LicenseRequired
 from pkc.audit import ApprovalState
 from pkc.config import Config
+from pkc.netstate import Mode
 from pkc.paths import Paths, get_paths
 
 
@@ -163,6 +164,82 @@ def cmd_update(args) -> int:
         for message in report.messages:
             print(f"  - {message}")
         return 0 if report.status in ("success", "partial") else 1
+    finally:
+        controller.shutdown()
+
+
+def cmd_quellen(args) -> int:
+    """Quellenregister ansehen und Adressen berichtigen (Masterprompt 27).
+
+    Anlass: Beim ersten echten Update schlugen fuenf Dokumente mit HTTP 404
+    fehl - amtliche Stellen bauen ihre Webauftritte um, die hinterlegten
+    Adressen zeigten ins Leere. Das ist ein Registerproblem, kein
+    Programmfehler, und muss ohne Programmaenderung zu beheben sein. Bis
+    hierher hiess das: JSON von Hand bearbeiten.
+    """
+    import json as _json
+
+    controller = _controller(args)
+    try:
+        pfad = controller.paths.get("config") / "source_registry.json"
+        register = _json.loads(pfad.read_text(encoding="utf-8"))
+        quellen = register["sources"]
+
+        if args.aktion == "liste":
+            for quelle in quellen:
+                zustand = "an " if quelle.get("enabled", True) else "aus"
+                print(f"[{zustand}] {quelle['source_id']:26} {quelle['name']}")
+                for dokument in quelle.get("documents", []):
+                    print(f"        {dokument['doc_uid']:24} {dokument['url']}")
+            return 0
+
+        if args.aktion == "pruefen":
+            from pkc.updater.http_client import HttpClient
+
+            # Der Vergleich laeuft ueber die Aufzaehlung, nicht ueber eine
+            # Zeichenkette: Mode.OFFLINE ist "OFFLINE" in Grossbuchstaben.
+            # Ein Vergleich mit "offline" greift nie - und ausgerechnet bei
+            # einer Sperre faellt das nicht auf, weil dann einfach abgerufen
+            # wird, statt dass etwas scheitert.
+            if controller.mode is Mode.OFFLINE:
+                print("Betriebsart OFFLINE - es wird nichts abgerufen.")
+                return 2
+            client = HttpClient()
+            fehler = 0
+            for quelle in quellen:
+                if args.quelle and quelle["source_id"] not in args.quelle:
+                    continue
+                for dokument in quelle.get("documents", []):
+                    ergebnis = client.fetch(dokument["url"], method="HEAD")
+                    zeichen = "OK  " if ergebnis.ok else "FEHL"
+                    print(f"{zeichen} {dokument['doc_uid']:24} {dokument['url']}")
+                    if not ergebnis.ok:
+                        fehler += 1
+                        print(f"       {ergebnis.error}")
+            print(f"\n{fehler} Adresse(n) nicht erreichbar.")
+            return 0 if fehler == 0 else 1
+
+        if args.aktion == "setzen":
+            if not args.dokument or not args.url:
+                print("Es werden --dokument und --url benoetigt.", file=sys.stderr)
+                return 2
+            for quelle in quellen:
+                for dokument in quelle.get("documents", []):
+                    if dokument["doc_uid"] == args.dokument:
+                        alt_url = dokument["url"]
+                        dokument["url"] = args.url
+                        pfad.write_text(
+                            _json.dumps(register, ensure_ascii=False, indent=2) + "\n",
+                            encoding="utf-8")
+                        controller.audit.record("quelle_geaendert", "source",
+                                                args.dokument, alt=alt_url, neu=args.url)
+                        print(f"{args.dokument}\n  vorher : {alt_url}\n  jetzt  : {args.url}")
+                        print("\nDie Anwendung muss dafuer nicht neu gebaut werden.")
+                        return 0
+            print(f"Unbekanntes Dokument: {args.dokument}", file=sys.stderr)
+            return 1
+
+        return 2
     finally:
         controller.shutdown()
 
@@ -452,6 +529,15 @@ def build_parser() -> argparse.ArgumentParser:
     lizenz.add_argument("--lizenz", default="", help="Pfad zu license.json")
     lizenz.add_argument("--signatur", default="", help="Pfad zu license.sig")
     lizenz.set_defaults(func=cmd_lizenz)
+
+    quellen = neu("quellen", "Quellenregister ansehen und Adressen berichtigen")
+    quellen.add_argument("aktion", nargs="?", default="liste",
+                         choices=["liste", "pruefen", "setzen"])
+    quellen.add_argument("--quelle", action="append", default=[],
+                         help="nur diese Quellen-ID pruefen (mehrfach moeglich)")
+    quellen.add_argument("--dokument", default="", help="doc_uid des zu aendernden Dokuments")
+    quellen.add_argument("--url", default="", help="neue Adresse")
+    quellen.set_defaults(func=cmd_quellen)
 
     kunde = neu("kunde", "Kundenbereiche verwalten")
     kunde.add_argument("aktion", choices=["liste", "anlegen", "export", "loeschen"])

@@ -83,3 +83,70 @@ def test_alle_allgemeinen_schalter_sind_ueberall_vorhanden():
         # und am Hauptbefehl davor
         davor = parser.parse_args(["--kunde-bereich", "k1", befehl, *zusatz])
         assert davor.kunde_bereich == "k1", f"{befehl}: Schalter vorne wirkt nicht"
+
+
+# ======================================================================
+# Quellenregister ueber die Kommandozeile pflegen
+#
+# Anlass: Beim ersten echten Wissensupdate schlugen fuenf Dokumente mit
+# HTTP 404 fehl, weil amtliche Stellen ihre Webauftritte umgebaut hatten.
+# Das ist ohne Programmaenderung zu beheben - aber bis hierher nur, indem
+# man JSON von Hand bearbeitet.
+# ======================================================================
+
+def test_quellen_liste_zeigt_alle_adressen(portable_root, capsys):
+    from ui.cli import main
+
+    assert main(["--root", str(portable_root.root), "--offline", "quellen", "liste"]) == 0
+    ausgabe = capsys.readouterr().out
+    assert "Q01_GESETZE_IM_INTERNET" in ausgabe
+    assert "https://" in ausgabe
+
+
+def test_quellen_setzen_berichtigt_eine_adresse(portable_root, capsys):
+    import json
+    from ui.cli import main
+
+    wurzel = str(portable_root.root)
+    assert main([wurzel and "--root", wurzel, "--offline", "quellen", "liste"]) == 0
+    capsys.readouterr()
+
+    code = main(["--root", wurzel, "--offline", "quellen", "setzen",
+                 "--dokument", "GII_USTG", "--url", "https://beispiel.invalid/neu"])
+    assert code == 0
+    assert "https://beispiel.invalid/neu" in capsys.readouterr().out
+
+    register = json.loads(
+        (portable_root.get("config") / "source_registry.json").read_text(encoding="utf-8"))
+    adressen = [d["url"] for q in register["sources"] for d in q.get("documents", [])]
+    assert "https://beispiel.invalid/neu" in adressen
+
+
+def test_quellen_setzen_meldet_unbekanntes_dokument(portable_root, capsys):
+    from ui.cli import main
+
+    code = main(["--root", str(portable_root.root), "--offline", "quellen", "setzen",
+                 "--dokument", "GIBT_ES_NICHT", "--url", "https://beispiel.invalid/x"])
+    assert code == 1
+    assert "Unbekanntes Dokument" in capsys.readouterr().err
+
+
+def test_quellen_pruefen_ruft_offline_nichts_ab(portable_root, capsys, monkeypatch):
+    """Die Offlinezusage gilt auch hier - und zwar wirklich.
+
+    Der erste Entwurf verglich die Betriebsart mit der Zeichenkette
+    "offline". Mode.OFFLINE ist aber "OFFLINE" in Grossbuchstaben; der
+    Vergleich griff nie, und der Befehl rief munter ab. Ausgerechnet bei
+    einer Sperre faellt so ein Fehler nicht auf, weil das Programm dann
+    einfach das Falsche tut, statt zu scheitern.
+    """
+    from ui.cli import main
+
+    def darf_nicht(*args, **kwargs):
+        raise AssertionError("Im OFFLINE-Betrieb darf nichts abgerufen werden.")
+
+    monkeypatch.setattr("pkc.updater.http_client.HttpClient.fetch", darf_nicht)
+
+    code = main(["--root", str(portable_root.root), "--offline", "quellen", "pruefen"])
+    assert code == 2
+    assert "OFFLINE" in capsys.readouterr().out

@@ -201,6 +201,40 @@ kasten(
     "\"Trotzdem ausfuehren\".",
 )
 
+doc.add_heading("Warum zwei Programmdateien?", level=2)
+absatz("Im Ordner liegen zwei Dateien mit fast gleichem Namen. Das ist "
+       "Absicht und kein Versehen - beide enthalten dieselbe Anwendung, sie "
+       "unterscheiden sich nur darin, ob ein Textfenster mitlaeuft.")
+
+tabelle_mit(
+    ["Datei", "Wofuer", "Was Sie sehen"],
+    [
+        ["PORTABLE_BUCHHALTER.exe",
+         "Der Normalfall. Diese Datei doppelklicken.",
+         "Nur das Programmfenster - kein schwarzes Textfenster daneben."],
+        ["PORTABLE_BUCHHALTER_KONSOLE.exe",
+         "Fuer die Kommandozeile und zur Fehlersuche.",
+         "Ein Textfenster mit Ausgaben. Ohne Argumente startet auch sie die "
+         "Oberflaeche - dann eben mit Textfenster dahinter."],
+    ],
+    breiten=[5.6, 4.8, 5.6],
+)
+
+absatz("Der Hintergrund ist eine Windows-Eigenheit: Ein Programm ohne "
+       "Konsole kann in der Eingabeaufforderung nichts ausgeben. Wuerde es "
+       "nur eine Datei geben, muesste man sich entscheiden - entweder ein "
+       "schwarzes Fenster bei jedem Doppelklick, oder stumme Befehle in der "
+       "Eingabeaufforderung. Deshalb zwei Dateien, wie bei Python selbst "
+       "python.exe und pythonw.exe.")
+
+kasten(
+    "Wann brauchen Sie die Konsolenfassung?",
+    "Fuer alles, was in dieser Anleitung als Befehl geschrieben steht - "
+    "etwa \"lizenz\", \"reife\", \"quellen\" oder \"check\". Und wenn beim "
+    "Doppelklick nichts passiert: dann zeigt die Konsolenfassung, woran es "
+    "liegt. Fuer die taegliche Arbeit brauchen Sie sie nicht.",
+)
+
 doc.add_heading("Der Laufwerksbuchstabe ist egal", level=2)
 absatz("Ob der Datentraeger als D:, E: oder F: erscheint, spielt keine Rolle. "
        "Der Buchhalter findet seine Daten selbst. Auch Pfade mit Leerzeichen "
@@ -950,11 +984,67 @@ tabelle_mit(
          "mit Textausgabe. Zum Pruefen: PORTABLE_BUCHHALTER_KONSOLE.exe check"],
         ["Nach einem Update stimmt etwas nicht",
          "Registerkarte Wissen aktualisieren, dann Letzten Lauf zuruecknehmen."],
+        ["Beim Wissensupdate steht ERGEBNIS: PARTIAL",
+         "Ein Teil der Quellen wurde geladen, ein anderer nicht. Der Bericht "
+         "nennt je Dokument den Grund. Der bereits geladene Teil ist nutzbar - "
+         "siehe die naechste Tabelle."],
         ["Antwort ohne brauchbare Quellen",
          "Der Antwort nicht folgen. Frage praeziser stellen oder einen "
          "passenden Beleg hinzufuegen."],
     ],
     breiten=[6.0, 9.0],
+)
+
+doc.add_heading("Fehler beim Wissensupdate verstehen", level=2)
+absatz("Amtliche Stellen bauen ihre Webauftritte um, und Server sind "
+       "gelegentlich ueberlastet. Dass einzelne Quellen fehlschlagen, ist "
+       "der Normalfall und kein Grund zur Sorge: Was geladen wurde, bleibt "
+       "nutzbar, und der vorherige Stand wird nie zerstoert. Der Bericht "
+       "nennt je Dokument den Grund.")
+
+tabelle_mit(
+    ["Meldung", "Was sie bedeutet", "Was zu tun ist"],
+    [
+        ["Adresse nicht mehr gueltig (404)",
+         "Die Stelle hat ihre Seite verschoben oder entfernt.",
+         "Neue Adresse heraussuchen und eintragen - siehe unten. Kein "
+         "Programmfehler, keine neue Programmfassung noetig."],
+        ["Server voruebergehend nicht erreichbar (503, 502, 504)",
+         "Die Gegenstelle ist gerade ueberlastet oder in Wartung.",
+         "Nichts. Es wird bereits bis zu dreimal versucht. Spaeter erneut "
+         "aktualisieren."],
+        ["Zugriff verweigert (403)",
+         "Die Quelle sperrt automatisierte Abrufe.",
+         "Quelle abschalten oder eine andere Bezugsquelle waehlen."],
+        ["Zertifikat nicht pruefbar",
+         "Die Gegenstelle liefert ihre Zertifikatskette unvollstaendig aus.",
+         "Nichts. Es wird niemals ungeprueft geladen - lieber kein Dokument "
+         "als ein ungesichertes."],
+        ["Kein verwertbarer Text",
+         "Die Seite baut ihren Inhalt erst im Browser auf, etwa eine "
+         "Suchmaske.",
+         "Den Eintrag auf eine Seite mit dem eigentlichen Inhalt umstellen, "
+         "nicht auf das Suchformular."],
+    ],
+    breiten=[4.2, 5.4, 5.4],
+)
+
+doc.add_heading("Eine Adresse berichtigen", level=2)
+absatz("Dafuer muessen Sie keine Datei von Hand bearbeiten. Mit der "
+       "Konsolenfassung:")
+tabelle_mit(
+    ["Befehl", "Wirkung"],
+    [
+        ["PORTABLE_BUCHHALTER_KONSOLE.exe quellen liste",
+         "Zeigt alle Quellen mit ihren Adressen und Kennungen"],
+        ["PORTABLE_BUCHHALTER_KONSOLE.exe quellen pruefen",
+         "Prueft jede Adresse einzeln und nennt die nicht erreichbaren. Im "
+         "OFFLINE-Betrieb wird dabei nichts abgerufen."],
+        ["PORTABLE_BUCHHALTER_KONSOLE.exe quellen setzen --dokument <Kennung> --url <neue Adresse>",
+         "Traegt die neue Adresse ein. Die Aenderung wird protokolliert; die "
+         "Anwendung muss dafuer nicht neu gebaut werden."],
+    ],
+    breiten=[7.4, 7.6],
 )
 
 doc.add_heading("Weitere Unterlagen auf dem Datentraeger", level=2)

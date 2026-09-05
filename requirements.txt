@@ -3,6 +3,14 @@
 # Die folgenden Pakete erweitern ihn; fehlt eines, meldet die Anwendung das
 # klar und arbeitet ohne die betreffende Funktion weiter.
 
+# Vollstaendiger Zertifikats-Wurzelspeicher. In der gepackten EXE findet
+# Python den Speicher des Systems nicht zuverlaessig, und manche amtlichen
+# Server liefern das Zwischenzertifikat nicht mit - beobachtet beim
+# Bundesverfassungsgericht: "CERTIFICATE_VERIFY_FAILED: unable to get local
+# issuer certificate". Ohne dieses Paket wird nicht etwa ungeprueft geladen,
+# sondern der Abruf schlaegt fehl.
+certifi>=2024.2
+
 # Verschluesselter Geheimnistresor (AES-256-GCM). Ohne dieses Paket werden
 # keine Zugangsdaten gespeichert - es wird nichts unverschluesselt abgelegt.
 cryptography>=41.0

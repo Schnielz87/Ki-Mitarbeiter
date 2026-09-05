@@ -259,3 +259,95 @@ def test_schedule_due_logic(setup):
     pipeline.run(trigger="test")
     due, reason = pipeline.due("weekly")
     assert due is False and "naechstes in" in reason
+
+
+# ======================================================================
+# Fehlerbehandlung beim Wissensupdate
+#
+# Anlass: Beim ersten echten Update auf dem Windows-Rechner schlugen 8 von
+# 31 Dokumenten fehl. Vier verschiedene Ursachen, davon zwei in unserem
+# Code: kein eigener Zertifikatskontext und kein zweiter Versuch.
+# ======================================================================
+
+def test_voruebergehender_fehler_wird_wiederholt(monkeypatch):
+    """503 heisst 'gerade nicht', nicht 'nie' - also erneut versuchen."""
+    from pkc.updater.http_client import HttpClient, FetchResult
+
+    monkeypatch.setattr("pkc.updater.http_client.WARTEZEITEN", (0.0, 0.0))
+    client = HttpClient(min_delay=0.0, respect_robots=False)
+
+    versuche = []
+
+    def antwort(request, url, host):
+        versuche.append(url)
+        if len(versuche) < 3:
+            return FetchResult(url, 503, False, error="HTTP 503",
+                               wiederholbar=True)
+        return FetchResult(url, 200, True, content=b"endlich da")
+
+    monkeypatch.setattr(client, "_einmal_abrufen", antwort)
+    ergebnis = client.fetch("https://beispiel.invalid/seite")
+
+    assert ergebnis.ok and ergebnis.content == b"endlich da"
+    assert len(versuche) == 3, "es muss bis zu dreimal versucht werden"
+
+
+def test_dauerhafter_fehler_wird_nicht_wiederholt(monkeypatch):
+    """Ein 404 wird durch Warten nicht besser - das waere nur Zeitverlust."""
+    from pkc.updater.http_client import HttpClient, FetchResult
+
+    client = HttpClient(min_delay=0.0, respect_robots=False)
+    versuche = []
+
+    def antwort(request, url, host):
+        versuche.append(url)
+        return FetchResult(url, 404, False, error="HTTP 404", wiederholbar=False)
+
+    monkeypatch.setattr(client, "_einmal_abrufen", antwort)
+    ergebnis = client.fetch("https://beispiel.invalid/weg")
+
+    assert not ergebnis.ok
+    assert len(versuche) == 1, "ein 404 darf nicht wiederholt werden"
+
+
+def test_fehlermeldungen_sagen_was_zu_tun_ist():
+    """Eine Fehlermeldung, die nur 'HTTP 404' sagt, hilft niemandem."""
+    from pkc.updater.http_client import _verstaendlich
+
+    assert "Quellenregister" in _verstaendlich(404, "HTTP 404: Not Found")
+    assert "voruebergehend" in _verstaendlich(503, "HTTP 503: Backend fetch failed")
+    assert "automatisierte Abrufe" in _verstaendlich(403, "HTTP 403: Forbidden")
+    zertifikat = _verstaendlich(0, "URLError: [SSL: CERTIFICATE_VERIFY_FAILED] ...")
+    assert "nie ungeprueft" in zertifikat, \
+        "es muss klar sein, dass nicht etwa ungeprueft geladen wird"
+
+
+def test_zertifikatspruefung_ist_eingeschaltet():
+    """Nie ohne Pruefung laden - auch nicht, um einen Fehler loszuwerden."""
+    import ssl
+    from pkc.updater.http_client import HttpClient, _ssl_kontext
+
+    kontext = _ssl_kontext()
+    assert kontext.verify_mode == ssl.CERT_REQUIRED
+    assert kontext.check_hostname is True
+
+    client = HttpClient()
+    assert client._ssl.verify_mode == ssl.CERT_REQUIRED
+    assert client._ssl.check_hostname is True
+
+
+def test_echter_server_antwortet_erst_mit_503(http_server, monkeypatch):
+    """Gegen einen echten lokalen Server, nicht nur gegen ein Doppel."""
+    from pkc.updater.http_client import HttpClient
+
+    monkeypatch.setattr("pkc.updater.http_client.WARTEZEITEN", (0.0, 0.0))
+    url = http_server.add("/wackelig", b"<html><body>Inhalt</body></html>")
+    client = HttpClient(min_delay=0.0, respect_robots=False)
+
+    ergebnis = client.fetch(url)
+    assert ergebnis.ok and b"Inhalt" in ergebnis.content
+
+    fehlt = client.fetch(f"{http_server.base}/gibtesnicht")
+    assert not fehlt.ok and fehlt.status == 404
+    assert not fehlt.wiederholbar
+    assert "Quellenregister" in fehlt.error

@@ -6,12 +6,16 @@ Eigenschaften:
 * Wartezeit pro Host (hoefliches Verhalten gegenueber amtlichen Servern)
 * robots.txt wird beachtet
 * jeder Fehler wird als Ergebnis zurueckgegeben, nie als Absturz
+* eigener SSL-Kontext: in der gepackten EXE ist der Zertifikatsspeicher des
+  Systems nicht zuverlaessig auffindbar
+* Wiederholung bei voruebergehenden Fehlern (503, 502, 504, 429, Zeitablauf)
 """
 
 from __future__ import annotations
 
 import gzip
 import hashlib
+import ssl
 import time
 import urllib.error
 import urllib.parse
@@ -29,6 +33,53 @@ USER_AGENT = (
     "kontaktieren Sie den Betreiber der Installation)"
 )
 
+#: Antwortcodes, bei denen ein zweiter Versuch sinnvoll ist. Der Server sagt
+#: damit selbst, dass das Problem voruebergehend ist.
+WIEDERHOLBAR = frozenset({408, 425, 429, 500, 502, 503, 504})
+
+#: Zahl der Versuche insgesamt und Wartezeit davor (Sekunden).
+VERSUCHE = 3
+WARTEZEITEN = (2.0, 5.0)
+
+
+def _ssl_kontext() -> ssl.SSLContext:
+    """Baut den Zertifikatskontext - mit certifi, wenn vorhanden.
+
+    Hintergrund: In der mit PyInstaller gepackten Anwendung findet Python den
+    Zertifikatsspeicher des Systems nicht zuverlaessig. Ausserdem liefern
+    manche Server (beobachtet beim Bundesverfassungsgericht) das
+    Zwischenzertifikat nicht mit, sodass die Kette nur mit einem
+    vollstaendigen Wurzelspeicher geschlossen werden kann. Ergebnis war
+    "CERTIFICATE_VERIFY_FAILED: unable to get local issuer certificate".
+
+    Die Pruefung wird dabei **nie** abgeschaltet. Eine unverschluesselte oder
+    ungeprueft angenommene Verbindung zu einer amtlichen Quelle waere genau
+    das Gegenteil dessen, was eine belegbare Wissensbasis braucht.
+    """
+    try:
+        import certifi
+
+        return ssl.create_default_context(cafile=certifi.where())
+    except Exception:  # certifi nicht vorhanden - Systemspeicher verwenden
+        return ssl.create_default_context()
+
+
+def _verstaendlich(status: int, rohtext: str) -> str:
+    """Uebersetzt einen technischen Fehler in eine handlungsleitende Meldung."""
+    if status == 404:
+        return (f"HTTP 404: Adresse nicht mehr gueltig. Der Eintrag im "
+                f"Quellenregister zeigt ins Leere und muss berichtigt werden.")
+    if status == 403:
+        return ("HTTP 403: Zugriff verweigert. Moeglicherweise sperrt die "
+                "Quelle automatisierte Abrufe.")
+    if status in WIEDERHOLBAR:
+        return (f"HTTP {status}: Server voruebergehend nicht erreichbar. "
+                f"Spaeter erneut versuchen - der Eintrag ist vermutlich in Ordnung.")
+    if "CERTIFICATE_VERIFY_FAILED" in rohtext:
+        return ("Zertifikat der Gegenstelle nicht pruefbar. Die Verbindung "
+                "wurde deshalb abgebrochen - es wird nie ungeprueft geladen.")
+    return rohtext
+
 
 @dataclass
 class FetchResult:
@@ -41,6 +92,9 @@ class FetchResult:
     etag: str | None = None
     last_modified: str | None = None
     error: str = ""
+    #: True, wenn der Fehler voruebergehend sein kann und ein zweiter Versuch
+    #: sinnvoll ist. Ein 404 ist es nicht - die Adresse bleibt falsch.
+    wiederholbar: bool = False
     elapsed: float = 0.0
     final_url: str = ""
 
@@ -82,6 +136,9 @@ class HttpClient:
         self.user_agent = user_agent
         self._last_request: dict[str, float] = {}
         self._robots: dict[str, urllib.robotparser.RobotFileParser | None] = {}
+        # Einmal bauen, nicht je Anfrage - das Einlesen des Wurzelspeichers
+        # kostet sonst bei jedem Dokument erneut Zeit.
+        self._ssl = _ssl_kontext()
 
     # -- Hoeflichkeit --------------------------------------------------
     def _throttle(self, host: str) -> None:
@@ -136,10 +193,25 @@ class HttpClient:
         if last_modified:
             request.add_header("If-Modified-Since", last_modified)
 
-        self._throttle(parsed.netloc)
+        letztes: FetchResult | None = None
+        for versuch in range(VERSUCHE):
+            if versuch:
+                wartezeit = WARTEZEITEN[min(versuch - 1, len(WARTEZEITEN) - 1)]
+                log.info("Erneuter Versuch %s/%s fuer %s in %.0f s (%s)",
+                         versuch + 1, VERSUCHE, url, wartezeit,
+                         letztes.error if letztes else "")
+                time.sleep(wartezeit)
+            letztes = self._einmal_abrufen(request, url, parsed.netloc)
+            if letztes.ok or not letztes.wiederholbar:
+                return letztes
+        return letztes  # type: ignore[return-value]
+
+    def _einmal_abrufen(self, request, url: str, host: str) -> FetchResult:
+        self._throttle(host)
         started = time.monotonic()
         try:
-            with urllib.request.urlopen(request, timeout=self.timeout) as response:
+            with urllib.request.urlopen(
+                    request, timeout=self.timeout, context=self._ssl) as response:
                 raw = response.read(self.max_bytes + 1)
                 if len(raw) > self.max_bytes:
                     return FetchResult(
@@ -163,10 +235,22 @@ class HttpClient:
             if exc.code == 304:
                 return FetchResult(url, 304, True, not_modified=True,
                                    elapsed=time.monotonic() - started)
-            return FetchResult(url, exc.code, False, error=f"HTTP {exc.code}: {exc.reason}",
-                               elapsed=time.monotonic() - started)
+            return FetchResult(
+                url, exc.code, False,
+                error=_verstaendlich(exc.code, f"HTTP {exc.code}: {exc.reason}"),
+                wiederholbar=exc.code in WIEDERHOLBAR,
+                elapsed=time.monotonic() - started,
+            )
         except (urllib.error.URLError, OSError, TimeoutError, ValueError) as exc:
-            return FetchResult(url, 0, False, error=f"{type(exc).__name__}: {exc}",
+            rohtext = f"{type(exc).__name__}: {exc}"
+            # Netzfehler koennen voruebergehend sein; ein Zertifikatsfehler
+            # nicht - der wird durch Warten nicht besser.
+            fluechtig = (isinstance(exc, (TimeoutError,))
+                         or "timed out" in rohtext.lower()
+                         or "temporarily" in rohtext.lower()
+                         or "Connection reset" in rohtext)
+            return FetchResult(url, 0, False, error=_verstaendlich(0, rohtext),
+                               wiederholbar=fluechtig,
                                elapsed=time.monotonic() - started)
 
 

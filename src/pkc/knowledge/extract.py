@@ -158,7 +158,19 @@ def extract_html(raw: bytes | str, charset_hint: str = "utf-8") -> ExtractedDocu
     if text:
         sections.append(Section(current_heading, text, level=current_level))
     if not sections:
-        raise ExtractionError("HTML enthielt keinen verwertbaren Text.")
+        # Beobachtet bei der EuGH-Rechtsprechungsrecherche: der Eintrag zeigte
+        # auf eine Suchmaske, die ihren Inhalt erst per JavaScript nachlaedt.
+        # Ein reiner HTML-Abruf sieht dort nichts. Das ist kein Fehler des
+        # Abrufs, sondern ein falsch gewaehlter Einstiegspunkt - und die
+        # Meldung soll das sagen, statt nur "kein Text".
+        hinweis = ""
+        if "<script" in html.lower() and len(html) > 2000:
+            hinweis = (" Die Seite besteht im Wesentlichen aus Skripten - sie "
+                       "baut ihren Inhalt vermutlich erst im Browser auf "
+                       "(etwa eine Suchmaske). Der Eintrag im Quellenregister "
+                       "sollte auf eine Seite mit dem eigentlichen Inhalt "
+                       "zeigen, nicht auf das Suchformular.")
+        raise ExtractionError("HTML enthielt keinen verwertbaren Text." + hinweis)
 
     title = normalize_text(parser.title) or (sections[0].heading if sections[0].heading else "")
     return ExtractedDocument(title=title, sections=sections, format="html")

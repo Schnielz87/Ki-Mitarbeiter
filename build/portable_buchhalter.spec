@@ -48,18 +48,29 @@ hidden_imports = [
 ]
 
 # Optionale Zusatzpakete nur aufnehmen, wenn sie vorhanden sind.
-for optional in ("cryptography", "pypdf", "openpyxl", "llama_cpp", "yaml"):
+for optional in ("certifi", "cryptography", "pypdf", "openpyxl", "llama_cpp", "yaml"):
     try:
         __import__(optional)
     except ImportError:
         continue
     hidden_imports.append(optional)
 
+# Der Wurzelspeicher von certifi ist eine Datendatei, kein Modul - PyInstaller
+# nimmt sie nur mit, wenn sie ausdruecklich genannt wird. Ohne sie scheitert
+# der Abruf von Servern, die ihr Zwischenzertifikat nicht mitliefern.
+zertifikate = []
+try:
+    import certifi
+
+    zertifikate = [(certifi.where(), "certifi")]
+except ImportError:
+    pass
+
 analysis = Analysis(
     [str(ROOT / "portable_buchhalter.py")],
     pathex=[str(ROOT / "src")],
     binaries=[],
-    datas=[],
+    datas=zertifikate,
     hiddenimports=hidden_imports,
     hookspath=[],
     hooksconfig={},
