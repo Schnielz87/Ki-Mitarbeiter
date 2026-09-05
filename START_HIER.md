@@ -47,6 +47,12 @@ klicken.
 > Ausprobieren `PORTABLE_BUCHHALTER.bat` - dafuer braucht der PC allerdings
 > eine Python-Installation.
 
+## Ausfuehrliche Bedienungsanleitung
+
+`docs\BEDIENUNGSANLEITUNG.docx` - als Word-Dokument, elf Kapitel: wo Sie was
+eingeben, wie eine Antwort aufgebaut ist, was der Buchhalter bewusst nicht
+tut, und was zu tun ist, wenn etwas nicht funktioniert.
+
 ## Was Sie **nicht** brauchen
 
 Kein Python, kein Git, keine Entwicklungsumgebung, keinen Compiler, kein
