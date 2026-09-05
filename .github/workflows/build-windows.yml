@@ -61,9 +61,14 @@ jobs:
         shell: pwsh
         run: |
           Set-Location dist\Portable-Buchhalter
-          .\PORTABLE_BUCHHALTER.exe check | Tee-Object -Variable ausgabe
+          .\PORTABLE_BUCHHALTER.exe check | Tee-Object -Variable zeilen
           if ($LASTEXITCODE -gt 2) { throw "Die EXE liess sich nicht ausfuehren." }
+          # Tee-Object liefert ein Array von Zeilen. "-notmatch" wuerde darauf
+          # filtern statt zu pruefen und waere praktisch immer wahr - daher
+          # erst zu einem Text zusammenfuegen.
+          $ausgabe = $zeilen -join "`n"
           if ($ausgabe -notmatch "Systempruefung") { throw "Unerwartete Ausgabe der EXE." }
+          if ($ausgabe -notmatch "Fachwissen") { throw "Das Fachwissen wurde nicht aufgenommen." }
 
       - name: Offline-Fachfrage gegen die gebaute EXE
         shell: pwsh

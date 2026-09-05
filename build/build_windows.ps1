@@ -92,8 +92,11 @@ foreach ($ordner in @("models","knowledge","resources\raw","resources\normalized
 
 Schritt "Rauchtest der gebauten EXE"
 $exe = Join-Path $Ziel "PORTABLE_BUCHHALTER.exe"
-& $exe check --quiet
+& $exe check --quiet | Tee-Object -Variable zeilen
 if ($LASTEXITCODE -gt 2) { throw "Die gebaute EXE liess sich nicht ausfuehren." }
+if (($zeilen -join "`n") -notmatch "Systempruefung") {
+    throw "Die gebaute EXE lieferte eine unerwartete Ausgabe."
+}
 
 Schritt "Fertig"
 Write-Host "  Portabler Ordner: $Ziel" -ForegroundColor Green

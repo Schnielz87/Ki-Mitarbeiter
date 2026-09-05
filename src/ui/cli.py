@@ -241,31 +241,53 @@ def cmd_approvals(args) -> int:
         controller.shutdown()
 
 
+def _global_options(parser: argparse.ArgumentParser, suppress: bool = False) -> None:
+    """Die drei allgemeinen Schalter.
+
+    Sie werden am Hauptbefehl *und* an jedem Unterbefehl angeboten, damit
+    sowohl ``... --quiet check`` als auch ``... check --quiet`` funktioniert.
+    Ein Anwender soll nicht raten muessen, wo der Schalter hingehoert.
+    """
+    leer = argparse.SUPPRESS if suppress else None
+    parser.add_argument("--root", default=leer,
+                        help="Datenverzeichnis (Standard: automatisch erkannt)")
+    parser.add_argument("--offline", action="store_true", default=leer,
+                        help="Netzpruefung ueberspringen")
+    parser.add_argument("--quiet", action="store_true", default=leer,
+                        help="weniger Ausgaben")
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="portabler-buchhalter",
         description="Portabler KI-Buchhalter - Kommandozeile",
     )
-    parser.add_argument("--root", help="Datenverzeichnis (Standard: automatisch erkannt)")
-    parser.add_argument("--offline", action="store_true", help="Netzpruefung ueberspringen")
-    parser.add_argument("--quiet", action="store_true", help="weniger Ausgaben")
-    sub = parser.add_subparsers(dest="command", required=True)
+    _global_options(parser)
+    # Dieselben Schalter noch einmal fuer die Unterbefehle. SUPPRESS sorgt
+    # dafuer, dass ein nicht angegebener Schalter den Wert vom Hauptbefehl
+    # nicht ueberschreibt.
+    gemeinsam = argparse.ArgumentParser(add_help=False)
+    _global_options(gemeinsam, suppress=True)
+    sub = parser.add_subparsers(dest="command", required=True, parser_class=argparse.ArgumentParser)
 
-    check = sub.add_parser("check", help="Systempruefung")
+    def neu(name: str, hilfe: str) -> argparse.ArgumentParser:
+        return sub.add_parser(name, help=hilfe, parents=[gemeinsam])
+
+    check = neu("check", "Systempruefung")
     check.add_argument("--json", action="store_true")
     check.set_defaults(func=cmd_check)
 
-    ask = sub.add_parser("frage", help="Eine Fachfrage stellen")
+    ask = neu("frage", "Eine Fachfrage stellen")
     ask.add_argument("frage")
     ask.add_argument("--stand", help="Rechtsstand (JJJJ-MM-TT) fuer zeitbezogene Recherche")
     ask.add_argument("--merken", action="store_true",
                      help="erkannte Unternehmensinformationen ohne Rueckfrage speichern")
     ask.set_defaults(func=cmd_ask)
 
-    chat = sub.add_parser("chat", help="Interaktive Unterhaltung")
+    chat = neu("chat", "Interaktive Unterhaltung")
     chat.set_defaults(func=cmd_chat)
 
-    memory = sub.add_parser("wissen", help="Unternehmensgedaechtnis verwalten")
+    memory = neu("wissen", "Unternehmensgedaechtnis verwalten")
     memory.add_argument("action",
                         choices=["list", "get", "set", "delete", "history", "search", "export"])
     memory.add_argument("key", nargs="?", default="")
@@ -276,29 +298,29 @@ def build_parser() -> argparse.ArgumentParser:
     memory.add_argument("--endgueltig", action="store_true")
     memory.set_defaults(func=cmd_memory)
 
-    update = sub.add_parser("update", help="Wissensupdate")
+    update = neu("update", "Wissensupdate")
     update.add_argument("--quelle", action="append", help="nur diese Quelle(n)")
     update.add_argument("--trocken", action="store_true", help="Trockenlauf ohne Schreiben")
     update.add_argument("--zuruecknehmen", help="Lauf-ID zuruecknehmen")
     update.set_defaults(func=cmd_update)
 
-    status = sub.add_parser("status", help="Lagebericht als JSON")
+    status = neu("status", "Lagebericht als JSON")
     status.set_defaults(func=cmd_status)
 
-    onboarding = sub.add_parser("onboarding", help="Unternehmensdaten erfassen")
+    onboarding = neu("onboarding", "Unternehmensdaten erfassen")
     onboarding.add_argument("--interaktiv", action="store_true")
     onboarding.add_argument("--alle", action="store_true")
     onboarding.set_defaults(func=cmd_onboarding)
 
-    backup = sub.add_parser("sicherung", help="Sicherung erstellen")
+    backup = neu("sicherung", "Sicherung erstellen")
     backup.add_argument("--name", default="")
     backup.set_defaults(func=cmd_backup)
 
-    document = sub.add_parser("beleg", help="Beleg hinzufuegen oder auflisten")
+    document = neu("beleg", "Beleg hinzufuegen oder auflisten")
     document.add_argument("datei", nargs="?")
     document.set_defaults(func=cmd_document)
 
-    approvals = sub.add_parser("freigaben", help="Freigaben anzeigen oder erteilen")
+    approvals = neu("freigaben", "Freigaben anzeigen oder erteilen")
     approvals.add_argument("--freigeben", help="Kennung des Vorgangs")
     approvals.add_argument("--durch", help="Name der freigebenden Person")
     approvals.set_defaults(func=cmd_approvals)
