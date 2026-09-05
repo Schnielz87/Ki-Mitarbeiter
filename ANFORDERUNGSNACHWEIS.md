@@ -132,3 +132,10 @@ Stand siehe `PROJEKTSTATUS.md`. Statusbegriffe nach Masterprompt 52:
 6. **Code-Signing (§ 92)** - benoetigt ein Zertifikat.
 7. **Weitergabe des Sprachmodells (§ 63)** - Empfehlung: vom Kunden beziehen
    lassen.
+
+---
+
+## Anmerkung zur Zaehlung
+
+Die Abschnitte **81 bis 83 gibt es nicht**. Die Vorgabe springt von 80
+auf 84. In dieser Uebersicht fehlt an der Stelle also nichts.

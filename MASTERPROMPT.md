@@ -851,6 +851,11 @@ danach Skalierung und breite kommerzielle Vermarktung.
 
 # TEIL 3 - KOPIERSCHUTZ UND LIZENZIERUNG (Abschnitte 84 bis 97)
 
+> Anmerkung zur Zaehlung: Die Nummern 81 bis 83 gibt es nicht. Die
+> Vorgabe springt an dieser Stelle von 80 auf 84. Hier fehlt also
+> nichts - der Hinweis steht nur, damit spaeter niemand nach einem
+> verlorenen Abschnitt sucht.
+
 ## 84. Kopierschutz und Lizenzierung
 
 Die kommerzielle Produktarchitektur muss verhindern, dass ein einmal
