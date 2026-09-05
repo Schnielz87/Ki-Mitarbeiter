@@ -113,6 +113,24 @@ class Brand:
         return [rel for rel in VARIANTEN.values() if self.pfad(rel) is None]
 
 
+def _bundle_assets() -> Path | None:
+    """Assetordner im Innenleben einer gepackten EXE, falls vorhanden.
+
+    PyInstaller entpackt mitgelieferte Datendateien nach ``sys._MEIPASS``
+    (bei onedir: der Unterordner ``_internal``). Die Anwendung loest ihre
+    Pfade sonst von der portablen Wurzel aus auf - das ist richtig so, denn
+    der Betreiber soll das Logo austauschen koennen, ohne neu zu bauen.
+    Diese Funktion ist nur der Rueckfall, falls neben der EXE nichts liegt.
+    """
+    import sys
+
+    basis = getattr(sys, "_MEIPASS", None)
+    if not basis:
+        return None
+    ordner = Path(basis) / "assets"
+    return ordner if ordner.is_dir() else None
+
+
 def load_brand(paths, config=None) -> Brand:
     """Laedt die Markenangaben.
 
@@ -122,6 +140,12 @@ def load_brand(paths, config=None) -> Brand:
     bleiben getrennt.
     """
     asset_root = paths.get("assets")
+    # Liegt neben der EXE kein Branding, im Paket aber schon, dann von dort.
+    if not (asset_root / BRANDING_DIR).is_dir():
+        ersatz = _bundle_assets()
+        if ersatz is not None:
+            log.info("Branding aus dem Programmpaket geladen: %s", ersatz)
+            asset_root = ersatz
     brand = Brand(asset_root=asset_root)
 
     datei = paths.get("config") / "brand.json"

@@ -102,8 +102,27 @@ def _logo_bild(brand, hoehe: int = 84):
     return bild
 
 
+def _taskleisten_kennung(brand) -> None:
+    """Eigene Anwendungskennung fuer Windows.
+
+    Ohne sie gruppiert Windows das Fenster unter der Kennung des
+    Python-Interpreters und zeigt in der Taskleiste dessen Symbol statt
+    unseres - selbst wenn das Fenstersymbol richtig gesetzt ist. Der Aufruf
+    existiert nur unter Windows und schadet anderswo nicht, weil er dort
+    schlicht fehlschlaegt und abgefangen wird.
+    """
+    try:
+        import ctypes
+
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(
+            f"{brand.name}.KI-Mitarbeiter")
+    except Exception:                   # kein Windows oder nicht verfuegbar
+        pass
+
+
 def _fenstericon(fenster, brand) -> None:
     """Setzt Fenster- und Taskleistensymbol, soweit das System es zulaesst."""
+    _taskleisten_kennung(brand)
     ico = brand.icon_pfad
     if ico is not None:
         try:

@@ -83,6 +83,30 @@ jobs:
           if ($ausgabe -notmatch "Systempruefung") { throw "Unerwartete Ausgabe der EXE." }
           if ($ausgabe -notmatch "Fachwissen") { throw "Das Fachwissen wurde nicht aufgenommen." }
 
+      - name: Branding liegt neben der EXE und wird gefunden
+        shell: pwsh
+        run: |
+          Set-Location dist\Portable-Buchhalter
+          # Die Dateien muessen NEBEN der EXE liegen, nicht in _internal:
+          # die Anwendung loest ihre Pfade von der portablen Wurzel aus auf,
+          # und der Betreiber soll das Logo austauschen koennen, ohne neu zu
+          # bauen. Genau das war einmal falsch - das Paket enthielt das Logo,
+          # die Anwendung fand es trotzdem nicht.
+          foreach ($datei in @("assets\branding\portiva_icon.ico",
+                               "assets\branding\portiva_icon.png",
+                               "assets\branding\portiva_logo_primary.png",
+                               "config\brand.json")) {
+            if (-not (Test-Path $datei)) { throw "Branding fehlt im Paket: $datei" }
+            Write-Host "vorhanden: $datei ($((Get-Item $datei).Length) Bytes)"
+          }
+          # ... und die Anwendung muss sie auch wirklich finden.
+          $zeilen = .\PORTABLE_BUCHHALTER_KONSOLE.exe check
+          $ausgabe = $zeilen -join "`n"
+          if ($ausgabe -notmatch "PORTIVA") { throw "Die Marke PORTIVA fehlt in der Ausgabe." }
+          $branding = $zeilen | Where-Object { $_ -match "Branding" }
+          Write-Host "Pruefzeile: $branding"
+          if ($branding -match "fehlen") { throw "Die Anwendung findet ihr Branding nicht: $branding" }
+
       - name: Offline-Fachfrage gegen die gebaute EXE
         shell: pwsh
         run: |

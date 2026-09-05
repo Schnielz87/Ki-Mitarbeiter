@@ -72,6 +72,19 @@ New-Item -ItemType Directory -Force -Path "$Ziel\src" | Out-Null
 Copy-Item "src\profiles" -Destination "$Ziel\src\profiles" -Recurse -Force
 New-Item -ItemType Directory -Force -Path "$Ziel\config" | Out-Null
 Copy-Item "config\source_registry.json" -Destination "$Ziel\config\" -Force
+if (Test-Path "config\brand.json") {
+    Copy-Item "config\brand.json" -Destination "$Ziel\config\" -Force
+}
+
+# Branding: Logo und Symbole gehoeren NEBEN die EXE, nicht in deren
+# Innenleben. PyInstaller legt Datendateien unter _internal ab - dort sucht
+# die Anwendung nicht, denn sie loest ihre Pfade von der portablen Wurzel
+# aus auf. Ohne diese Zeilen bliebe das Fenster ohne Logo, obwohl die
+# Dateien im Paket steckten. Ausserdem soll der Betreiber das Logo
+# austauschen koennen, ohne neu zu bauen.
+if (Test-Path "assets") {
+    Copy-Item "assets" -Destination "$Ziel\assets" -Recurse -Force
+}
 New-Item -ItemType Directory -Force -Path "$Ziel\docs" | Out-Null
 Copy-Item "docs\*" -Destination "$Ziel\docs\" -Recurse -Force -ErrorAction SilentlyContinue
 foreach ($datei in @("START_HIER.md","README.md","ARCHITEKTUR.md","PROJEKTSTATUS.md",
