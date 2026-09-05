@@ -37,23 +37,40 @@ class BackgroundTask:
         self.widget = widget
         self.results: queue.Queue = queue.Queue()
 
-    def run(self, work: Callable[[], Any], done: Callable[[Any, Exception | None], None]) -> None:
+    def run(
+        self,
+        work: Callable[[], Any],
+        done: Callable[[Any, Exception | None], None],
+        on_tick: Callable[[], None] | None = None,
+    ) -> None:
+        """Startet die Arbeit. ``on_tick`` laeuft bei jedem Wartedurchlauf.
+
+        Es gibt bewusst nur **eine** Warteschleife: eine zweite wuerde die
+        Oberflaeche unnoetig belasten und schwerer nachvollziehbar machen.
+        """
         def worker() -> None:
             try:
                 self.results.put((work(), None))
             except Exception as exc:  # jede Ausnahme erreicht die Oberflaeche
-                exc.__traceback__ = exc.__traceback__
                 self.results.put((None, exc))
 
         threading.Thread(target=worker, daemon=True).start()
-        self._poll(done)
+        self._poll(done, on_tick)
 
-    def _poll(self, done: Callable[[Any, Exception | None], None]) -> None:
+    def _poll(
+        self,
+        done: Callable[[Any, Exception | None], None],
+        on_tick: Callable[[], None] | None = None,
+    ) -> None:
+        if on_tick is not None:
+            on_tick()
         try:
             result, error = self.results.get_nowait()
         except queue.Empty:
-            self.widget.after(80, lambda: self._poll(done))
+            self.widget.after(80, lambda: self._poll(done, on_tick))
             return
+        if on_tick is not None:
+            on_tick()
         done(result, error)
 
 
@@ -648,10 +665,23 @@ class MainWindow:
         self._set_busy(True, "Wissensupdate laeuft ...")
         self.update_progress.configure(value=0, maximum=100)
 
+        # Der Fortschritt kommt aus dem Arbeitsthread. Tkinter darf nur aus
+        # dem Oberflaechen-Thread bedient werden, deshalb geht der Wert ueber
+        # eine Warteschlange und wird von einem Zeitgeber abgeholt.
+        fortschritt: queue.Queue = queue.Queue()
+
         def progress(title: str, index: int, total: int) -> None:
-            self.root.after(0, lambda: self.update_progress.configure(
-                value=int(index * 100 / max(total, 1))
-            ))
+            fortschritt.put(int(index * 100 / max(total, 1)))
+
+        def abholen() -> None:
+            wert = None
+            try:
+                while True:
+                    wert = fortschritt.get_nowait()
+            except queue.Empty:
+                pass
+            if wert is not None:
+                self.update_progress.configure(value=wert)
 
         def work():
             return self.controller.run_update(
@@ -674,7 +704,7 @@ class MainWindow:
                 parent=self.root,
             )
 
-        BackgroundTask(self.root).run(work, done)
+        BackgroundTask(self.root).run(work, done, on_tick=abholen)
 
     def _rollback_update(self) -> None:
         runs = self.controller.update_runs(1)
@@ -726,6 +756,11 @@ class MainWindow:
         )
 
     def _on_network_change(self, status) -> None:
+        """Wird aus dem Netz-Ueberwachungsthread aufgerufen.
+
+        Die eigentliche Anzeige laeuft ueber ``after`` im Oberflaechen-Thread.
+        """
+
         def apply() -> None:
             self._refresh_status()
             if status.online:

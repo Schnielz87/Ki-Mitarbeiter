@@ -80,7 +80,10 @@ def chunk_sections(
     default_citation: str = "",
 ) -> list[Chunk]:
     max_chars = max(200, int(max_tokens * 3.7))
-    overlap_chars = max(0, int(overlap_tokens * 3.7))
+    # Eine Ueberlappung, die fast so gross ist wie der Chunk selbst, erzeugt
+    # sehr viele winzige, stark redundante Abschnitte. Das ist immer eine
+    # Fehlkonfiguration - sie wird hier begrenzt statt uebernommen.
+    overlap_chars = max(0, min(int(overlap_tokens * 3.7), max_chars // 2))
     chunks: list[Chunk] = []
     index = 0
     for section in sections:
