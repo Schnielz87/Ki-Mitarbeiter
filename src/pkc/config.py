@@ -76,6 +76,22 @@ DEFAULTS: dict[str, Any] = {
         "confirm_before_store": True,
         "min_confidence": 0.55,
     },
+    "license": {
+        # Vorab-/Pilotfassung: noch keine Lizenzpflicht. Fuer die kommerzielle
+        # Fassung wird das auf true gesetzt und ein Pruefschluessel eingebaut.
+        "required": False,
+        "product": "portabler-ki-mitarbeiter",
+    },
+    "product": {
+        "version": "0.1.0",
+        "stage": "pilot",              # pilot | commercial
+        "knowledge_package": "buchhaltung 1.0",
+    },
+    "customer": {
+        # Leer = Einzelinstanz. Gesetzt = Daten liegen unter customers/<id>/
+        "id": "",
+        "name": "",
+    },
     "security": {
         "vault_enabled": True,
         "require_passphrase_on_start": False,

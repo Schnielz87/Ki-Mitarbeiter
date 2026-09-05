@@ -1,3 +1,3 @@
-from .controller import AppController, StartupReport, AskOutcome
+from .controller import AppController, AskOutcome, LicenseRequired, StartupReport
 
-__all__ = ["AppController", "StartupReport", "AskOutcome"]
+__all__ = ["AppController", "AskOutcome", "LicenseRequired", "StartupReport"]

@@ -12,7 +12,7 @@ import json
 import sys
 from pathlib import Path
 
-from app.controller import AppController
+from app.controller import AppController, LicenseRequired
 from pkc.audit import ApprovalState
 from pkc.config import Config
 from pkc.paths import Paths, get_paths
@@ -50,7 +50,11 @@ def cmd_ask(args) -> int:
         if not report.usable:
             print(report.as_text(), file=sys.stderr)
             return 2
-        outcome = controller.ask(args.frage, as_of=args.stand)
+        try:
+            outcome = controller.ask(args.frage, as_of=args.stand)
+        except LicenseRequired as exc:
+            print(str(exc), file=sys.stderr)
+            return 4
         print(outcome.answer.text)
         if outcome.capture_candidates:
             print("\n--- Moegliche dauerhafte Unternehmensinformation ---")
@@ -156,6 +160,50 @@ def cmd_update(args) -> int:
         for message in report.messages:
             print(f"  - {message}")
         return 0 if report.status in ("success", "partial") else 1
+    finally:
+        controller.shutdown()
+
+
+def cmd_lizenz(args) -> int:
+    """Lizenzangaben ansehen, Aktivierung vorbereiten, Lizenz aufnehmen."""
+    controller = _controller(args)
+    try:
+        status = controller.license_status
+        if args.aktion == "info":
+            print(status.as_text())
+            return 0 if status.productive_allowed else 1
+        if args.aktion == "anfrage":
+            anfrage = controller.license.activation_request(args.kunde)
+            text = json.dumps(anfrage, indent=2, ensure_ascii=False)
+            if args.datei:
+                pfad = Path(args.datei)
+                pfad.write_text(text + "\n", encoding="utf-8")
+                print(f"Aktivierungsanfrage geschrieben: {pfad}")
+            else:
+                print(text)
+            print("\nDiese Angaben an den Hersteller senden. Sie enthalten keine "
+                  "Unternehmensdaten.", file=sys.stderr)
+            return 0
+        if args.aktion == "aufnehmen":
+            if not args.lizenz or not args.signatur:
+                print("Es werden --lizenz und --signatur benoetigt.", file=sys.stderr)
+                return 2
+            neu = controller.license.install(Path(args.lizenz), Path(args.signatur))
+            print(neu.as_text())
+            return 0 if neu.productive_allowed else 1
+        return 2
+    finally:
+        controller.shutdown()
+
+
+def cmd_version(args) -> int:
+    controller = _controller(args)
+    try:
+        if args.json:
+            print(json.dumps(controller.versions(), indent=2, ensure_ascii=False))
+        else:
+            print(controller.versions_text())
+        return 0
     finally:
         controller.shutdown()
 
@@ -306,6 +354,19 @@ def build_parser() -> argparse.ArgumentParser:
 
     status = neu("status", "Lagebericht als JSON")
     status.set_defaults(func=cmd_status)
+
+    lizenz = neu("lizenz", "Lizenz ansehen, anfragen oder aufnehmen")
+    lizenz.add_argument("aktion", nargs="?", default="info",
+                        choices=["info", "anfrage", "aufnehmen"])
+    lizenz.add_argument("--kunde", default="", help="Firmenname fuer die Anfrage")
+    lizenz.add_argument("--datei", default="", help="Anfrage in diese Datei schreiben")
+    lizenz.add_argument("--lizenz", default="", help="Pfad zu license.json")
+    lizenz.add_argument("--signatur", default="", help="Pfad zu license.sig")
+    lizenz.set_defaults(func=cmd_lizenz)
+
+    version = neu("version", "Produkt-, Modul- und Wissensversionen")
+    version.add_argument("--json", action="store_true")
+    version.set_defaults(func=cmd_version)
 
     onboarding = neu("onboarding", "Unternehmensdaten erfassen")
     onboarding.add_argument("--interaktiv", action="store_true")

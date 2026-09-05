@@ -26,6 +26,7 @@ from pkc.knowledge.bundled import ingest_bundled_modules
 from pkc.knowledge.chunker import chunk_document
 from pkc.knowledge.extract import ExtractionError, extract
 from pkc.knowledge.store import KnowledgeStore
+from pkc.licensing import LicenseChecker
 from pkc.llm.base import ChatMessage
 from pkc.llm.manager import LlmManager, discover_models
 from pkc.logging_setup import get_logger, setup_logging
@@ -42,6 +43,10 @@ from pkc.updater import HttpClient, SourceRegistry, UpdatePipeline
 from pkc.updater.pipeline import UpdateReport
 
 log = get_logger(__name__)
+
+
+class LicenseRequired(RuntimeError):
+    """Die produktive Nutzung verlangt eine gueltige Lizenz."""
 
 
 @dataclass
@@ -163,6 +168,15 @@ class AppController:
         )
         self.searcher = HybridSearcher(self.knowledge_db, self.embedder)
         self.capture = MemoryCapture(float(self.config.get("memory.min_confidence", 0.55)))
+
+        # Lizenz (Masterprompt 84 bis 97)
+        self.license = LicenseChecker(
+            self.paths.program_root,
+            product=str(self.config.get("license.product", "portabler-ki-mitarbeiter")),
+            module=self.profile.profile_id,
+            required=bool(self.config.get("license.required", False)),
+        )
+        self.license_status = self.license.check()
 
         # Tresor
         self.vault = SecretVault(self.paths.secrets_file)
@@ -300,6 +314,13 @@ class AppController:
         report.add("Lokales Modell", has_model, detail, critical=False)
 
         report.add(
+            "Lizenz",
+            self.license_status.productive_allowed,
+            self.license_status.message,
+            critical=self.license_status.required,
+        )
+
+        report.add(
             "Quellenregister", self.registry is not None,
             f"{len(self.registry)} Quellen, {self.registry.document_count()} Dokumente"
             if self.registry else f"nicht ladbar: {self.registry_error}",
@@ -341,10 +362,49 @@ class AppController:
     def mode(self) -> Mode:
         return self.network.mode
 
+    def versions(self) -> dict:
+        """Alle Versionsangaben getrennt (Masterprompt 66).
+
+        Ein spaeter gemeldeter Fehler muss einer konkreten Installation
+        zugeordnet werden koennen - dafuer reicht eine einzelne Versionsnummer
+        nicht aus.
+        """
+        profil_version = self.profile.version
+        unternehmensprofil = int(self.company_db.scalar(
+            "SELECT COALESCE(MAX(version), 0) FROM memory WHERE status='active'",
+            default=0,
+        ) or 0)
+        return {
+            "produkt": str(self.config.get("app.name", "Portabler Buchhalter")),
+            "softwareversion": str(self.config.get("product.version", "0.1.0")),
+            "produktstufe": str(self.config.get("product.stage", "pilot")),
+            "fachmodul": f"{self.profile.name} {profil_version}",
+            "wissenspaket": str(self.config.get("product.knowledge_package", "-")),
+            "wissensstand": self.knowledge.knowledge_date(),
+            "unternehmensprofil": f"Version {unternehmensprofil}",
+            "modell": self.llm.primary.model,
+            "modell_anbieter": self.llm.primary.name,
+            "instanz_id": self.license_status.instance_id,
+            "lizenz": self.license_status.state.value,
+        }
+
+    def versions_text(self) -> str:
+        felder = self.versions()
+        breite = max(len(k) for k in felder)
+        zeilen = [felder["produkt"], ""]
+        for schluessel, wert in felder.items():
+            if schluessel == "produkt":
+                continue
+            beschriftung = schluessel.replace("_", " ").capitalize()
+            zeilen.append(f"  {beschriftung.ljust(breite)} : {wert}")
+        return "\n".join(zeilen)
+
     def status(self) -> dict:
         knowledge = self.knowledge.stats()
         return {
             "anwendung": str(self.config.get("app.name", "Portabler Buchhalter")),
+            "versionen": self.versions(),
+            "lizenz": self.license_status.as_dict(),
             "profil": self.profile.name,
             "betriebsart": self.mode.value,
             "internet": self.network.status.online,
@@ -487,6 +547,7 @@ class AppController:
         question = (question or "").strip()
         if not question:
             raise ValueError("Die Frage ist leer.")
+        self.require_productive_use()
         uid = conversation_uid or self.ensure_conversation()
         mode = self.mode
         knowledge_date = self.knowledge.knowledge_date()
@@ -536,6 +597,26 @@ class AppController:
             betriebsart=mode.value,
         )
         return AskOutcome(result, uid, message_id, candidates, stored)
+
+    def require_productive_use(self) -> None:
+        """Sperrt die produktive Nutzung ohne gueltige Lizenz (Masterprompt 87).
+
+        Gesperrt wird ausschliesslich die *Nutzung*. Lizenzangaben ansehen,
+        Unternehmenswissen einsehen und der Datenexport bleiben moeglich, und
+        es werden keine Daten geloescht, gesperrt oder veraendert
+        (Masterprompt 95).
+        """
+        if self.license_status.productive_allowed:
+            return
+        hinweise = "\n".join(f"  - {h}" for h in self.license_status.hints)
+        raise LicenseRequired(
+            f"{self.license_status.message}\n\n"
+            "Die Anwendung laeuft eingeschraenkt weiter. Moeglich bleiben:\n"
+            "  - Lizenzangaben ansehen (Befehl 'lizenz')\n"
+            "  - Unternehmenswissen ansehen und exportieren (Befehl 'wissen')\n"
+            "  - Sicherung erstellen (Befehl 'sicherung')\n"
+            + (f"\n{hinweise}" if hinweise else "")
+        )
 
     # ------------------------------------------------------------------
     # Unternehmensgedaechtnis
