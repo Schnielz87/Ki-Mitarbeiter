@@ -75,8 +75,8 @@ Er lautet: **fertig zur Abnahme**. Der Weg dorthin steht in
 **219 Tests bestanden, 1 uebersprungen** (`python -m pytest tests -q`).
 Auf einem echten Windows-Rechner sind alle 13 Schritte des Bauablaufs
 bestanden - zuletzt
-https://github.com/Schnielz87/Ki-Mitarbeiter/actions/runs/33973017177
-(Stand `b9253b7`), Artefakt 22.956.536 Bytes. Einzelheiten in
+https://github.com/Schnielz87/Ki-Mitarbeiter/actions/runs/33973618581
+(Stand `914b588`), Artefakt 22.958.149 Bytes. Einzelheiten in
 `TESTBERICHT.md`. Besonders hervorzuheben:
 
 * Die **vollstaendige Nutzungskette** aus Masterprompt 49 laeuft in einem

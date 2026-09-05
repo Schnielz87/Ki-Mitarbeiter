@@ -21,13 +21,13 @@ Tabelle trennt das sauber:
 | Echter zweiter PC und echter Laufwerkswechsel | nur simuliert | **E** |
 
 **Bereits auf echtem Windows bestanden** (Ablauf
-https://github.com/Schnielz87/Ki-Mitarbeiter/actions/runs/33973017177):
+https://github.com/Schnielz87/Ki-Mitarbeiter/actions/runs/33973618581):
 beide Programme gebaut, Systempruefung der EXE, Offline-Fachfrage mit
 Quellenteil, Unternehmenswissen ueber einen Neustart hinweg, Laufwerkswechsel
 ueber `subst` in einen Pfad mit Leerzeichen, alle Tests bestanden (unter
 Windows werden zwei Tests uebersprungen, die das Betriebssystem nicht
 zulaesst). Das fertige Paket liegt dort als Artefakt
-`Portable-Buchhalter-Windows` (22.956.536 Bytes, rund 22,9 MB).
+`Portable-Buchhalter-Windows` (22.958.149 Bytes, rund 23,0 MB).
 
 Damit ist Punkt **A** faktisch erledigt - Sie koennen entweder selbst bauen
 oder das Artefakt herunterladen und entpacken.
