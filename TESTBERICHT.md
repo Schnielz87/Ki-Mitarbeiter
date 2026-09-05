@@ -4,7 +4,7 @@ Stand: 05.09.2026 · Branch `claude/portable-ki-buchhalter-xr1qlj`
 
 ## Zusammenfassung
 
-**210 automatische Tests bestanden, 1 uebersprungen.** Ausfuehrungszeit rund
+**212 automatische Tests bestanden, 1 uebersprungen** (unter Windows 211 bestanden, 2 uebersprungen). Ausfuehrungszeit rund
 10 Sekunden. Reproduzierbar mit:
 
 ```
@@ -24,13 +24,16 @@ python -m pytest tests -q
 | `test_cli.py` | 12 bestanden | Kommandozeile: alle allgemeinen Schalter an allen Unterbefehlen |
 | `test_start.py` | 14 bestanden | Startfehler bleiben nicht stumm, ohne den Lauf anzuhalten |
 | `test_lizenzierung.py` | 22 bestanden | Lizenzierung und Kopierschutz, alle sieben Faelle aus § 96 |
-| `test_kundentrennung.py` | 13 bestanden | Kundentrennung, Datenexport, Loeschung, Sicherungsziel |
+| `test_kundentrennung.py` | 15 bestanden | Kundentrennung, Datenexport, Loeschung, Sicherungsziel |
 | `test_softwareupdate.py` | 11 bestanden | Softwareupdates getrennt vom Wissensupdate |
 | `test_produktreife.py` | 14 bestanden | Telemetriefreiheit, Lizenzregister, SBOM, Reifegrad, Schluesselschutz |
 
-Der uebersprungene Test prueft das Verhalten bei schreibgeschuetztem
-Verzeichnis. Als `root` sind Dateirechte nicht wirksam einschraenkbar; der
-Test laeuft unter einem gewoehnlichen Benutzerkonto mit.
+Uebersprungen werden Tests, die das jeweilige Betriebssystem nicht
+zulaesst: das schreibgeschuetzte Verzeichnis (als `root` sind Dateirechte
+nicht wirksam einschraenkbar - unter einem gewoehnlichen Benutzerkonto laeuft
+der Test mit) und, nur unter Windows, das Loeschen des Datenbereichs bei
+laufender Anwendung. Beide Faelle sind zusaetzlich plattformunabhaengig
+abgesichert.
 
 ---
 
@@ -234,6 +237,7 @@ aufgefuehrt, weil ein Testbericht ohne Fundstellen wenig wert ist.
 
 | Fund | Ursache | Behebung |
 |---|---|---|
+| Ein Test war nur unter Linux gueltig | Er loeschte den Datenbereich bei laufender Anwendung. Unter Linux geht das - eine geoeffnete Datei laesst sich abhaengen; unter Windows nicht: `PermissionError [WinError 32]`. Der Mangel lag im Test, nicht im Programm | Die Pruefabsicht - der wirkliche Fall ist der im Betrieb abgezogene Datentraeger - wird jetzt plattformunabhaengig geprueft: jeder einzelne Schritt des Beendens wird zum Scheitern gebracht, das Beenden muss trotzdem durchlaufen. Nachgewiesen durch Gegenprobe: entfernt man eine der Absicherungen, schlaegt der Test fehl. Die Fassung am echten Dateisystem laeuft weiter, unter Windows uebersprungen |
 | Der Windows-Lauf blieb stundenlang stehen statt zu scheitern | Der Startpunkt meldet einen Startfehler auch als Meldungsfenster. Ein solches Fenster ist **modal**: es wartet auf den Klick auf "OK". Unter Linux ohne Bildschirm startet Tkinter gar nicht erst, der Aufruf kehrt sofort zurueck - unter Windows steht ein Fenstersystem zur Verfuegung, das Fenster ging auf, und niemand klickte. Die Ablaeufe 11 bis 16 hingen im Schritt "Tests auf Windows" | Schalter `KIM_UNBEAUFSICHTIGT` fuer den Betrieb ohne Aufsicht; `tests/conftest.py` setzt ihn fuer den ganzen Testlauf, damit kein kuenftiger Test dasselbe ausloest. Zusaetzlich Zeitgrenzen im Bauablauf, damit ein Haenger nach zehn Minuten scheitert statt nach sechs Stunden, und `cancel-in-progress`, damit ein neuer Stand die alten Ablaeufe beendet |
 | Mitarbeiterprofil wurde nicht gefunden, wenn der Datenbereich getrennt lag | Programm- und Datenwurzel waren gleichgesetzt | Getrennte `program_root`; Vorgabedateien werden in neue Datenbereiche uebernommen |
 | Dokumenttitel waren nicht durchsuchbar | Nur Text, Ueberschrift und Fundstelle im Volltextindex | Abschnitte ohne eigene Fundstelle tragen den Dokumenttitel |

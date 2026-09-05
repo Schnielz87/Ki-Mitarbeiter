@@ -8,6 +8,7 @@ anderen portablen Installation oder im allgemeinen Fachwissen auftauchen.
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 
 import pytest
@@ -192,19 +193,55 @@ def test_einzelinstanz_verhaelt_sich_unveraendert(portable_root):
         controller.shutdown()
 
 
-def test_beenden_ist_mehrfach_und_nach_loeschung_unkritisch(portable_root):
-    """Das Beenden darf nie der Grund fuer einen Absturz sein."""
-    import shutil
-
+def test_beenden_ist_mehrfach_aufrufbar(portable_root):
+    """Ein zweiter Aufruf darf nichts mehr tun und nichts kaputt machen."""
     controller = make_controller(portable_root)
     controller.bootstrap()
     controller.shutdown()
     controller.shutdown()          # zweites Mal: still
 
-    zweiter = make_controller(portable_root)
-    zweiter.bootstrap()
+
+def test_beenden_ueberlebt_jeden_einzelnen_fehler(portable_root):
+    """Das Beenden darf nie der Grund fuer einen Absturz sein.
+
+    Der wirkliche Fall dahinter: der Datentraeger wird im Betrieb abgezogen.
+    Dann schlaegt jeder Schritt des Beendens fehl - die Netzueberwachung, der
+    Abschlusseintrag im Protokoll, das Schliessen beider Datenbanken. Hier
+    wird jeder dieser Schritte einzeln zum Scheitern gebracht, damit jede
+    Absicherung wirklich angefasst wird und nicht nur dasteht.
+    """
+    controller = make_controller(portable_root)
+    controller.bootstrap()
+
+    class Kaputt:
+        def __init__(self, name):
+            self.name = name
+
+        def __call__(self, *args, **kwargs):
+            raise OSError(f"{self.name}: Datentraeger nicht mehr erreichbar")
+
+    controller.network.stop = Kaputt("network.stop")
+    controller.audit.record = Kaputt("audit.record")
+    controller.knowledge_db.close = Kaputt("knowledge_db.close")
+    controller.company_db.close = Kaputt("company_db.close")
+
+    controller.shutdown()          # kein Absturz, obwohl alles fehlschlaegt
+    assert controller._beendet is True
+
+
+@pytest.mark.skipif(
+    os.name == "nt",
+    reason="Windows laesst eine geoeffnete Datei nicht loeschen - der Fall ist "
+           "dort nicht herstellbar; die Absicherung selbst prueft der Test darueber",
+)
+def test_beenden_nach_geloeschtem_datenbereich(portable_root):
+    """Derselbe Fall am echten Dateisystem, soweit das Betriebssystem es zulaesst."""
+    import shutil
+
+    controller = make_controller(portable_root)
+    controller.bootstrap()
     shutil.rmtree(portable_root.get("database"))
-    zweiter.shutdown()             # Datenbereich weg - trotzdem kein Absturz
+    controller.shutdown()          # Datenbereich weg - trotzdem kein Absturz
 
 
 def test_sicherung_auf_zweites_ziel(portable_root, tmp_path):
