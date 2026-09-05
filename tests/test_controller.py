@@ -21,6 +21,10 @@ def make_controller(paths: Paths, responder=None, online: bool = False) -> AppCo
     config = Config.load(paths)
     config.set("llm.provider", "echo")
     config.set("retrieval.embedding_dim", 256)
+    # Betriebsmodus ausdruecklich waehlen: seit der Einfuehrung der drei
+    # Modi ist die Betriebsart eine Entscheidung des Benutzers und wird
+    # nicht mehr aus dem Netzbefund abgeleitet.
+    config.set("network.mode", "HYBRID" if online else "OFFLINE")
     monitor = NetworkMonitor([], enabled=False)
     monitor.force(online, "Test")
     controller = AppController(paths, config, monitor, console_logging=False)

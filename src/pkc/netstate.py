@@ -21,12 +21,75 @@ log = get_logger(__name__)
 
 
 class Mode(str, Enum):
+    """Der **vom Benutzer gewaehlte** Betriebsmodus.
+
+    Nicht zu verwechseln mit dem Internetstatus. Das sind zwei getrennte
+    Zustaende, und genau darin liegt der Sinn:
+
+        Betriebsmodus OFFLINE + Internet VERFUEGBAR
+            -> es wird trotzdem nichts abgerufen. Eine bewusste
+               Entscheidung des Benutzers hebt die Anwendung nicht auf.
+
+        Betriebsmodus HYBRID + Internet NICHT VERFUEGBAR
+            -> die Anwendung arbeitet lokal weiter, ohne Datenverlust.
+    """
+
     OFFLINE = "OFFLINE"
     HYBRID = "HYBRID"
+    ONLINE = "ONLINE"
 
     @property
     def label(self) -> str:
-        return "HYBRID (online + lokal)" if self is Mode.HYBRID else "OFFLINE (nur lokal)"
+        return {
+            Mode.OFFLINE: "OFFLINE (nur lokal)",
+            Mode.HYBRID: "HYBRID (lokal, online zusaetzlich)",
+            Mode.ONLINE: "ONLINE (online bevorzugt, lokal weiterhin verfuegbar)",
+        }[self]
+
+    @property
+    def erlaubt_online(self) -> bool:
+        """Darf in diesem Modus ueberhaupt nach draussen zugegriffen werden?"""
+        return self is not Mode.OFFLINE
+
+    @property
+    def beschreibung(self) -> str:
+        """Text fuer die Bestaetigung beim Moduswechsel."""
+        if self is Mode.OFFLINE:
+            return ("Offline-Modus aktiv.\n\n"
+                    "Die Anwendung verwendet ausschliesslich lokale Modelle, "
+                    "Daten, Dokumente, Plugins und Wissensbestaende.\n\n"
+                    "Es werden keine externen Online-Dienste verwendet - auch "
+                    "dann nicht, wenn eine Internetverbindung besteht.")
+        if self is Mode.ONLINE:
+            return ("Online-Modus aktiv.\n\n"
+                    "Onlinequellen, Wissensupdates und - soweit freigegeben - "
+                    "eine Online-KI duerfen verwendet werden.\n\n"
+                    "Ihre lokalen Daten, das Unternehmensgedaechtnis und das "
+                    "lokale Fachwissen bleiben unveraendert verfuegbar.")
+        return ("Hybrid-Modus aktiv.\n\n"
+                "Die lokale Arbeit ist die Grundlage; Onlinequellen und "
+                "Wissensupdates duerfen zusaetzlich verwendet werden.\n\n"
+                "Faellt die Verbindung aus, arbeitet die Anwendung ohne "
+                "Unterbrechung lokal weiter.")
+
+    @classmethod
+    def parse(cls, wert: object, vorgabe: "Mode" = None) -> "Mode":
+        """Liest einen Modus aus Konfiguration oder Eingabe - grosszuegig.
+
+        ``offline``, ``OFFLINE`` und ``Offline`` bezeichnen dasselbe. Ein
+        unbekannter Wert fuehrt nie zu einem Absturz, sondern zur Vorgabe -
+        aber niemals stillschweigend zu mehr Rechten: die Vorgabe ist
+        HYBRID, und wer OFFLINE gewaehlt hatte, dessen Wahl steht in der
+        Konfiguration und wird gelesen.
+        """
+        vorgabe = vorgabe if vorgabe is not None else cls.HYBRID
+        if isinstance(wert, cls):
+            return wert
+        text = str(wert or "").strip().upper()
+        for modus in cls:
+            if modus.value == text:
+                return modus
+        return vorgabe
 
 
 @dataclass
@@ -38,6 +101,11 @@ class NetStatus:
 
     @property
     def mode(self) -> Mode:
+        """Welcher Modus sich allein aus dem Netzbefund ergaebe.
+
+        Nur ein Vorschlag - die Wahl des Benutzers hat Vorrang. Siehe
+        ``Betriebsart``.
+        """
         return Mode.HYBRID if self.online else Mode.OFFLINE
 
 
@@ -156,3 +224,98 @@ class NetworkMonitor:
     def force(self, online: bool, detail: str = "manuell gesetzt") -> NetStatus:
         """Erzwingt einen Status (Tests, Benutzerwunsch 'offline arbeiten')."""
         return self._apply(NetStatus(online, time.time(), (), detail))
+
+
+@dataclass
+class Betriebslage:
+    """Was gerade gilt - Wahl und Wirklichkeit nebeneinander."""
+
+    modus: Mode
+    internet: bool
+    #: Ergebnis aus beidem: Darf jetzt tatsaechlich online zugegriffen werden?
+    online_moeglich: bool
+    grund: str = ""
+
+    @property
+    def internet_text(self) -> str:
+        return "verfuegbar" if self.internet else "nicht verfuegbar"
+
+    def as_dict(self) -> dict:
+        return {
+            "betriebsmodus": self.modus.value,
+            "internet": self.internet_text,
+            "online_moeglich": self.online_moeglich,
+            "grund": self.grund,
+        }
+
+
+class Betriebsart:
+    """Verwaltet den gewaehlten Betriebsmodus - getrennt vom Netzbefund.
+
+    Der Benutzer waehlt HYBRID, OFFLINE oder ONLINE. Diese Wahl:
+
+    * wird gespeichert und ueberlebt einen Neustart
+    * wird von der Anwendung **nie** selbsttaetig aufgehoben
+    * entscheidet zusammen mit dem Netzbefund, ob online zugegriffen wird
+
+    Der haeufigste Denkfehler waere, den Modus aus dem Netzbefund
+    abzuleiten. Dann waere OFFLINE keine Entscheidung, sondern nur die
+    Beschreibung eines Zustands - und ein wiederkehrendes Netz wuerde den
+    Benutzer unbemerkt zurueck in den Onlinebetrieb versetzen.
+    """
+
+    SCHLUESSEL = "network.mode"
+
+    def __init__(self, config, monitor: "NetworkMonitor", audit=None):
+        self.config = config
+        self.monitor = monitor
+        self.audit = audit
+        self._modus = Mode.parse(config.get(self.SCHLUESSEL, Mode.HYBRID.value))
+        log.info("Betriebsmodus (gewaehlt): %s", self._modus.value)
+
+    @property
+    def modus(self) -> Mode:
+        return self._modus
+
+    def lage(self, pruefen: bool = False) -> Betriebslage:
+        """Aktuelle Lage. ``pruefen`` erzwingt eine Netzpruefung.
+
+        Im OFFLINE-Modus wird **nicht** geprueft: eine Netzpruefung ist
+        selbst ein Netzzugriff. Der Internetstatus wird dann als unbekannt
+        und damit als nicht verfuegbar gefuehrt.
+        """
+        if self._modus is Mode.OFFLINE:
+            return Betriebslage(
+                self._modus, False, False,
+                "Offline-Modus vom Benutzer gewaehlt - es wird nicht einmal "
+                "geprueft, ob eine Verbindung besteht.",
+            )
+        status = self.monitor.check() if pruefen else self.monitor.status
+        if not status.online:
+            return Betriebslage(
+                self._modus, False, False,
+                "Keine Internetverbindung - die Anwendung arbeitet lokal weiter.",
+            )
+        return Betriebslage(self._modus, True, True, status.detail)
+
+    def waehlen(self, neu: Mode | str, grund: str = "Benutzerwahl") -> Betriebslage:
+        """Setzt den Modus, speichert ihn dauerhaft und protokolliert."""
+        neu = Mode.parse(neu, self._modus)
+        vorher = self._modus
+        self._modus = neu
+        self.config.set(self.SCHLUESSEL, neu.value)
+        try:
+            self.config.save()
+        except Exception as exc:        # pragma: no cover - defensiv
+            log.warning("Betriebsmodus konnte nicht gespeichert werden: %s", exc)
+        if self.audit is not None and vorher is not neu:
+            try:
+                self.audit.record(
+                    "betriebsmodus", "mode", neu.value,
+                    vorher=vorher.value, nachher=neu.value, grund=grund,
+                    internet="verfuegbar" if self.monitor.status.online else "nicht verfuegbar",
+                )
+            except Exception:           # pragma: no cover - defensiv
+                log.debug("Moduswechsel nicht protokollierbar", exc_info=True)
+        log.info("Betriebsmodus gewechselt: %s -> %s (%s)", vorher.value, neu.value, grund)
+        return self.lage()

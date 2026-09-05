@@ -33,7 +33,7 @@ from pkc.llm.manager import LlmManager, discover_models
 from pkc.logging_setup import get_logger, setup_logging
 from pkc.memory import CaptureCandidate, MemoryCapture, MemoryStore
 from pkc.memory.schema_keys import CATEGORIES, WELL_KNOWN_KEYS
-from pkc.netstate import Mode, NetworkMonitor, NetStatus
+from pkc.netstate import Betriebsart, Mode, NetworkMonitor, NetStatus
 from pkc.paths import Paths, get_paths, sanitise_customer_id
 from pkc.profile import EmployeeProfile, load_profile
 from pkc.rag import AnswerResult, ContextBuilder, RagEngine
@@ -68,6 +68,10 @@ class StartupReport:
 
     items: list[CheckItem] = field(default_factory=list)
     mode: Mode = Mode.OFFLINE
+    #: Der Netzbefund - getrennt von der Betriebsart. Beides gehoert in den
+    #: Bericht: "OFFLINE gewaehlt, Internet verfuegbar" ist ein gueltiger
+    #: und wichtiger Zustand.
+    internet: bool = False
     knowledge_date: str | None = None
     hardware: HardwareInfo | None = None
     recommended_profile: str = "light"
@@ -88,7 +92,7 @@ class StartupReport:
         lines += [
             "",
             f"  Wissensstand    : {self.knowledge_date or 'noch kein Wissen aufgenommen'}",
-            f"  Internet        : {'verfuegbar' if self.mode is Mode.HYBRID else 'nicht verfuegbar'}",
+            f"  Internet        : {'verfuegbar' if self.internet else 'nicht verfuegbar'}",
             f"  Betriebsart     : {self.mode.value}",
             f"  Datenverzeichnis: {self.root}",
             "",
@@ -104,6 +108,7 @@ class StartupReport:
         return {
             "einsatzbereit": self.usable,
             "betriebsart": self.mode.value,
+            "internet": "verfuegbar" if self.internet else "nicht verfuegbar",
             "wissensstand": self.knowledge_date,
             "wurzel": self.root,
             "empfohlenes_profil": self.recommended_profile,
@@ -210,6 +215,10 @@ class AppController:
             interval=float(self.config.get("network.check_interval_seconds", 60)),
             enabled=bool(self.config.get("network.check_on_start", True)),
         )
+
+        # Betriebsmodus: die Wahl des Benutzers, getrennt vom Netzbefund.
+        # Sie wird gespeichert und ueberlebt einen Neustart.
+        self.betriebsart = Betriebsart(self.config, self.network)
 
         self._seed_default_config()
 
@@ -362,7 +371,8 @@ class AppController:
         )
 
         status = self.network.check()
-        report.mode = status.mode
+        report.mode = self.mode          # die Wahl des Benutzers
+        report.internet = status.online   # der Netzbefund
         report.knowledge_date = self.knowledge.knowledge_date()
 
         self.audit.record("start", "anwendung", "", status="ok" if report.usable else "fehler",
@@ -401,7 +411,24 @@ class AppController:
     # ------------------------------------------------------------------
     @property
     def mode(self) -> Mode:
-        return self.network.mode
+        """Der **gewaehlte** Betriebsmodus - nicht der Netzbefund.
+
+        Frueher wurde er aus dem Netzstatus abgeleitet. Damit waere OFFLINE
+        keine Entscheidung, sondern nur die Beschreibung eines Zustands, und
+        ein wiederkehrendes Netz haette den Benutzer unbemerkt zurueck in
+        den Onlinebetrieb versetzt.
+        """
+        return self.betriebsart.modus
+
+    @property
+    def lage(self):
+        """Betriebsmodus und Internetstatus nebeneinander."""
+        return self.betriebsart.lage()
+
+    def set_mode(self, modus, grund: str = "Benutzerwahl"):
+        """Betriebsmodus wechseln, dauerhaft speichern und protokollieren."""
+        self.betriebsart.audit = self.audit
+        return self.betriebsart.waehlen(modus, grund)
 
     def versions(self) -> dict:
         """Alle Versionsangaben getrennt (Masterprompt 66).
@@ -448,7 +475,8 @@ class AppController:
             "lizenz": self.license_status.as_dict(),
             "profil": self.profile.name,
             "betriebsart": self.mode.value,
-            "internet": self.network.status.online,
+            "internet": "verfuegbar" if self.network.status.online else "nicht verfuegbar",
+            "online_moeglich": self.lage.online_moeglich,
             "wissensstand": knowledge["knowledge_date"],
             "fachwissen": {"dokumente": knowledge["documents"], "abschnitte": knowledge["chunks"],
                            "einbettungen": knowledge["embeddings"], "quellen": knowledge["sources"]},
@@ -590,7 +618,11 @@ class AppController:
             raise ValueError("Die Frage ist leer.")
         self.require_productive_use()
         uid = conversation_uid or self.ensure_conversation()
-        mode = self.mode
+        lage = self.lage
+        # Fuer die Antwort zaehlt, wie sie tatsaechlich zustande kam. Der
+        # gewaehlte Modus allein waere irrefuehrend: HYBRID ohne Verbindung
+        # ist fuer die Entstehung der Antwort dasselbe wie OFFLINE.
+        mode = self.mode if lage.online_moeglich else Mode.OFFLINE
         knowledge_date = self.knowledge.knowledge_date()
 
         self._store_message(uid, "user", question, mode.value)
@@ -600,7 +632,7 @@ class AppController:
             question, history=history, mode=mode.value, knowledge_date=knowledge_date,
             as_of=as_of, max_tokens=int(self.config.get("llm.max_output_tokens", 1024)),
             temperature=float(self.config.get("llm.temperature", 0.2)),
-            prefer_online=prefer_online and self.mode is Mode.HYBRID,
+            prefer_online=prefer_online and lage.online_moeglich,
         )
 
         message_id = self._store_message(

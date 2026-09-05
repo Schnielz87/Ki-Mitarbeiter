@@ -116,8 +116,17 @@ def test_vollstaendige_nutzungskette(portable_root, testquelle, tmp_path):
     assert " " in str(zweiter_pc), "der Zielpfad enthaelt absichtlich Leerzeichen"
 
     # --- TEST 10: online gehen und Wissen aktualisieren -------------------
+    # Seit der Einfuehrung der drei Betriebsmodi genuegt eine wiederkehrende
+    # Verbindung nicht mehr: Wer OFFLINE gewaehlt hat, bleibt offline, bis er
+    # etwas anderes waehlt. Ein zurueckkehrendes Netz darf den Benutzer nicht
+    # unbemerkt in den Onlinebetrieb versetzen.
     unterwegs.network.force(True, "Test: Verbindung hergestellt")
+    assert unterwegs.mode is Mode.OFFLINE, \
+        "die Wahl des Benutzers darf nicht durch das Netz aufgehoben werden"
+
+    unterwegs.set_mode(Mode.HYBRID, grund="Test: Benutzer geht online")
     assert unterwegs.mode is Mode.HYBRID
+    assert unterwegs.lage.online_moeglich is True
     lauf = unterwegs.run_update(trigger="abnahme")
     assert lauf.status == "success", lauf.as_markdown()
     assert lauf.updated == 1
@@ -128,8 +137,13 @@ def test_vollstaendige_nutzungskette(portable_root, testquelle, tmp_path):
     assert original.is_file(), "das Original muss lokal gespeichert sein"
 
     # --- TEST 11: Internet wieder abschalten ------------------------------
+    # Der gewaehlte Modus bleibt HYBRID - das ist die Zusage des
+    # Hybridbetriebs: faellt die Verbindung aus, arbeitet die Anwendung ohne
+    # Unterbrechung lokal weiter, statt in einen anderen Modus zu springen.
     unterwegs.network.force(False, "Test: Verbindung getrennt")
-    assert unterwegs.mode is Mode.OFFLINE
+    assert unterwegs.mode is Mode.HYBRID, "der gewaehlte Modus bleibt bestehen"
+    assert unterwegs.lage.online_moeglich is False, "online geht jetzt trotzdem nicht"
+    assert unterwegs.lage.internet is False
 
     # --- TEST 12: das neu geladene Wissen ist offline nutzbar -------------
     neu = unterwegs.ask("Was gilt fuer die Belegausgabepflicht ab 2027?")

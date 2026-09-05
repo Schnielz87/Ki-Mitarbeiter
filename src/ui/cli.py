@@ -26,6 +26,10 @@ def _controller(args) -> AppController:
         paths = paths.for_customer(kunde)
     config = Config.load(paths)
     if args.offline:
+        # --offline waehlt den Betriebsmodus fuer diesen Aufruf. Nur im
+        # Arbeitsspeicher: ein einmaliger Schalter darf die dauerhaft
+        # gespeicherte Wahl des Benutzers nicht ueberschreiben.
+        config.set("network.mode", "OFFLINE")
         config.set("network.check_on_start", False)
     return AppController(paths, config, console_logging=not args.quiet)
 
@@ -168,6 +172,30 @@ def cmd_update(args) -> int:
         for message in report.messages:
             print(f"  - {message}")
         return 0 if report.status in ("success", "partial") else 1
+    finally:
+        controller.shutdown()
+
+
+def cmd_modus(args) -> int:
+    """Betriebsmodus anzeigen oder wechseln (HYBRID / OFFLINE / ONLINE).
+
+    Die Wahl wird gespeichert und ueberlebt einen Neustart. Sie wird von der
+    Anwendung nie selbsttaetig aufgehoben - ein wiederkehrendes Netz darf
+    niemanden unbemerkt in den Onlinebetrieb versetzen.
+    """
+    controller = _controller(args)
+    try:
+        if args.neuer_modus:
+            lage = controller.set_mode(args.neuer_modus, grund="Kommandozeile")
+            print(lage.modus.beschreibung)
+            print()
+        lage = controller.lage
+        print(f"Betriebsmodus : {lage.modus.value}   ({lage.modus.label})")
+        print(f"Internet      : {lage.internet_text}")
+        print(f"Onlinezugriff : {'moeglich' if lage.online_moeglich else 'nicht moeglich'}")
+        if lage.grund:
+            print(f"                {lage.grund}")
+        return 0
     finally:
         controller.shutdown()
 
@@ -533,6 +561,13 @@ def build_parser() -> argparse.ArgumentParser:
     lizenz.add_argument("--lizenz", default="", help="Pfad zu license.json")
     lizenz.add_argument("--signatur", default="", help="Pfad zu license.sig")
     lizenz.set_defaults(func=cmd_lizenz)
+
+    modus = neu("modus", "Betriebsmodus anzeigen oder wechseln")
+    modus.add_argument("neuer_modus", nargs="?", default="",
+                       choices=["", "HYBRID", "OFFLINE", "ONLINE",
+                                "hybrid", "offline", "online"],
+                       help="ohne Angabe wird nur der aktuelle Stand gezeigt")
+    modus.set_defaults(func=cmd_modus)
 
     quellen = neu("quellen", "Quellenregister ansehen und Adressen berichtigen")
     quellen.add_argument("aktion", nargs="?", default="liste",
