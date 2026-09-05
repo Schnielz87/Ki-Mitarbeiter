@@ -881,6 +881,22 @@ class AppController:
                           aktualisiert=report.updated, fehlgeschlagen=report.failed)
         return report
 
+    def update_faelligkeit(self):
+        """Steht eine Wissensaktualisierung an? (Masterprompt-Ergaenzung 10-21)
+
+        Beruecksichtigt den gewaehlten Betriebsmodus: im OFFLINE-Modus wird
+        nicht synchronisiert, auch nicht bei bestehender Verbindung.
+        """
+        from pkc.updater.zeitplan import pruefen
+
+        lage = self.lage
+        return pruefen(
+            self.config,
+            self.knowledge.knowledge_date() or "",
+            online_moeglich=lage.online_moeglich,
+            modus_offline=self.mode is Mode.OFFLINE,
+        )
+
     def rollback_update(self, run_id: str) -> tuple[bool, str]:
         if self.updater is None:
             return False, "Quellenregister nicht nutzbar."

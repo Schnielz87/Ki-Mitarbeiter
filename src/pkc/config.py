@@ -65,7 +65,10 @@ DEFAULTS: dict[str, Any] = {
         "allow_web_fetch": True,
     },
     "updates": {
-        "schedule": "manual",          # manual | weekly | monthly | custom
+        # Vorgabe laut Masterprompt-Ergaenzung: woechentlich pruefen. Die
+        # Pruefung findet nur statt, wenn der Betriebsmodus sie zulaesst -
+        # im OFFLINE-Modus wird nicht synchronisiert.
+        "schedule": "weekly",          # manual | weekly | monthly | custom
         "custom_interval_days": 14,
         "max_documents_per_run": 200,
         "keep_reports": 50,

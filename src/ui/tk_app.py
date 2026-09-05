@@ -22,6 +22,7 @@ from tkinter import filedialog, messagebox, scrolledtext, ttk
 
 from app.controller import AppController, AskOutcome, StartupReport
 from pkc.branding import load_brand, profilname
+from pkc.netstate import Mode
 from pkc.audit import ApprovalState
 from pkc.memory.schema_keys import CATEGORIES
 
@@ -269,10 +270,57 @@ class MainWindow:
         header = ttk.Frame(self.root)
         header.pack(fill="x", padx=PAD, pady=(PAD, 0))
         _BrandKopf(header, self.brand, self.profil, gross=False).frame.pack(side="left")
+
+        # Moduswahl: gut sichtbar, jederzeit erreichbar. Der aktuelle Modus
+        # ist eine Entscheidung des Benutzers - er gehoert nicht in ein
+        # Untermenue, sondern nach vorn.
+        self.mode_var = tk.StringVar(value=self.controller.mode.value)
+        self.mode_box = ttk.Combobox(
+            header, textvariable=self.mode_var, state="readonly", width=10,
+            values=[m.value for m in Mode],
+        )
+        self.mode_box.pack(side="right")
+        self.mode_box.bind("<<ComboboxSelected>>", self._on_mode_changed)
+        ttk.Label(header, text="Betriebsmodus:").pack(side="right", padx=(PAD * 2, 4))
+
+        self.internet_label = ttk.Label(header, text="", font=("Segoe UI", 9))
+        self.internet_label.pack(side="right", padx=(0, PAD * 2))
         self.mode_label = ttk.Label(header, text="", font=("Segoe UI", 10, "bold"))
-        self.mode_label.pack(side="right")
+        self.mode_label.pack(side="right", padx=(0, PAD))
         self.knowledge_label = ttk.Label(header, text="")
         self.knowledge_label.pack(side="right", padx=(0, PAD * 2))
+
+    def _refresh_update_lage(self) -> None:
+        """Zeigt Wissensstand, Faelligkeit und naechste Pruefung."""
+        if not hasattr(self, "update_lage_label"):
+            return
+        try:
+            faellig = self.controller.update_faelligkeit()
+        except Exception as exc:        # pragma: no cover - defensiv
+            log.debug("Faelligkeit nicht ermittelbar (%s)", exc)
+            return
+        self.update_lage_label.configure(text=f"Update-Status: {faellig.lage.value}")
+        self.update_detail_label.configure(text=faellig.text)
+        plan = self.controller.config.get("updates.schedule", "weekly")
+        teile = [f"Automatik: {plan}"]
+        if faellig.intervall_tage:
+            teile.append(f"Intervall: alle {faellig.intervall_tage} Tage")
+        if faellig.letzte_pruefung:
+            teile.append(f"Letzte Aktualisierung: {faellig.letzte_pruefung}")
+        if faellig.naechste_pruefung:
+            teile.append(f"Naechste Pruefung: {faellig.naechste_pruefung}")
+        self.update_plan_label.configure(text="  ·  ".join(teile))
+
+    def _on_mode_changed(self, event=None) -> str:
+        """Moduswechsel durch den Benutzer - mit Ansage, was jetzt gilt."""
+        gewaehlt = Mode.parse(self.mode_var.get(), self.controller.mode)
+        if gewaehlt is self.controller.mode:
+            return "break"
+        lage = self.controller.set_mode(gewaehlt, grund="Oberflaeche")
+        messagebox.showinfo("Betriebsmodus", lage.modus.beschreibung, parent=self.root)
+        self._append_chat("System", lage.modus.beschreibung, "system")
+        self._refresh_status()
+        return "break"
 
     def _build_body(self) -> None:
         self.notebook = ttk.Notebook(self.root)
@@ -413,6 +461,18 @@ class MainWindow:
             justify="left",
         )
         info.pack(anchor="w", pady=(0, PAD))
+
+        # Fälligkeit sichtbar machen - sonst weiss niemand, wie alt der
+        # Wissensstand ist und wann als naechstes geprueft wird.
+        stand = ttk.LabelFrame(frame, text="Stand der Aktualisierung")
+        stand.pack(fill="x", pady=(0, PAD))
+        self.update_lage_label = ttk.Label(stand, text="", font=("Segoe UI", 10, "bold"))
+        self.update_lage_label.pack(anchor="w", padx=PAD, pady=(PAD // 2, 0))
+        self.update_detail_label = ttk.Label(stand, text="", wraplength=900,
+                                             justify="left")
+        self.update_detail_label.pack(anchor="w", padx=PAD, pady=(0, PAD // 2))
+        self.update_plan_label = ttk.Label(stand, text="", foreground="#555555")
+        self.update_plan_label.pack(anchor="w", padx=PAD, pady=(0, PAD // 2))
 
         buttons = ttk.Frame(frame)
         buttons.pack(fill="x")
@@ -828,8 +888,14 @@ class MainWindow:
         self.status_text.insert("1.0", json.dumps(status, indent=2, ensure_ascii=False))
         self.status_text.configure(state="disabled")
 
-        mode = self.controller.mode.value
-        self.mode_label.configure(text=f"Betriebsart: {mode}")
+        self._refresh_update_lage()
+        lage = self.controller.lage
+        self.mode_label.configure(text=f"Betriebsmodus: {lage.modus.value}")
+        # Internetstatus getrennt anzeigen: "OFFLINE gewaehlt, Internet
+        # verfuegbar" ist ein gueltiger und wichtiger Zustand.
+        self.internet_label.configure(text=f"Internet: {lage.internet_text}")
+        if self.mode_var.get() != lage.modus.value:
+            self.mode_var.set(lage.modus.value)
         knowledge_date = status["wissensstand"]
         self.knowledge_label.configure(
             text=f"Wissensstand: {knowledge_date[:10] if knowledge_date else 'unbekannt'}"

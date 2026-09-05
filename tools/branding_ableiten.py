@@ -23,7 +23,7 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO / "src"))
 
-from pkc.branding import ORIGINAL_DATEI, VARIANTEN  # noqa: E402
+from pkc.branding import ORIGINAL_DATEI, ORIGINAL_ICON, VARIANTEN  # noqa: E402
 
 #: Kantenlaengen der Icondatei. Windows waehlt daraus die passende aus;
 #: ohne die kleinen Groessen sieht das Taskleistensymbol matschig aus.
@@ -98,8 +98,17 @@ def main() -> int:
     _auf_grund(haupt, (23, 32, 46, 255)).save(assets / VARIANTEN["dark"])
     geschrieben.append(assets / VARIANTEN["dark"])
 
-    # Symbol: quadratisch, ohne Verzerrung.
-    symbol = _quadratisch(quelle, 256)
+    # Symbol: quadratisch, ohne Verzerrung. Liegt ein eigenes Quadratsymbol
+    # vor, wird es bevorzugt - aus einem breiten Logo abgeleitet wuerde der
+    # Schriftzug bei 16 Pixeln unleserlich.
+    icon_original = assets / ORIGINAL_ICON
+    if icon_original.is_file():
+        print(f"Symbolquelle: {icon_original.name} (eigenes Quadratsymbol)")
+        symbol = _quadratisch(Image.open(icon_original).convert("RGBA"), 256)
+    else:
+        print("Symbolquelle: aus dem Hauptlogo abgeleitet "
+              "(kein eigenes Quadratsymbol hinterlegt)")
+        symbol = _quadratisch(quelle, 256)
     symbol.save(assets / VARIANTEN["icon"])
     geschrieben.append(assets / VARIANTEN["icon"])
 

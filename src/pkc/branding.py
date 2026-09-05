@@ -40,6 +40,10 @@ TRENNER = " - "
 BRANDING_DIR = "branding"
 ORIGINAL_DIR = "branding/original"
 ORIGINAL_DATEI = "branding/original/portiva_logo_original.png"
+#: Optionales eigenes Quadratsymbol. Fehlt es, wird das Symbol aus dem
+#: breiten Logo abgeleitet - das ist zulaessig, sieht aber in kleinen
+#: Groessen weniger gut aus, weil der Schriftzug dann winzig wird.
+ORIGINAL_ICON = "branding/original/portiva_icon_original.png"
 
 VARIANTEN = {
     "primary": "branding/portiva_logo_primary.png",

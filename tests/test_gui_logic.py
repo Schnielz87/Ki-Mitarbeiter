@@ -119,12 +119,15 @@ def test_network_loss_message_mentions_local_knowledge(gui):
 
 def test_settings_are_saved_to_disk(gui):
     window, controller, dialogs, _ = gui
-    window.setting_vars["updates.schedule"].set("weekly")
+    # Bewusst Werte, die von der Vorgabe abweichen: gespeichert wird nur,
+    # was abweicht. "weekly" ist seit der Umstellung selbst die Vorgabe und
+    # taugt deshalb nicht mehr als Nachweis.
+    window.setting_vars["updates.schedule"].set("monthly")
     window.setting_vars["retrieval.top_k"].set("12")
     window._save_settings()
     assert controller.paths.settings_file.is_file()
     text = controller.paths.settings_file.read_text(encoding="utf-8")
-    assert "weekly" in text and "12" in text
+    assert "monthly" in text and "12" in text
 
 
 def test_startup_window_reports_state(portable_root):
@@ -144,3 +147,52 @@ def test_startup_window_reports_state(portable_root):
         assert "Der Buchhalter kann gestartet werden." in window.text.buffer
     finally:
         controller.shutdown()
+
+
+# ======================================================================
+# Moduswahl in der Oberflaeche
+# ======================================================================
+
+def test_moduswahl_in_der_oberflaeche(gui):
+    """Der Benutzer waehlt den Modus im Fenster - mit Ansage und dauerhaft."""
+    import json
+
+    from pkc.netstate import Mode
+
+    window, controller, dialogs, _ = gui
+    assert controller.mode is Mode.OFFLINE   # so richtet der Testhelfer ein
+
+    window.mode_var.set("ONLINE")
+    window._on_mode_changed()
+
+    assert controller.mode is Mode.ONLINE
+    # Der Benutzer muss erfahren, was jetzt gilt
+    ansagen = " ".join(m[2] for m in dialogs.messages if m[0] == "info")
+    assert "Online-Modus aktiv" in ansagen
+    assert "lokal" in ansagen.lower(), "ONLINE darf lokale Funktionen nicht in Frage stellen"
+
+    # ... und die Wahl muss auf der Platte stehen
+    gespeichert = json.loads(controller.paths.settings_file.read_text(encoding="utf-8"))
+    assert gespeichert["network"]["mode"] == "ONLINE"
+
+
+def test_offline_wahl_zeigt_die_richtige_ansage(gui):
+    from pkc.netstate import Mode
+
+    window, controller, dialogs, _ = gui
+    controller.set_mode(Mode.HYBRID)
+    window.mode_var.set("OFFLINE")
+    window._on_mode_changed()
+
+    assert controller.mode is Mode.OFFLINE
+    ansagen = " ".join(m[2] for m in dialogs.messages if m[0] == "info")
+    assert "keine externen Online-Dienste" in ansagen
+
+
+def test_gleicher_modus_loest_keine_meldung_aus(gui):
+    """Wer denselben Eintrag noch einmal waehlt, soll nicht belaestigt werden."""
+    window, controller, dialogs, _ = gui
+    vorher = len(dialogs.messages)
+    window.mode_var.set(controller.mode.value)
+    window._on_mode_changed()
+    assert len(dialogs.messages) == vorher
