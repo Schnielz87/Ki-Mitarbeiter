@@ -244,6 +244,19 @@ def cmd_lizenz(args) -> int:
         controller.shutdown()
 
 
+def cmd_reife(args) -> int:
+    """Commercial-Readiness anzeigen (Masterprompt 77, 97)."""
+    from pkc.product import check_readiness
+
+    wurzel = get_paths().program_root
+    bericht = check_readiness(wurzel, run_tests=args.mit_tests)
+    if args.json:
+        print(json.dumps(bericht.as_dict(), indent=2, ensure_ascii=False))
+    else:
+        print(bericht.as_text())
+    return 0 if bericht.commercial_ready else 1
+
+
 def cmd_version(args) -> int:
     controller = _controller(args)
     try:
@@ -424,6 +437,11 @@ def build_parser() -> argparse.ArgumentParser:
                        help="zum Loeschen die Kundenkennung wiederholen")
     kunde.add_argument("--ohne-export", dest="ohne_export", action="store_true")
     kunde.set_defaults(func=cmd_kunde)
+
+    reife = neu("reife", "Stand auf dem Weg zur kommerziellen Freigabe")
+    reife.add_argument("--mit-tests", dest="mit_tests", action="store_true")
+    reife.add_argument("--json", action="store_true")
+    reife.set_defaults(func=cmd_reife)
 
     version = neu("version", "Produkt-, Modul- und Wissensversionen")
     version.add_argument("--json", action="store_true")
