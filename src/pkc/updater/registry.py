@@ -11,7 +11,28 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Iterable
 
+import re
+
 from ..config import load_mapping
+
+class RegistryError(ValueError):
+    """Das Quellenregister ist fehlerhaft oder unsicher."""
+
+
+#: Kennungen werden zu Verzeichnis- und Dateinamen. Sie duerfen deshalb weder
+#: Pfadtrenner noch ".." enthalten - sonst koennte ein weitergegebenes
+#: Quellenregister Dateien ausserhalb des vorgesehenen Bereichs anlegen.
+_SAFE_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.\-]{0,120}$")
+
+
+def check_identifier(value: str, feld: str) -> str:
+    """Prueft eine Kennung, die spaeter als Dateiname dient."""
+    if not _SAFE_ID.match(value or "") or ".." in value:
+        raise RegistryError(
+            f"Unzulaessige {feld}: {value!r}. Erlaubt sind Buchstaben, Ziffern, "
+            "Punkt, Bindestrich und Unterstrich - keine Pfadangaben."
+        )
+    return value
 
 #: Quellenhierarchie nach Masterprompt 26 (1 = hoechste Prioritaet).
 PRIORITY_LABELS = {
@@ -96,10 +117,6 @@ class Source:
         }
 
 
-class RegistryError(ValueError):
-    pass
-
-
 class SourceRegistry:
     """Laedt und validiert das Quellenregister."""
 
@@ -126,6 +143,7 @@ class SourceRegistry:
         for source in self.sources:
             if not source.source_id:
                 raise RegistryError("Quelle ohne source_id.")
+            check_identifier(source.source_id, "source_id")
             if source.source_id in seen_sources:
                 raise RegistryError(f"Doppelte source_id: {source.source_id}")
             seen_sources.add(source.source_id)
@@ -134,6 +152,7 @@ class SourceRegistry:
                     f"{source.source_id}: Prioritaet {source.priority} liegt ausserhalb 1-5."
                 )
             for doc in source.documents:
+                check_identifier(doc.doc_uid, "doc_uid")
                 if doc.doc_uid in seen_docs:
                     raise RegistryError(f"Doppelte doc_uid: {doc.doc_uid}")
                 seen_docs.add(doc.doc_uid)

@@ -205,6 +205,37 @@ def test_rollback_restores_previous_state(setup):
     ) == 0
 
 
+@pytest.mark.parametrize("register", [
+    {"sources": [{"source_id": "../../ausbruch", "name": "x", "priority": 1}]},
+    {"sources": [{"source_id": "a/b", "name": "x", "priority": 1}]},
+    {"sources": [{"source_id": "Q01", "name": "x", "priority": 1, "documents": [
+        {"doc_uid": "../../ausbruch", "url": "http://x/y", "title": "t"}]}]},
+])
+def test_registry_rejects_path_escaping_identifiers(portable_root, register):
+    """Kennungen werden zu Dateinamen - sie duerfen nicht aus dem Bereich fuehren.
+
+    Ein Quellenregister ist eine gewoehnliche Textdatei und kann weitergegeben
+    werden. Ohne diese Pruefung koennte es Dateien ausserhalb von
+    resources/raw anlegen.
+    """
+    from pkc.updater.registry import RegistryError
+
+    pfad = portable_root.get("config") / "boes.json"
+    pfad.write_text(json.dumps(register), encoding="utf-8")
+    with pytest.raises(RegistryError) as fehler:
+        SourceRegistry.load(pfad)
+    assert "Unzulaessige" in str(fehler.value)
+
+
+def test_shipped_registry_is_valid():
+    """Das ausgelieferte Quellenregister muss die Pruefung bestehen."""
+    from pathlib import Path as _Path
+
+    pfad = _Path(__file__).resolve().parents[1] / "config" / "source_registry.json"
+    registry = SourceRegistry.load(pfad)
+    assert len(registry) >= 12 and registry.document_count() >= 30
+
+
 def test_binary_content_is_not_indexed(setup):
     """Binaerdaten duerfen nicht als vermeintliches Fachwissen im Index landen."""
     pipeline, store, _, _, http_server = setup
