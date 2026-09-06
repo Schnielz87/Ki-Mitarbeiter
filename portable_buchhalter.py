@@ -73,6 +73,16 @@ def _melden(titel: str, text: str) -> None:
 
 def main(argv: list[str] | None = None) -> int:
     argv = list(sys.argv[1:] if argv is None else argv)
+
+    # Ein Plugin laeuft in einem eigenen Vorgang (Erweiterung E5.108). In der
+    # gepackten Fassung gibt es kein python.exe daneben - also ruft sich das
+    # Programm selbst mit diesem Schalter auf. Er ist nicht fuer Benutzer
+    # gedacht und taucht deshalb in keiner Hilfe auf.
+    if argv and argv[0] == "--plugin-worker":
+        from pkc.plugins.worker import hauptschleife
+
+        return hauptschleife()
+
     if argv and argv[0] not in ("--gui", "gui"):
         from ui.cli import main as cli_main
         return cli_main(argv)

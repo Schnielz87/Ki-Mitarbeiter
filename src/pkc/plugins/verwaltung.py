@@ -19,10 +19,8 @@ E5.120).
 
 from __future__ import annotations
 
-import importlib.util
 import json
 import shutil
-import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -30,6 +28,7 @@ from typing import Any
 from ..logging_setup import get_logger
 from . import paket as paketmodul
 from .kontext import Pluginkontext, Werkzeug
+from .prozess import Pluginprozess
 from .modell import API_VERSION, BERECHTIGUNGEN, Manifest, PluginFehler
 
 log = get_logger(__name__)
@@ -76,6 +75,11 @@ class Pluginverwaltung:
         self.artefakte = artefakte
         self.oeffentlicher_schluessel = oeffentlicher_schluessel
         self.geladen: dict[str, Pluginkontext] = {}
+        #: Je Plugin ein eigener Vorgang (E5.108).
+        self.vorgaenge: dict[str, Pluginprozess] = {}
+        self._angemeldete_formate: set[str] = set()
+        #: Nur fuer Tests und Sonderfaelle: der Startbefehl des Vorgangs.
+        self.worker_befehl: list[str] | None = None
 
     # -- Orte ----------------------------------------------------------
     @property
@@ -239,7 +243,7 @@ class Pluginverwaltung:
             return None
         stand.aktiv = False
         self._zustand_schreiben(stand)
-        self.geladen.pop(kennung, None)
+        self._entladen(kennung)
         self._melden("plugin_deaktiviert", kennung)
         return stand
 
@@ -265,6 +269,12 @@ class Pluginverwaltung:
         return geladen
 
     def _laden(self, stand: Pluginstand, netz_erlaubt: bool) -> Pluginkontext:
+        """Startet das Plugin in einem eigenen Vorgang (E5.108).
+
+        Der Kontext bleibt hier - er ist die einzige Tuer zu den
+        Unternehmensdaten. Das Plugin drueben hat nur eine Leitung dorthin
+        und kann fragen; entschieden wird in diesem Vorgang.
+        """
         manifest = stand.manifest
         datei = stand.ordner / f"{manifest.modul}.py"
         if not datei.is_file():
@@ -281,29 +291,69 @@ class Pluginverwaltung:
             _netz_erlaubt=bool(netz_erlaubt and "NETWORK_ACCESS" in stand.erteilte_rechte),
         )
 
-        name = f"kim_plugin_{manifest.id}"
-        spezifikation = importlib.util.spec_from_file_location(name, datei)
-        if spezifikation is None or spezifikation.loader is None:
-            raise PluginFehler(f"Das Modul {datei.name} laesst sich nicht laden.")
-        modul = importlib.util.module_from_spec(spezifikation)
-        sys.modules[name] = modul
-        try:
-            spezifikation.loader.exec_module(modul)
-        except Exception as fehler:
-            sys.modules.pop(name, None)
-            raise PluginFehler(f"Beim Laden ist ein Fehler aufgetreten: {fehler}") from fehler
+        vorgang = Pluginprozess(
+            manifest=manifest, ordner=stand.ordner, datenordner=datenordner,
+            berechtigungen=list(stand.erteilte_rechte),
+            dienste=_dienste(kontext), befehl=self.worker_befehl,
+        )
+        vorgang.starten()
+        self.vorgaenge[manifest.id] = vorgang
 
-        einstieg = getattr(modul, manifest.funktion, None)
-        if not callable(einstieg):
-            raise PluginFehler(
-                f"Im Modul {manifest.modul} gibt es keine Funktion "
-                f"'{manifest.funktion}'."
-            )
-        einstieg(kontext)
+        # Was drueben angemeldet wurde, wird hier als Stellvertreter
+        # gefuehrt: der Aufruf reist hinueber, das Ergebnis kommt zurueck.
+        for werkzeug in vorgang.werkzeuge:
+            kontext.werkzeuge.append(Werkzeug(
+                name=str(werkzeug.get("name", "")),
+                beschreibung=str(werkzeug.get("beschreibung", "")),
+                funktion=_werkzeugbruecke(vorgang, str(werkzeug.get("name", ""))),
+                plugin=manifest.id,
+            ))
+        for format in vorgang.formate:
+            self._format_anmelden(vorgang, format, kontext)
+
         self.geladen[manifest.id] = kontext
-        self._melden("plugin_geladen", manifest.id,
-                     beitraege=kontext.beitraege)
+        self._melden("plugin_geladen", manifest.id, beitraege=kontext.beitraege)
         return kontext
+
+    def _format_anmelden(self, vorgang, angaben: dict, kontext: Pluginkontext) -> None:
+        """Meldet ein Ausgabeformat an, das drueben erzeugt wird."""
+        from ..artefakte import Schreiber, registrieren
+
+        kuerzel = str(angaben.get("kuerzel", ""))
+        schreiber = Schreiber(
+            kuerzel=kuerzel,
+            endung=str(angaben.get("endung", f".{kuerzel}")),
+            bezeichnung=str(angaben.get("bezeichnung", kuerzel)),
+            funktion=lambda dokument, v=vorgang, k=kuerzel: v.format_erzeugen(k, dokument),
+            zweck=str(angaben.get("zweck", "")),
+        )
+        registrieren(schreiber, ersetzen=True)
+        self._angemeldete_formate.add(kuerzel)
+        kontext.formate.append(kuerzel)
+
+    # -- Aufraeumen ----------------------------------------------------
+    def _entladen(self, kennung: str) -> None:
+        """Beendet den Vorgang eines Plugins und nimmt seine Formate zurueck."""
+        kontext = self.geladen.pop(kennung, None)
+        vorgang = self.vorgaenge.pop(kennung, None)
+        if vorgang is not None:
+            vorgang.beenden()
+        if kontext is not None:
+            from ..artefakte import abmelden
+
+            for kuerzel in kontext.formate:
+                if kuerzel in self._angemeldete_formate:
+                    abmelden(kuerzel)
+                    self._angemeldete_formate.discard(kuerzel)
+
+    def beenden(self) -> None:
+        """Beendet alle Plugin-Vorgaenge.
+
+        Wird beim Beenden der Anwendung gerufen. Ohne das liefen die
+        Vorgaenge weiter, nachdem das Fenster zu ist.
+        """
+        for kennung in list(self.vorgaenge):
+            self._entladen(kennung)
 
     # -- Auskunft ------------------------------------------------------
     def werkzeuge(self) -> list[Werkzeug]:
@@ -323,3 +373,51 @@ class Pluginverwaltung:
             self.audit.record(aktion, "plugin", kennung, status=status, **angaben)
         except Exception as fehler:
             log.debug("Plugin-Vorgang nicht protokolliert: %s", fehler)
+
+
+# -- Was die Anwendung dem Plugin anbietet ------------------------------
+
+def _dienste(kontext: Pluginkontext) -> dict:
+    """Bildet die erlaubten Zugriffe auf den Kontext ab.
+
+    Jede dieser Funktionen prueft im Kontext selbst die Berechtigung. Was
+    hier nicht steht, gibt es fuer ein Plugin nicht - es hat keinen anderen
+    Weg zu den Daten.
+    """
+    from . import protokoll
+
+    return {
+        "gedaechtnis_lesen": lambda schluessel: kontext.gedaechtnis_lesen(schluessel),
+        "gedaechtnis_liste": lambda limit=100: kontext.gedaechtnis_liste(limit),
+        "gedaechtnis_schreiben": (
+            lambda schluessel, titel, inhalt, kategorie="":
+            kontext.gedaechtnis_schreiben(schluessel, titel, inhalt, kategorie)
+        ),
+        "wissen_suchen": lambda frage, limit=8: kontext.wissen_suchen(frage, limit),
+        "datei_lesen": lambda name: protokoll.bytes_hinein(kontext.datei_lesen(name)),
+        "datei_schreiben": (
+            lambda name, inhalt:
+            str(kontext.datei_schreiben(name, protokoll.bytes_heraus(inhalt)))
+        ),
+        "artefakt_erzeugen": (
+            lambda inhalt, format, name="":
+            kontext.artefakt_erzeugen(inhalt, format, name).as_dict()
+        ),
+        "netz_abrufen": (
+            lambda adresse, zeitgrenze=30.0:
+            protokoll.bytes_hinein(kontext.netz_abrufen(adresse, zeitgrenze))
+        ),
+        "protokollieren": (
+            lambda aktion, gegenstand="", angaben=None:
+            kontext.protokollieren(aktion, gegenstand, **(angaben or {}))
+        ),
+    }
+
+
+def _werkzeugbruecke(vorgang, name: str):
+    """Ein Stellvertreter, der den Aufruf in den Plugin-Vorgang traegt."""
+    def rufen(*argumente, **schluessel):
+        return vorgang.werkzeug_rufen(name, *argumente, **schluessel)
+
+    rufen.__name__ = f"plugin_{name}"
+    return rufen

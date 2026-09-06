@@ -145,6 +145,7 @@ sie sind vollstaendig, damit niemand raten muss.
 | `KIM_CARRIER_ID` | Ueberschreibt die Kennung des Datentraegers, an die eine Lizenz gebunden ist. Nur fuer Tests des Lizenzverfahrens. |
 | `KIM_LLM_PROVIDER` | Beispiel fuer den allgemeinen Mechanismus: `KIM_<PFAD_MIT_UNTERSTRICHEN>` ueberschreibt einen Eintrag aus `config/settings.json`, hier `llm.provider`. Ueberschrieben werden nur **bereits vorhandene** Eintraege; ein unbekannter Name legt nichts an. |
 | `KIM_PASSPHRASE` | Passwort des Geheimnistresors, damit es nicht abgefragt werden muss. Nur fuer unbeaufsichtigte Ablaeufe - ein Passwort in einer Umgebungsvariablen ist fuer andere Prozesse desselben Kontos lesbar und gehoert nicht in den Normalbetrieb. |
+| `KIM_PLUGIN` | Wird von der Anwendung **gesetzt**, nicht vom Benutzer: sie traegt darin die Kennung des Plugins ein, das in diesem Vorgang laeuft (Erweiterung E5.108). So ist in Protokollen und im Taskmanager erkennbar, wozu ein Vorgang gehoert. |
 | `KIM_UNBEAUFSICHTIGT` | Betrieb ohne Aufsicht: ein Startfehler wird nur nach stderr und in `logs\startfehler.txt` gemeldet, **kein Meldungsfenster**. Notwendig ueberall dort, wo niemand auf "OK" klicken kann - automatische Tests, Bauablaeufe, Dienste. Ein modales Fenster wartet sonst endlos; genau daran blieben die Windows-Ablaeufe 11 bis 16 haengen. Beim Doppelklick bleibt das Fenster, dort ist es der einzige sichtbare Weg. Erkannt werden `1`, `ja`, `true`; `0`, `nein`, `false` und leer schalten ab. |
 
 ## 6. Trennung Fachwissen / Unternehmenswissen (Masterprompt 14)

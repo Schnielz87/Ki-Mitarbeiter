@@ -65,22 +65,36 @@ jobs:
           # Die fertige Programmdatei aus dem offiziellen Projekt. Fuer
           # llama-cpp-python gibt es keine fertigen Pakete - der Kunde
           # muesste uebersetzen, was fuer eine portable Anwendung ausscheidet.
-          $api = "https://api.github.com/repos/ggml-org/llama.cpp/releases/latest"
-          $release = Invoke-RestMethod -Uri $api -Headers @{
+          # Nicht "releases/latest" nehmen: dort steht bei llama.cpp eine
+          # Marke ohne Programmdateien (beobachtet: v0.4.0 mit nur einer
+          # Textdatei). Die Programmdateien liegen in den fortlaufenden
+          # Veroeffentlichungen. Also die neueste nehmen, die wirklich eine
+          # Windows-Datei enthaelt.
+          $api = "https://api.github.com/repos/ggml-org/llama.cpp/releases?per_page=30"
+          $releases = Invoke-RestMethod -Uri $api -Headers @{
             Authorization = "Bearer $env:GH_TOKEN"
             "User-Agent"  = "PORTIVA-Bauablauf"
           }
-          Write-Host "llama.cpp Fassung: $($release.tag_name)"
-          $muster = @("*bin-win-cpu-x64.zip", "*bin-win-avx2-x64.zip", "*win-x64.zip")
+          $muster = @("*bin-win-cpu-x64.zip", "*bin-win-avx2-x64.zip",
+                      "*bin-win-cpu*.zip", "*win-x64.zip")
+          $release = $null
           $paket = $null
-          foreach ($m in $muster) {
-            $paket = $release.assets | Where-Object { $_.name -like $m } | Select-Object -First 1
+          foreach ($kandidat in $releases) {
+            foreach ($m in $muster) {
+              $treffer = $kandidat.assets | Where-Object { $_.name -like $m } |
+                         Select-Object -First 1
+              if ($treffer) { $release = $kandidat; $paket = $treffer; break }
+            }
             if ($paket) { break }
           }
           if (-not $paket) {
-            $release.assets | ForEach-Object { Write-Host "  vorhanden: $($_.name)" }
-            throw "Kein passendes Windows-Paket in der Veroeffentlichung gefunden."
+            Write-Host "Durchsuchte Veroeffentlichungen:"
+            $releases | Select-Object -First 5 | ForEach-Object {
+              Write-Host "  $($_.tag_name): $(($_.assets | ForEach-Object { $_.name }) -join ', ')"
+            }
+            throw "Keine Veroeffentlichung mit einer Windows-Programmdatei gefunden."
           }
+          Write-Host "llama.cpp Fassung: $($release.tag_name)"
           Write-Host "Paket: $($paket.name) ($([math]::Round($paket.size/1MB,1)) MB)"
           Invoke-WebRequest -Uri $paket.browser_download_url -OutFile "$env:RUNNER_TEMP\llama.zip"
           Expand-Archive "$env:RUNNER_TEMP\llama.zip" -DestinationPath "$env:RUNNER_TEMP\llama" -Force

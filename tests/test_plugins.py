@@ -341,3 +341,204 @@ def test_ein_dateiformat_zaehlt_als_faehigkeit(tmp_path, verwaltung, portable_ro
         assert verwaltung.beitraege() == ["Dateiformat html"]
     finally:
         abmelden("html")
+
+
+# ======================================================================
+# Trennung auf Vorgangsebene (E5.108)
+#
+# Frueher lief ein Plugin im selben Vorgang wie die Anwendung. Die
+# Rechtepruefung war damit eine Absprache unter Gleichen: wer eigenen
+# Code ausfuehrt, kann sie umgehen. Jetzt laeuft es daneben und hat
+# nichts in der Hand - es kann nur fragen.
+# ======================================================================
+
+NEUGIERIG = '''
+def anmelden(kontext):
+    def wer_bin_ich():
+        import os
+        return os.getpid()
+
+    def was_habe_ich():
+        # Der Kontext drueben ist ein Stellvertreter. Objekte der Anwendung
+        # duerfen darin nicht auftauchen.
+        return sorted(n for n in dir(kontext) if not n.startswith("__"))
+
+    def gedaechtnis_lesen(schluessel):
+        return kontext.gedaechtnis_lesen(schluessel)
+
+    def datenbank_suchen():
+        # Der Versuch, sich die Datenbank selbst zu greifen.
+        import glob, os
+        return sorted(glob.glob(os.path.join(os.getcwd(), "**", "*.db"),
+                                recursive=True))
+
+    kontext.werkzeug_anmelden("wer_bin_ich", "PID", wer_bin_ich)
+    kontext.werkzeug_anmelden("was_habe_ich", "Kontext", was_habe_ich)
+    kontext.werkzeug_anmelden("lesen", "Gedaechtnis", gedaechtnis_lesen)
+    kontext.werkzeug_anmelden("datenbank_suchen", "Suche", datenbank_suchen)
+'''
+
+
+class _Gedaechtnis:
+    def __init__(self):
+        self.geschrieben = []
+
+    def get(self, schluessel):
+        return f"Wert zu {schluessel}"
+
+    def list(self, limit=100):
+        return []
+
+    def set(self, key, titel, inhalt, source="", category=""):
+        self.geschrieben.append((key, inhalt, source))
+
+
+def _mit_rechten(tmp_path, portable_root, rechte, gedaechtnis=None):
+    """Installiert das neugierige Plugin mit genau diesen Rechten."""
+    verwaltung = Pluginverwaltung(portable_root, memory=gedaechtnis)
+    paket = _paket_bauen(tmp_path, {"berechtigungen": rechte}, code=NEUGIERIG)
+    verwaltung.installieren(paket, bestaetigt=True)
+    verwaltung.aktivieren("testplugin")
+    staende = verwaltung.laden()
+    assert not staende[0].fehler, staende[0].fehler
+    return verwaltung
+
+
+def test_plugin_laeuft_in_einem_eigenen_vorgang(tmp_path, portable_root):
+    import os
+
+    verwaltung = _mit_rechten(tmp_path, portable_root, [])
+    try:
+        werkzeuge = {w.name: w for w in verwaltung.werkzeuge()}
+        fremde_pid = werkzeuge["wer_bin_ich"].funktion()
+        assert isinstance(fremde_pid, int)
+        assert fremde_pid != os.getpid(), \
+            "das Plugin muss in einem anderen Vorgang laufen"
+    finally:
+        verwaltung.beenden()
+
+
+def test_plugin_haelt_keine_objekte_der_anwendung(tmp_path, portable_root):
+    """Drueben liegt ein Stellvertreter, nicht der Kontext der Anwendung."""
+    verwaltung = _mit_rechten(tmp_path, portable_root, [])
+    try:
+        werkzeuge = {w.name: w for w in verwaltung.werkzeuge()}
+        sichtbar = werkzeuge["was_habe_ich"].funktion()
+        assert "_memory" not in sichtbar, "das Gedaechtnis darf drueben nicht liegen"
+        assert "_artefakte" not in sichtbar and "_audit" not in sichtbar
+        assert "gedaechtnis_lesen" in sichtbar, "fragen darf es"
+    finally:
+        verwaltung.beenden()
+
+
+def test_ohne_recht_kommt_nichts_ueber_die_leitung(tmp_path, portable_root):
+    gedaechtnis = _Gedaechtnis()
+    verwaltung = _mit_rechten(tmp_path, portable_root, [], gedaechtnis)
+    try:
+        werkzeuge = {w.name: w for w in verwaltung.werkzeuge()}
+        with pytest.raises(PluginFehler) as fehler:
+            werkzeuge["lesen"].funktion("company.name")
+        assert "COMPANY_MEMORY_READ" in str(fehler.value)
+    finally:
+        verwaltung.beenden()
+
+
+def test_mit_recht_kommt_der_wert_an(tmp_path, portable_root):
+    gedaechtnis = _Gedaechtnis()
+    verwaltung = _mit_rechten(tmp_path, portable_root,
+                              ["COMPANY_MEMORY_READ"], gedaechtnis)
+    try:
+        werkzeuge = {w.name: w for w in verwaltung.werkzeuge()}
+        assert werkzeuge["lesen"].funktion("company.name") == "Wert zu company.name"
+    finally:
+        verwaltung.beenden()
+
+
+def test_plugin_arbeitet_in_seinem_eigenen_ordner(tmp_path, portable_root):
+    """Das Arbeitsverzeichnis des Vorgangs ist der Pluginordner."""
+    verwaltung = _mit_rechten(tmp_path, portable_root, [])
+    try:
+        werkzeuge = {w.name: w for w in verwaltung.werkzeuge()}
+        gefunden = werkzeuge["datenbank_suchen"].funktion()
+        assert gefunden == [], \
+            f"vom Pluginordner aus darf keine Datenbank erreichbar sein: {gefunden}"
+    finally:
+        verwaltung.beenden()
+
+
+def test_abgestuerzter_vorgang_reisst_die_anwendung_nicht_mit(tmp_path, portable_root):
+    stirbt = (
+        "def anmelden(kontext):\n"
+        "    def ende():\n"
+        "        import os\n"
+        "        os._exit(1)\n"
+        "    kontext.werkzeug_anmelden('ende', 'stirbt', ende)\n"
+    )
+    verwaltung = Pluginverwaltung(portable_root)
+    verwaltung.installieren(_paket_bauen(tmp_path, code=stirbt), bestaetigt=True)
+    verwaltung.aktivieren("testplugin")
+    verwaltung.laden()
+    try:
+        werkzeug = verwaltung.werkzeuge()[0]
+        with pytest.raises(PluginFehler) as fehler:
+            werkzeug.funktion()
+        assert "beendet" in str(fehler.value)
+    finally:
+        verwaltung.beenden()
+
+
+def test_beenden_stoppt_alle_vorgaenge(tmp_path, portable_root):
+    verwaltung = _mit_rechten(tmp_path, portable_root, [])
+    vorgang = verwaltung.vorgaenge["testplugin"]
+    assert vorgang.laeuft
+
+    verwaltung.beenden()
+    assert not vorgang.laeuft, "beim Beenden darf kein Vorgang weiterlaufen"
+    assert verwaltung.vorgaenge == {}
+
+
+def test_dateiformat_entsteht_im_plugin_vorgang(tmp_path, portable_root):
+    """Der HTML-Schreiber laeuft drueben - hierher kommen nur die Bytes."""
+    import json as _json
+    from pathlib import Path
+
+    from pkc.artefakte import Artefaktwerk, abmelden, formate
+
+    quelle = Path(__file__).resolve().parents[1] / "examples" / "plugin_html"
+    paket = packen(quelle, tmp_path / "html_export",
+                   _json.loads((quelle / "manifest.json").read_text(encoding="utf-8")))
+    verwaltung = Pluginverwaltung(portable_root)
+    verwaltung.installieren(paket, bestaetigt=True)
+    verwaltung.aktivieren("html_export")
+    staende = verwaltung.laden()
+    try:
+        assert not staende[0].fehler, staende[0].fehler
+        assert "html" in {s.kuerzel for s in formate()}
+
+        werk = Artefaktwerk(portable_root)
+        artefakt = werk.erzeugen("## Ergebnis\nGeprueft.", "html", name="Ueber_die_Leitung")
+        text = artefakt.pfad.read_text(encoding="utf-8")
+        assert "<h3>Ergebnis</h3>" in text and "Geprueft." in text
+    finally:
+        verwaltung.beenden()
+        abmelden("html")
+
+
+def test_format_wird_beim_beenden_wieder_abgemeldet(tmp_path, portable_root):
+    """Sonst zeigte die Auswahl ein Format, das niemand mehr erzeugen kann."""
+    import json as _json
+    from pathlib import Path
+
+    from pkc.artefakte import formate
+
+    quelle = Path(__file__).resolve().parents[1] / "examples" / "plugin_html"
+    paket = packen(quelle, tmp_path / "html_export",
+                   _json.loads((quelle / "manifest.json").read_text(encoding="utf-8")))
+    verwaltung = Pluginverwaltung(portable_root)
+    verwaltung.installieren(paket, bestaetigt=True)
+    verwaltung.aktivieren("html_export")
+    verwaltung.laden()
+    assert "html" in {s.kuerzel for s in formate()}
+
+    verwaltung.beenden()
+    assert "html" not in {s.kuerzel for s in formate()}
