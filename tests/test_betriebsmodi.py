@@ -176,3 +176,37 @@ def test_kommandozeile_zeigt_und_wechselt(portable_root, capsys):
     # Eigener Aufruf - die Wahl muss noch stehen
     assert main(["--root", wurzel, "modus"]) == 0
     assert "OFFLINE" in capsys.readouterr().out
+
+
+def test_modellrouting_folgt_der_betriebsart(portable_root, monkeypatch):
+    """E6.12: OFFLINE nur lokal, ONLINE darf ein Online-Modell bevorzugen."""
+    from test_controller import make_controller
+
+    from pkc.netstate import Mode
+
+    controller = make_controller(portable_root)
+    try:
+        controller.bootstrap()
+        gesehen: list[bool] = []
+
+        def merken(*args, **kwargs):
+            gesehen.append(bool(kwargs.get("prefer_online")))
+            from pkc.rag.engine import AnswerResult
+            return AnswerResult(text="Antwort")
+
+        monkeypatch.setattr(controller.rag, "answer", merken)
+
+        controller.set_mode(Mode.OFFLINE)
+        controller.ask("Wie buche ich eine Rechnung?")
+        assert gesehen[-1] is False, "im Offlinebetrieb nie ein Online-Modell"
+
+        controller.network.force(True, "Test: online")
+        controller.set_mode(Mode.HYBRID)
+        controller.ask("Wie buche ich eine Rechnung?")
+        assert gesehen[-1] is False, "HYBRID arbeitet mit dem lokalen Modell"
+
+        controller.set_mode(Mode.ONLINE)
+        controller.ask("Wie buche ich eine Rechnung?")
+        assert gesehen[-1] is True, "ONLINE darf das Online-Modell bevorzugen"
+    finally:
+        controller.shutdown()

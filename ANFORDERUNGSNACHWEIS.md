@@ -118,6 +118,147 @@ Stand siehe `PROJEKTSTATUS.md`. Statusbegriffe nach Masterprompt 52:
 | 96 | Sieben Lizenztestfaelle | GETESTET | alle sieben | `test_lizenzierung.py` |
 | 97 | Commercial-Ready-Anforderung | TEILWEISE | Gate vorhanden | Pruefschluessel und Recht offen |
 
+## Teil 4 - Erweiterungen (E1 bis E6)
+
+### E1 - Marke und Erscheinungsbild PORTIVA
+
+| § | Anforderung | Status | Umsetzung | Nachweis |
+|---|---|---|---|---|
+| E1.1 | Marke fest, Profil dynamisch | GETESTET | `pkc.branding` | `test_branding.py` |
+| E1.2 | Originaldatei im Projekt | VERIFIZIERT | `assets/branding/original/` | Datei liegt vor |
+| E1.3 | Nur relative Pfade | GETESTET | `Brand.pfad()` weist absolute ab | `test_branding.py` |
+| E1.4 | Startbildschirm mit Logo | IMPLEMENTIERT | `StartupWindow`, `_BrandKopf` | `test_gui_logic.py` (Struktur) |
+| E1.5 | Hauptfenster mit Marke und Profil | GETESTET | `_BrandKopf` im Kopfbereich | `test_gui_logic.py` |
+| E1.6 | Titelleiste `PORTIVA - <Profil>` | GETESTET | `MainWindow.__init__` | `test_fenstertitel_traegt_marke_und_profil` |
+| E1.7 | Fenstericon | GETESTET | `_fenstericon` | `test_fenstersymbol_wird_gesetzt` |
+| E1.8 | Windows-Taskleiste | IMPLEMENTIERT | `_taskleisten_kennung` (AppUserModelID) | nur unter Windows wirksam |
+| E1.9 | EXE-Icon | GEBAUT | `build/portable_buchhalter.spec` | Windows-Ablauf |
+| E1.10 | Icon-Datei mehrere Groessen | GETESTET | `tools/branding_ableiten.py` | `test_branding.py` |
+| E1.11 | GUI-Branding durchgehend | GETESTET | Kopf, Titel, Symbol, Sprecher | `test_gui_logic.py` |
+| E1.12 | Profilwechsel aendert nur den Zusatz | GETESTET | `profilname()` | `test_branding.py` |
+| E1.13 | Branding-Konfiguration | GETESTET | `config/brand.json` | `test_branding.py` |
+| E1.14 | Heller und dunkler Hintergrund | IMPLEMENTIERT | Varianten light/dark abgeleitet | Aussehen nur visuell pruefbar |
+| E1.15 | Keine Abhaengigkeit von Internet | GETESTET | Dateien liegen bei | `test_branding.py` |
+| E1.16 | Keine Abhaengigkeit vom Host-PC | GETESTET | relative Pfade, Paketfallback | `test_portability.py` |
+| E1.17 | Fehlendes Logo bricht nicht ab | GETESTET | Rueckfall auf den Schriftzug | `test_branding.py` |
+| E1.18 | Tests | GETESTET | 14 Tests | `test_branding.py`, CI-Schritt |
+| E1.19 | Dokumentation | VERIFIZIERT | `BRANDING_KONZEPT.md` | im Verzeichnis |
+| E1.20 | Checkpoint | VERIFIZIERT | `checkpoints/` | Datei geschrieben |
+| E1.21 | Definition of Done | TEILWEISE | alles ausser Sichtpruefung | Aussehen gehoert zur Abnahme |
+
+### E2 - Betriebsmodi und Wissenssynchronisierung
+
+| § | Anforderung | Status | Umsetzung | Nachweis |
+|---|---|---|---|---|
+| E2.1 | HYBRID, OFFLINE, ONLINE | GETESTET | `pkc.netstate.Mode` | `test_betriebsmodi.py` |
+| E2.2 | Hybridmodus | GETESTET | Standard, wechselt selbsttaetig | `test_betriebsmodi.py` |
+| E2.3 | Offlinemodus | GETESTET | kein Netzzugriff, auch nicht probeweise | `test_3_offline_trotz_vorhandenem_internet` |
+| E2.4 | Onlinemodus | GETESTET | `Betriebsart`, Modellrouting | `test_betriebsmodi.py` |
+| E2.5 | Moduswahl in der Oberflaeche | GETESTET | Auswahlfeld im Kopfbereich | `test_gui_logic.py` |
+| E2.6 | Bestaetigung beim Wechsel | GETESTET | Meldung mit Folgen | `test_gui_logic.py::test_moduswahl_in_der_oberflaeche` |
+| E2.7 | Moduswechsel protokollieren | GETESTET | Audit-Eintrag | `test_betriebsmodi.py` |
+| E2.8 | Internetstatus getrennt vom Modus | GETESTET | zwei Anzeigen, zwei Begriffe | `test_betriebsmodi.py` |
+| E2.9 | Wahl bleibt ueber Neustart | GETESTET | `network.mode` in der Konfiguration | `test_betriebsmodi.py` |
+| E2.10 | Automatische Synchronisierung | GETESTET | `pkc.updater.zeitplan` | `test_wissenszeitplan.py` |
+| E2.11 | Standard woechentlich | GETESTET | `VORGABE = "weekly"` | `test_wissenszeitplan.py` |
+| E2.12 | Einstellungen fuer Updates | GETESTET | Registerkarte Einstellungen | `test_gui_logic.py` |
+| E2.13 | Inkrementelle Synchronisierung | GETESTET | ETag/If-None-Match | `test_updater_pipeline.py` |
+| E2.14 | Kein unkontrolliertes Ueberschreiben | GETESTET | Staging, Pruefung, Aktivierung | `test_updater_pipeline.py` |
+| E2.15 | Versionierung des Wissensstands | GETESTET | Lauf-ID, Ruecknahme | `test_updater_pipeline.py` |
+| E2.16 | Manuelle Aktualisierung | GETESTET | Schaltflaeche und `update` | `test_gui_logic.py` |
+| E2.17 | Verhalten im Offlinemodus | GETESTET | pausiert, kein Abruf | `test_wissenszeitplan.py` |
+| E2.18 | Ausstehende Updates erkennen | GETESTET | `UpdateLage.UEBERFAELLIG` | `test_wissenszeitplan.py` |
+| E2.19 | Keine falsche Aktualitaetsbehauptung | GETESTET | Wissensstand in jeder Antwort | `test_antwortqualitaet.py` |
+| E2.20 | Quellenspezifische Intervalle | **OFFEN** | Register kennt kein Intervallfeld | einheitlich woechentlich |
+| E2.21 | Update-Status in der Oberflaeche | GETESTET | Statusfeld mit Faelligkeit | `test_gui_logic.py` |
+| E2.22 | Testfaelle Betriebsmodi | GETESTET | alle fuenf | `test_betriebsmodi.py` |
+| E2.23 | Testfaelle Synchronisierung | GETESTET | TEST 6 bis 11 | `test_wissenszeitplan.py` |
+| E2.24 | Definition of Done | ERFUELLT | bis auf E2.20 | siehe Zeile E2.20 |
+
+### E3 - Fachfragen ohne Unternehmensdaten
+
+| § | Anforderung | Status | Umsetzung | Nachweis |
+|---|---|---|---|---|
+| E3 | Fachfrage ohne Onboarding moeglich | GETESTET | kein Zwang zum Onboarding | `test_fachfrage_ohne_unternehmensdaten_wird_beantwortet` |
+| E3 | Fehlende Angabe wird benannt, nicht angenommen | GETESTET | Rueckfragen statt Annahmen | `test_ohne_unternehmensdaten_wird_nichts_erfunden` |
+| E3 | Nichts wird ungefragt gespeichert | GETESTET | Rueckfrage vor jedem Merken | `test_eine_fachfrage_speichert_nichts_ungefragt`, `test_gui_logic.py` |
+| E3 | In der Anleitung erklaert | VERIFIZIERT | eigenes Kapitel | `docs/BEDIENUNGSANLEITUNG.docx` |
+
+### E4 - Datei- und Artefakterzeugung
+
+| § | Anforderung | Status | Umsetzung | Nachweis |
+|---|---|---|---|---|
+| E4 | Acht Ausgabeformate | GETESTET | `pkc.artefakte.schreiber` | `test_artefakte.py` |
+| E4 | Artifact Engine (Name, Ort, Fassung, Metadaten, Schutz) | GETESTET | `Artefaktwerk` | `test_artefakte.py` |
+| E4 | Offline, ohne installiertes Office | GETESTET | nur Standardbibliothek | `test_artefakte.py`, `test_produktreife.py` |
+| E4 | Berufsspezifische Ausgaben | IMPLEMENTIERT | jedes Profil waehlt seine Formate | Formatauswahl in Oberflaeche und CLI |
+| E4 | Online-Erweiterung (OneDrive, Mail ...) | **OFFEN** | ueber Plugins vorgesehen | `PLUGIN_KONZEPT.md` |
+| E4 | Neue Formate ueber Plugins | GETESTET | `registrieren()`, Beispielplugin HTML | `test_plugins.py` |
+
+### E5 - Plugin- und Erweiterungssystem
+
+| § | Anforderung | Status | Umsetzung | Nachweis |
+|---|---|---|---|---|
+| 98 | Allgemeines Plugin-System | GETESTET | `pkc.plugins` | `test_plugins.py` |
+| 99 | Installation in der Anwendung | TEILWEISE | Kommandozeile vollstaendig | Oberflaeche: nur Anzeige |
+| 100 | Paketformat `.kimplug` | GETESTET | ZIP mit Manifest und Pruefsummen | `test_plugins.py` |
+| 101 | Manifest | GETESTET | `Manifest` mit Pruefung | `test_plugins.py` |
+| 102 | Plugin-API/SDK | IMPLEMENTIERT | `Pluginkontext` | `PLUGIN_KONZEPT.md` |
+| 103 | Tool-Registrierung | GETESTET | `werkzeug_anmelden` | `test_plugins.py` |
+| 104 | Kategorien | GETESTET | sechs Kategorien | `test_plugins.py` |
+| 105 | Offline- und Online-Plugins | GETESTET | Modus sperrt auch berechtigte Plugins | `test_netzzugriff_scheitert_im_offlinebetrieb` |
+| 106 | Berechtigungssystem | GETESTET | zwoelf Rechte, einzeln erteilt | `test_plugins.py` |
+| 107 | Lese- und Schreibrechte getrennt | GETESTET | Lesen erlaubt heisst nicht schreiben | `test_lesen_erlaubt_heisst_nicht_schreiben_erlaubt` |
+| 108 | Isolation / Sandboxing | **OFFEN** | vermittelte Schnittstelle, kein Sandkasten | `PLUGIN_KONZEPT.md` 9.1 - ausdruecklich nicht behauptet |
+| 109 | Kryptografische Signaturen | TEILWEISE | Pruefung gebaut und getestet | Herausgeberschluessel nicht hinterlegt |
+| 110 | Kompatibilitaet | GETESTET | Fassung der Schnittstelle | `test_falsche_schnittstellenfassung...` |
+| 111 | Abhaengigkeiten | TEILWEISE | Voraussetzung wird geprueft | keine Fassungsaufloesung |
+| 112 | Plugin-Updates | TEILWEISE | erneute Installation ersetzt sauber | Abgleich braucht Katalog |
+| 113 | Deinstallation | GETESTET | Daten bleiben erhalten | `test_entfernen_laesst_die_daten_stehen` |
+| 114 | Verbundene Dienste als Plugins | KONZEPT | Kategorie CONNECTOR vorhanden | `ERP_CONNECTOR_KONZEPT.md` |
+| 115 | Sichere Authentifizierung | IMPLEMENTIERT | Tresor (scrypt + AES-256-GCM) | `test_sicherheit_freigaben.py` |
+| 116 | Plugin-Katalog | **OFFEN** | setzt Betreiber und Pruefstelle voraus | `PLUGIN_KONZEPT.md` 9.3 |
+| 117 | Installation aus lokaler Datei | GETESTET | `plugin installieren <paket>` | `test_plugins.py` |
+| 118 | Plugin-Audit | GETESTET | jeder Vorgang im Protokoll | `test_plugins.py` |
+| 119 | Plugin-Lizenzierung | **OFFEN** | Geschaeftsentscheidung | Masterprompt 78 |
+| 120 | Kundentrennung | GETESTET | Daten im Kundenbereich | `test_plugincode_liegt_im_programmordner...` |
+| 121 | Plugin-Tests | GETESTET | 22 Tests | `test_plugins.py` |
+| 122 | Commercial-Ready-Gate | **NICHT ERFUELLT** | Sandboxing und Katalog fehlen | `PLUGIN_KONZEPT.md` 10 |
+| 123 | Endziel: neue Faehigkeit ohne neuen Bau | GETESTET | Beispielplugin HTML | `test_beispielplugin_ergaenzt_ein_ausgabeformat` |
+
+### E6 - Qualitative KI-Antworten
+
+| § | Anforderung | Status | Umsetzung | Nachweis |
+|---|---|---|---|---|
+| E6.1 | Keine rohen Trefferlisten als Antwort | GETESTET | `RetrievalOnlyProvider` neu gefasst | `test_antwortdarstellung.py` |
+| E6.2 | Verbindlicher Antwortablauf | GETESTET | `RagEngine.answer` | `test_antwortqualitaet.py` |
+| E6.3 | Treffer erreichen das Modell | GETESTET | Kontext wird mitgegeben | `test_antwortqualitaet.py` (Doppel zeichnet auf) |
+| E6.4 | Antwortqualitaet | IMPLEMENTIERT | Fachprompt und Tiefenanweisung | ohne echtes Modell nicht messbar |
+| E6.5 | Antwort und Quellen getrennt | GETESTET | `ui.antwort.teilen` | `test_antwortdarstellung.py` |
+| E6.6 | Rohtreffer nur auf Abruf | GETESTET | Befehl `recherche` | `test_antwortdarstellung.py::test_recherche_befehl_zeigt_rohtreffer` |
+| E6.7 | Markdown wird dargestellt | GETESTET | `ui.markdown` | `test_markdown.py` |
+| E6.8 | Berufsspezifische Struktur | IMPLEMENTIERT | Profil gibt das Schema vor | `prompts/system.md` |
+| E6.9 | Adaptive Antworttiefe | GETESTET | `pkc.rag.fragetyp` | `test_fragetyp.py` |
+| E6.10 | Rueckfragen | GETESTET | Anweisung im Kontext | `test_antwortqualitaet.py` |
+| E6.11 | Kein Quellenzwang bei Smalltalk | GETESTET | keine Recherche, kein Quellenteil | `test_antwortqualitaet.py` |
+| E6.12 | Modellrouting nach Betriebsart | GETESTET | OFFLINE lokal, ONLINE bevorzugt online | `test_modellrouting_folgt_der_betriebsart` |
+| E6.13 | Fehlendes Modell ist kein Endzustand | TEILWEISE | Status, Einrichtungsweg, keine Scheinantwort | **kein Modell ausgefuehrt** (§ 32) |
+| E6.14 | Modell-Einrichtung in der Anwendung | GETESTET | Befehl `modell`, `pkc.llm.bezug` | `test_antwortdarstellung.py::test_modell_status_meldet_fehlendes_modell` |
+| E6.15 | Fallback sieht nicht aus wie eine Antwort | GETESTET | kurzer, ehrlicher Status | `test_antwortdarstellung.py` |
+| E6.16 | Quellen in der fertigen Antwort | GETESTET | Verweise `[n]`, Quellenteil | `test_antwortqualitaet.py` |
+| E6.17 | Quellenqualitaet | GETESTET | Warnung bei nur Sekundaerquellen | `test_antwortqualitaet.py` |
+| E6.18 | Keine technischen Texte in der Antwort | GETESTET | keine Modellpfade, keine Bewertungen | `test_antwortdarstellung.py` |
+| E6.19 | Chatverlauf | GETESTET | Verlauf im Kontext | `test_antwortqualitaet.py` |
+| E6.20 | Unternehmensgedaechtnis in Antworten | GETESTET | Gedaechtnis im Kontext | `test_antwortqualitaet.py` |
+| E6.21 | Streaming | GETESTET | schrittweise Ausgabe, Rueckfall | `test_llm_providers.py`, `test_gui_logic.py` |
+| E6.22 | Abbruch | GETESTET | "Generierung stoppen" | `test_gui_logic.py` |
+| E6.23 | Gespraechsdarstellung | GETESTET | Sprecher, Anhang darunter | `test_gui_logic.py` |
+| E6.24 | Keine ChatGPT-Kopie noetig | ERFUELLT | eigene, schlichte Darstellung | - |
+| E6.25 | Zehn Testfaelle | GETESTET | alle zehn | `test_antwortqualitaet.py` |
+| E6.26 | Regressionsschutz | GETESTET | Unterhaltungen, Quellen, Audit | `test_antwortqualitaet.py` |
+| E6.27 | Gap-Analyse vor Aenderung | ERFUELLT | Bestand geprueft, nichts neu gebaut | `PROJEKTSTATUS.md` |
+| E6.28 | Definition of Done | TEILWEISE | offen bleibt E6.13 | echtes Modell fehlt |
+
 ---
 
 ## Die wichtigsten offenen Punkte
@@ -132,6 +273,11 @@ Stand siehe `PROJEKTSTATUS.md`. Statusbegriffe nach Masterprompt 52:
 6. **Code-Signing (§ 92)** - benoetigt ein Zertifikat.
 7. **Weitergabe des Sprachmodells (§ 63)** - Empfehlung: vom Kunden beziehen
    lassen.
+8. **Plugin-Isolation (E5.108)** - ein Plugin laeuft im selben Prozess. Vor
+   einer Freigabe fuer Plugins Dritter ist eine Trennung auf Prozessebene
+   erforderlich; siehe `PLUGIN_KONZEPT.md` 9.1.
+9. **Quellenspezifische Updateintervalle (E2.20)** - das Quellenregister
+   kennt noch kein Intervallfeld; aktualisiert wird einheitlich.
 
 ---
 

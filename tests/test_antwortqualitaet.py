@@ -198,3 +198,40 @@ def test_bestehende_funktionen_bleiben(mit_modell):
     assert "WISSENSSTAND" in ergebnis.answer.text
     # Protokoll gefuehrt
     assert controller.audit.count() > 0
+
+
+# ------------------------------------ E3: Fachfragen ohne Unternehmensdaten
+
+def test_fachfrage_ohne_unternehmensdaten_wird_beantwortet(mit_modell):
+    """E3: Das Fachwissen muss ohne jede Angabe zum Unternehmen nutzbar sein.
+
+    Kein Onboarding, kein gefuelltes Gedaechtnis - und trotzdem eine Antwort
+    mit Fundstellen. Waere das Onboarding Voraussetzung, koennte niemand die
+    Software ausprobieren, ohne vorher Firmendaten einzugeben.
+    """
+    controller, doppel = mit_modell
+    assert controller.memory.stats()["active"] == 0, "Ausgangslage: leeres Gedaechtnis"
+
+    ergebnis = controller.ask("Welche Pflichtangaben muss eine Rechnung enthalten?")
+
+    assert ergebnis.answer.text.strip()
+    assert ergebnis.answer.references, "die Fachrecherche muss auch ohne Firmendaten laufen"
+    assert doppel.gesehen, "das Modell muss gefragt worden sein"
+
+
+def test_ohne_unternehmensdaten_wird_nichts_erfunden(mit_modell):
+    """Im Kontext darf nichts ueber das Unternehmen stehen, was niemand gesagt hat."""
+    controller, doppel = mit_modell
+    controller.ask("Wie buche ich eine Eingangsrechnung aus Frankreich?")
+
+    kontext = doppel.kontext
+    treffer = [zeile for zeile in kontext.splitlines()
+               if zeile.strip().startswith("- ") and "company." in zeile]
+    assert not treffer, f"Es wurden Unternehmensangaben erfunden: {treffer}"
+
+
+def test_eine_fachfrage_speichert_nichts_ungefragt(mit_modell):
+    """Wer nur fragt, hinterlaesst keine Unternehmensdaten."""
+    controller, _ = mit_modell
+    controller.ask("Wie lange muss ich Rechnungen aufbewahren?")
+    assert controller.memory.stats()["active"] == 0

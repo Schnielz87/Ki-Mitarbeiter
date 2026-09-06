@@ -701,7 +701,7 @@ class AppController:
         conversation_uid: str = "",
         as_of: str | None = None,
         use_history: bool = True,
-        prefer_online: bool = False,
+        prefer_online: bool | None = None,
         on_token: Callable[[str], None] | None = None,
     ) -> AskOutcome:
         question = (question or "").strip()
@@ -715,6 +715,12 @@ class AppController:
         # ist fuer die Entstehung der Antwort dasselbe wie OFFLINE.
         mode = self.mode if lage.online_moeglich else Mode.OFFLINE
         knowledge_date = self.knowledge.knowledge_date()
+        # Modellrouting nach Betriebsart (E6.12): OFFLINE ausschliesslich
+        # lokal, HYBRID lokal als Grundfunktion, ONLINE darf ein freigegebenes
+        # Online-Modell bevorzugen - sofern eines eingerichtet ist. Der
+        # Aufrufer kann das ausdruecklich ueberstimmen.
+        if prefer_online is None:
+            prefer_online = mode is Mode.ONLINE
 
         self._store_message(uid, "user", question, mode.value)
         history = self._history(uid)[:-1] if use_history else []
