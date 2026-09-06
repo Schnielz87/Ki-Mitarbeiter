@@ -173,3 +173,99 @@ def recommend_profile(info: HardwareInfo) -> str:
     if ram >= PROFILES["standard"]["min_ram_gb"]:
         return "standard"
     return "light"
+
+
+# ----------------------------------------------------------------------
+# Passt das Modell zu diesem Rechner?
+# ----------------------------------------------------------------------
+#
+# Anlass: auf einem Rechner mit Empfehlung STANDARD wurde das HIGH-Modell
+# eingerichtet - ohne ein Wort dazu. Es lief dann mit 0,3 Token je Sekunde,
+# also rund 200 Sekunden je Antwort. Das ist kein Fehler des Modells: 9 GB
+# Gewichte plus Kontext passen auf einem 16-GB-Rechner nicht mehr neben das
+# Betriebssystem, also wird ausgelagert - und jedes Token wartet auf die
+# Festplatte.
+#
+# Solche Zahlen muss die Anwendung **vorher** nennen, nicht hinterher.
+
+#: Was das Betriebssystem und die Anwendung selbst schon belegen, bevor das
+#: Modell ueberhaupt geladen wird. Windows allein nimmt sich mehrere
+#: Gigabyte, dazu diese Anwendung, ein Browser, Outlook.
+#:
+#: Der Wert ist bewusst vorsichtig gewaehlt, und zwar an einer Messung:
+#: auf einem 16-GB-Rechner lief das 14B-Modell (8,99 GB) mit 0,3 Token je
+#: Sekunde - also im Auslagern. Eine Rechnung, die diesen Fall noch "knapp"
+#: nennt, ist zu optimistisch und waere fuer den Benutzer wertlos.
+GRUNDBEDARF_GB = 6.0
+
+
+#: Neben den Gewichten braucht der Dienst Platz fuer den Kontext. Bei 8192
+#: Token sind das je nach Modellgroesse zwei bis drei Gigabyte.
+KONTEXTZUSCHLAG = 1.35
+
+
+def modelleignung(min_ram_gb: float, ram_total_gb: float | None,
+                  groesse_gb: float = 0.0) -> dict:
+    """Beurteilt, ob ein Modell auf diesen Rechner passt.
+
+    Massgeblich ist, was tatsaechlich in den Arbeitsspeicher muss: die
+    Modelldatei plus Platz fuer den Kontext, neben dem Betriebssystem. Die
+    Angabe ``min_ram_gb`` aus dem Katalog ist die Empfehlung des Anbieters -
+    sie sagt, ab wann es gut laeuft, nicht ab wann es ueberhaupt laeuft.
+
+    Drei Stufen, weil es drei verschiedene Sachverhalte sind:
+
+    * ``gut``      - laeuft wie vorgesehen
+    * ``knapp``    - laeuft, aber langsamer; der Arbeitsspeicher ist eng
+    * ``zu_gross`` - passt nicht neben das Betriebssystem; es wird
+      ausgelagert, und dann dauert eine Antwort Minuten
+    """
+    if ram_total_gb is None:
+        return {"stufe": "unbekannt", "text": "Der Arbeitsspeicher liess sich "
+                                              "nicht ermitteln."}
+    if ram_total_gb >= min_ram_gb:
+        return {"stufe": "gut",
+                "text": f"Passt: {ram_total_gb:.0f} GB Arbeitsspeicher, "
+                        f"empfohlen ab {min_ram_gb:.0f} GB."}
+
+    verfuegbar = ram_total_gb - GRUNDBEDARF_GB
+    # Ohne bekannte Dateigroesse bleibt nur die Empfehlung als Massstab.
+    bedarf = (groesse_gb * KONTEXTZUSCHLAG) if groesse_gb else min_ram_gb
+    if verfuegbar >= bedarf:
+        return {"stufe": "knapp",
+                "text": f"Knapp: empfohlen sind {min_ram_gb:.0f} GB "
+                        f"Arbeitsspeicher, vorhanden sind {ram_total_gb:.0f} GB. "
+                        "Es laeuft, aber langsamer als ein kleineres Modell."}
+    return {"stufe": "zu_gross",
+            "text": f"Zu gross fuer diesen Rechner: das Modell braucht rund "
+                    f"{bedarf:.0f} GB Arbeitsspeicher, frei sind hier etwa "
+                    f"{max(verfuegbar, 0):.0f} GB von {ram_total_gb:.0f} GB - "
+                    f"Windows belegt selbst rund {GRUNDBEDARF_GB:.0f} GB. Der "
+                    "Rest wird auf die Festplatte ausgelagert, und dann dauert "
+                    "eine Antwort Minuten statt Sekunden."}
+
+
+#: Was auf reiner CPU realistisch ist. Keine Messung, sondern die
+#: Groessenordnung, an der sich eine gemessene Zahl einordnen laesst.
+TEMPO_STUFEN = (
+    (5.0, "zuegig", "Etwa Lesegeschwindigkeit - so soll es sein."),
+    (2.0, "brauchbar", "Man wartet, aber es ist arbeitsfaehig."),
+    (1.0, "langsam", "Eine laengere Antwort dauert ueber eine Minute."),
+    (0.0, "sehr langsam", "Hier stimmt etwas nicht: meist ist das Modell zu "
+                          "gross fuer den Arbeitsspeicher, und der Rechner "
+                          "laedt staendig von der Festplatte nach."),
+)
+
+
+def tempoeinschaetzung(token_je_sekunde: float) -> dict:
+    """Ordnet eine gemessene Geschwindigkeit ein.
+
+    Eine Zahl allein sagt niemandem etwas. "0,3 Token je Sekunde" ist fuer
+    den Benutzer erst dann eine Auskunft, wenn dabeisteht, ob das normal ist
+    und was es besser machen wuerde.
+    """
+    for grenze, stufe, text in TEMPO_STUFEN:
+        if token_je_sekunde >= grenze:
+            return {"stufe": stufe, "text": text,
+                    "token_je_sekunde": round(float(token_je_sekunde), 1)}
+    return {"stufe": "unbekannt", "text": "", "token_je_sekunde": 0.0}

@@ -393,6 +393,69 @@ kasten(
     "PORTABLE_BUCHHALTER_KONSOLE.exe modell pruefen",
 )
 
+doc.add_heading("Wie schnell ist das? Und warum nicht so schnell wie ChatGPT?", level=2)
+absatz("Die ehrliche Antwort zuerst: nicht so schnell. ChatGPT, Gemini und "
+       "vergleichbare Dienste rechnen in Rechenzentren auf Grafikkarten, die "
+       "je Stueck so viel kosten wie ein Mittelklassewagen. Diese Anwendung "
+       "rechnet auf Ihrem Buerorechner - und zwar mit Absicht: Ihre Daten "
+       "verlassen ihn nicht, und es laeuft ohne Internet. Das ist der "
+       "Tausch.")
+
+absatz("Womit Sie auf reiner Prozessorleistung ungefaehr rechnen koennen - "
+       "keine Zusage, sondern die Groessenordnung:")
+tabelle_mit(
+    ["Modell", "Grob zu erwarten", "Wie sich das anfuehlt"],
+    [
+        ["light (3B)", "8 bis 15 Woerter je Sekunde",
+         "Etwa Lesegeschwindigkeit."],
+        ["standard (7B)", "3 bis 6 Woerter je Sekunde",
+         "Man wartet kurz, arbeitsfaehig."],
+        ["high (14B)", "1 bis 2 Woerter je Sekunde",
+         "Eine laengere Antwort dauert Minuten."],
+        ["Modell zu gross fuer den Arbeitsspeicher", "unter 1",
+         "Unbrauchbar. Hier stimmt etwas nicht - siehe unten."],
+    ],
+    breiten=[4.4, 4.6, 6.8],
+)
+
+absatz("Die Anwendung misst das auf Ihrem Rechner selbst: Registerkarte "
+       "Sprachmodell, Schaltflaeche \"Modell ausprobieren\". Sie nennt die "
+       "gemessene Geschwindigkeit und ordnet sie ein.")
+
+doc.add_heading("Wenn es sehr langsam ist", level=3)
+absatz("Weit unter einem Wort je Sekunde bedeutet fast immer dasselbe: das "
+       "Modell passt nicht in den Arbeitsspeicher. Der Rechner lagert dann "
+       "auf die Festplatte aus und liest fuer jedes einzelne Wort nach. Das "
+       "kostet nicht Prozente, sondern das Zehnfache.")
+punkt("Erster und wichtigster Hebel: ein kleineres Modell waehlen. In der "
+      "Auswahlliste steht bei jedem Eintrag, ob er auf diesen Rechner "
+      "passt - \"ZU GROSS FUER DIESEN RECHNER\" heisst genau das.")
+punkt("Zweiter Hebel: Kontextgroesse verkleinern (Einstellungen und Status). "
+      "4096 statt 8192 spart Arbeitsspeicher.")
+punkt("Dritter Hebel: eine Grafikkarte nutzen. Damit wird es ein "
+      "Vielfaches - siehe naechster Abschnitt.")
+
+doc.add_heading("Mit Grafikkarte geht deutlich mehr", level=3)
+absatz("Der mitgelieferte Modelldienst rechnet ausschliesslich auf dem "
+       "Prozessor. Das ist die Fassung, die ueberall laeuft, ohne Treiber "
+       "und ohne Voraussetzungen. Wenn in Ihrem Rechner eine geeignete "
+       "Grafikkarte steckt, koennen Sie stattdessen eine GPU-Fassung von "
+       "llama.cpp verwenden - dann rechnet die Grafikkarte, und die "
+       "Geschwindigkeit steigt erfahrungsgemaess um ein Vielfaches.")
+schritt("Eine GPU-Fassung von llama.cpp besorgen (das Projekt "
+        "ggml-org/llama.cpp bietet fertige Programmdateien fuer CUDA und "
+        "Vulkan an).")
+schritt("Den Inhalt in den Ordner runtime\\llama legen und die vorhandenen "
+        "Dateien ersetzen.")
+schritt("In \"Einstellungen und Status\" den Wert \"Grafikschichten\" von 0 "
+        "auf 99 setzen und speichern.")
+schritt("Registerkarte Sprachmodell, \"Modell ausprobieren\" - die gemessene "
+        "Geschwindigkeit zeigt, ob es gewirkt hat.")
+absatz("Mit der mitgelieferten Fassung bewirkt der Wert \"Grafikschichten\" "
+       "nichts; sie kann keine Grafikkarte ansprechen. Das ist keine "
+       "Einstellung, die man vergisst - es steht auch in der Oberflaeche "
+       "daneben.")
+
 doc.add_heading("Was schon fertig mitgeliefert wird", level=2)
 absatz("Das Programm, das ein Sprachmodell ausfuehrt, liegt bereits im "
        "Ordner runtime\\llama. Sie muessen nichts installieren und nichts "

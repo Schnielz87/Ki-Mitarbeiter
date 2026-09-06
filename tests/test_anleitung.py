@@ -145,3 +145,37 @@ def test_anleitung_nennt_nur_schaltflaechen_die_es_gibt():
                           "Lage neu pruefen", "Modell ausprobieren"):
         assert f'text="{schaltflaeche}"' in oberflaeche, (
             f"Die Anleitung nennt '{schaltflaeche}' - im Fenster gibt es das nicht.")
+
+
+def test_anleitung_beantwortet_die_frage_nach_der_geschwindigkeit():
+    """"Warum dauert das so lange, und geht es wie bei ChatGPT?"
+
+    Die Frage kam aus dem Betrieb. Die Anleitung muss beides beantworten:
+    warum es langsamer ist als ein Rechenzentrum (und dass das der Preis
+    fuer den Offlinebetrieb ist) und was auf diesem Rechner hilft.
+    """
+    from docx import Document
+
+    datei = str(ROOT / "docs" / "BEDIENUNGSANLEITUNG.docx")
+    dokument = Document(datei)
+    alles = "\n".join(p.text for p in dokument.paragraphs) + "\n" + "\n".join(
+        z.text for t in dokument.tables for r in t.rows for z in r.cells)
+
+    assert "ChatGPT" in alles, "die Frage wird gestellt - sie gehoert beantwortet"
+    assert "Rechenzentren" in alles and "Buerorechner" in alles
+    # Der Hauptgrund fuer die 0,3 Token je Sekunde
+    assert "passt nicht in den Arbeitsspeicher" in alles
+    assert "ZU GROSS FUER DIESEN RECHNER" in alles
+    # Und der Weg zu echter Geschwindigkeit
+    assert "Grafikschichten" in alles
+    assert "runtime\\llama" in alles
+
+
+def test_anleitung_verspricht_keine_zahlen_als_zusage():
+    """Groessenordnungen ja - Zusagen nein. Gemessen wird auf dem Rechner."""
+    from docx import Document
+
+    alles = "\n".join(p.text for p in
+                      Document(str(ROOT / "docs" / "BEDIENUNGSANLEITUNG.docx")).paragraphs)
+    assert "keine Zusage" in alles
+    assert "misst das auf Ihrem Rechner selbst" in alles

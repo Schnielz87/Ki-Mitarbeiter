@@ -69,6 +69,40 @@ oeffnet, hat keine Konsole offen und liest das als "geht nicht", nicht als
   stand dort ein Kasten mit drei Klicks und darunter weiter Konsolentext.
   Ein Test vergleicht die genannten Schaltflaechen mit denen im Fenster
 
+### Geschwindigkeit: 200 Sekunden je Antwort
+
+Aus dem Betrieb gemeldet: 0,3 Token je Sekunde, rund 200 Sekunden fuer eine
+Antwort. Ursache war nicht das Modell, sondern das Schweigen der Anwendung.
+Auf einem Rechner, dem sie selbst STANDARD empfiehlt, liess sie das
+HIGH-Modell einrichten - 8,99 GB Gewichte. Der Rechner lagert dann auf die
+Festplatte aus, und jedes Token wartet darauf.
+
+Die Anwendung hat dazu dreimal geschwiegen, alle drei behoben:
+
+* Sie laedt kein Modell mehr wortlos, das nicht passt. Die Auswahlliste
+  kennzeichnet jeden Eintrag mit "KNAPP" oder "ZU GROSS FUER DIESEN
+  RECHNER", und die Rueckfrage vor dem Laden sagt es noch einmal, mit Zahl
+  und Grund
+* Die Auswahl zeigte "standard", waehrend das 14B-Modell lief - sie setzte
+  sich bei jeder Aktualisierung auf die Empfehlung zurueck und widersprach
+  damit der Zeile darueber. Jetzt zeigt sie, was installiert ist, und
+  ueberschreibt eine getroffene Wahl nie
+* "0.3 Token je Sekunde" stand ohne Einordnung da. Jetzt steht dabei, ob
+  das normal ist, woran es liegt und was hilft
+
+Die Einstufung ist an der gemeldeten Messung ausgerichtet, nicht an einer
+Faustformel: was dort 0,3 Token je Sekunde ergab, heisst hier "zu gross".
+
+* Neu in "Einstellungen und Status": Grafikschichten, Rechenkerne und
+  Kontextgroesse. Sie wirken sofort - der Modelldienst wird beim Speichern
+  neu aufgebaut, statt bis zum naechsten Programmstart wirkungslos zu sein
+* Der mitgelieferte Modelldienst rechnet nur auf der CPU. Wer eine
+  GPU-Fassung von llama.cpp nach runtime\llama legt, kann die Grafikkarte
+  nutzen; die Anleitung beschreibt das Schritt fuer Schritt
+* Neues Kapitel in der Bedienungsanleitung: "Wie schnell ist das? Und warum
+  nicht so schnell wie ChatGPT?" - mit der ehrlichen Antwort, dass ein
+  Buerorechner kein Rechenzentrum ist, und mit dem, was auf ihm hilft
+
 ### Quellenpruefung
 
 * `quellen pruefen` fragte mit HEAD, der Wissensabgleich fragt mit GET.

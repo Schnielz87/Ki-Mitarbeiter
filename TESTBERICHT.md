@@ -4,7 +4,7 @@ Stand: 06.09.2026 · Branch `claude/portable-ki-buchhalter-xr1qlj`
 
 ## Zusammenfassung
 
-**539 automatische Tests bestanden, 1 uebersprungen** (unter Windows einer
+**558 automatische Tests bestanden, 1 uebersprungen** (unter Windows einer
 mehr uebersprungen). Ausfuehrungszeit rund 25 Sekunden. Reproduzierbar mit:
 
 ```
@@ -288,6 +288,9 @@ aufgefuehrt, weil ein Testbericht ohne Fundstellen wenig wert ist.
 | „Lokales Modell: OK" trotz fehlendem Modell | Der Notbetrieb meldete sich als verfuegbar | Systempruefung meldet HINWEIS und beschreibt den Notbetrieb |
 | HTML-Titel wurde falsch erkannt | `<title>` liegt in `<head>`, das uebersprungen wurde | Titel wird vor der Bereichspruefung ausgewertet |
 | Deutsche Abkuerzungen zerteilten Saetze | „GmbH & Co. KG" wurde als Satzende gelesen | Abkuerzungsliste in der Satztrennung |
+| Ein zu grosses Modell wurde wortlos eingerichtet | Auf einem Rechner mit 16 GB Arbeitsspeicher, dem die Anwendung selbst STANDARD empfiehlt, liess sie das HIGH-Modell (8,99 GB) laden - ohne ein Wort. Ergebnis im Betrieb: 0,3 Token je Sekunde, rund 200 Sekunden je Antwort, weil der Rechner auf die Festplatte auslagert | Die Auswahlliste kennzeichnet jeden Eintrag mit "KNAPP" oder "ZU GROSS FUER DIESEN RECHNER", die Rueckfrage nennt Zahl und Grund. Die Einstufung ist an der gemeldeten Messung ausgerichtet: was dort 0,3 Token je Sekunde ergab, gilt hier als zu gross. Gegenprobe gemacht |
+| Die Auswahl widersprach dem, was lief | Die Zeile "Einsatzbereit" nannte qwen2.5-14b, die Auswahlliste darunter "standard Qwen2.5-7B". Sie setzte sich bei jeder Aktualisierung auf die Empfehlung zurueck - auch nach einer ausdruecklichen Wahl des Benutzers | Die Liste zeigt, was installiert ist, und ueberschreibt eine getroffene Wahl nie. Zwei Tests, Gegenprobe gemacht |
+| Eine gemessene Geschwindigkeit ohne Einordnung | "0.3 Token je Sekunde" sagt niemandem, ob das normal ist oder was daran zu aendern waere | Die Messung wird eingeordnet (zuegig / brauchbar / langsam / sehr langsam) und nennt bei schlechten Werten die Hebel: kleineres Modell, kleinerer Kontext, Grafikkarte. Bei guten Werten steht bewusst keine Ratschlagsliste |
 | Der Weg zum Sprachmodell fuehrte aus dem Fenster in die Konsole | Ohne Modell meldete die Anwendung im Fenster "Einrichten mit: PORTABLE_BUCHHALTER_KONSOLE.exe modell empfehlen". Sachlich richtig - das Modell liegt bewusst nicht im Paket -, als Bedienung aber unbrauchbar: wer per Doppelklick startet, hat keine Konsole offen und liest das als "geht nicht" statt "fehlt noch". Genau so kam es aus dem Betrieb zurueck | Neue Registerkarte **Sprachmodell** mit Lage, Empfehlung, Bezugsquellen, Rueckfrage, Fortschritt und anschliessendem Nachweis, dass das Modell antwortet. Die Meldung nennt den Weg, der zur Bedienung passt - auch der Notbetrieb, der erst mitten in einer Anfrage entsteht. 15 neue Tests, drei Gegenproben gemacht |
 | Der Ergebnistext der Modelleinrichtung wurde sofort ueberschrieben | Nach dem Laden schrieb die Registerkarte "einsatzbereit" samt Probeantwort in den Textbereich - und ersetzte ihn unmittelbar danach durch die Katalogliste. Der Benutzer haette das Ergebnis nie gesehen | Die Uebersicht laesst den Textbereich nach einem Bezug in Ruhe; ein Test haelt das fest. Gefunden von den Tests zu dieser Registerkarte, nicht im Betrieb |
 | Ein fehlgeschlagener Modellbezug zeigte einen vollen Fortschrittsbalken | Der Balken richtete sich danach, ob ein Programmfehler auftrat - nicht danach, ob das Modell ankam. Ein abgebrochener Download stand damit auf 100 Prozent | Der Balken zeigt den Bezug, nicht den Aufruf. Gegenprobe gemacht |

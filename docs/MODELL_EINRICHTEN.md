@@ -168,6 +168,54 @@ Frage und nennt Antwortzeit und Geschwindigkeit in Token je Sekunde.
 
 ---
 
+## Wie schnell ist das?
+
+Nicht so schnell wie ChatGPT oder Gemini - und das laesst sich auch nicht
+herbeikonfigurieren. Jene rechnen in Rechenzentren auf Grafikkarten, die je
+Stueck so viel kosten wie ein Auto. Diese Anwendung rechnet auf Ihrem
+Buerorechner, ohne Internet, und Ihre Daten verlassen ihn nicht. Das ist der
+Tausch.
+
+Groessenordnung auf reiner CPU - **keine Zusage**, die Anwendung misst es
+auf Ihrem Rechner selbst (`modell pruefen`):
+
+| Modell | grob zu erwarten |
+|---|---|
+| `light` (3B) | 8 bis 15 Token je Sekunde |
+| `standard` (7B) | 3 bis 6 Token je Sekunde |
+| `high` (14B) | 1 bis 2 Token je Sekunde |
+| Modell zu gross fuer den Arbeitsspeicher | unter 1 - unbrauchbar |
+
+### Unter einem Token je Sekunde
+
+Dann passt das Modell nicht in den Arbeitsspeicher. Der Rechner lagert auf
+die Festplatte aus und liest fuer jedes Token nach; das kostet nicht
+Prozente, sondern das Zehnfache.
+
+1. **Kleineres Modell waehlen.** In der Auswahlliste steht bei jedem
+   Eintrag, ob er auf diesen Rechner passt. `ZU GROSS FUER DIESEN RECHNER`
+   heisst genau das - und die Rueckfrage vor dem Laden sagt es noch einmal.
+2. **Kontext verkleinern** (Einstellungen und Status): 4096 statt 8192.
+3. **Grafikkarte nutzen** - siehe unten.
+
+### Mit Grafikkarte
+
+Der mitgelieferte Modelldienst rechnet nur auf der CPU; das ist die Fassung,
+die ueberall ohne Treiber laeuft. Mit einer geeigneten Grafikkarte geht ein
+Vielfaches:
+
+1. Eine GPU-Fassung von llama.cpp besorgen (CUDA oder Vulkan, aus dem
+   Projekt `ggml-org/llama.cpp`).
+2. Ihren Inhalt nach `runtime\llama` legen und die vorhandenen Dateien
+   ersetzen.
+3. In *Einstellungen und Status* **Grafikschichten** von 0 auf 99 setzen.
+4. `modell pruefen` - die gemessene Geschwindigkeit zeigt, ob es gewirkt hat.
+
+Mit der mitgelieferten CPU-Fassung bewirkt der Wert nichts; sie kann keine
+Grafikkarte ansprechen.
+
+---
+
 ## Wenn es klemmt
 
 | Meldung | Bedeutung | Was zu tun ist |
@@ -177,6 +225,7 @@ Frage und nennt Antwortzeit und Geschwindigkeit in Token je Sekunde.
 | "Der Modelldienst ist nicht hochgekommen" | Der Dienst konnte das Modell nicht laden | Die Meldung nennt die letzte Ausgabe des Dienstes. Meist zu wenig Arbeitsspeicher - ein kleineres Profil waehlen. Ausfuehrlich in `logs\llama-server.log` |
 | Die erste Antwort dauert sehr lange | Das Modell wird geladen | Einmalig. Die folgenden Antworten kommen deutlich schneller |
 | Antworten sind fachlich duenn | Das Modell ist zu klein | `probe` ist ausdruecklich nicht fuer Fachfragen gedacht. `standard` verwenden |
+| Unter 1 Token je Sekunde | Das Modell passt nicht in den Arbeitsspeicher | Kleineres Modell waehlen; siehe "Wie schnell ist das?" |
 
 ---
 

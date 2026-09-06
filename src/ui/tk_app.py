@@ -722,21 +722,40 @@ class MainWindow:
                      else lage["hinweis"])
             self.modell_button.configure(text="Sprachmodell einrichten")
 
-        eintraege, vorwahl = [], ""
+        # Die Liste zeigt zu jedem Modell, ob es auf DIESEN Rechner passt.
+        # Ein Modell, das nicht in den Arbeitsspeicher passt, laeuft mit
+        # Bruchteilen eines Tokens je Sekunde - das muss vorher dastehen.
+        from pkc.hardware import modelleignung
+
+        eintraege, empfohlen, installiert = [], "", ""
+        gefunden = {m["name"] for m in lage["modelle"]}
         for quelle in lage["katalog"]:
+            eignung = modelleignung(quelle["min_ram_gb"],
+                                    lage["hardware"]["arbeitsspeicher_gb"],
+                                    quelle["groesse_gb"])
+            marke = {"gut": "", "knapp": " · KNAPP",
+                     "zu_gross": " · ZU GROSS FUER DIESEN RECHNER"}.get(
+                         eignung["stufe"], "")
             zusatz = " · NUR ZUM AUSPROBIEREN" if not quelle["produktiv"] else ""
             teile = (f" · {len(quelle['teile'])} Teildateien"
                      if quelle.get("geteilt") else "")
             eintraege.append(
                 f"{quelle['profil']:9s} {quelle['name']}  ({quelle['groesse_gb']} GB, "
-                f"ab {quelle['min_ram_gb']} GB RAM{teile}{zusatz})")
+                f"ab {quelle['min_ram_gb']} GB RAM{teile}{zusatz}{marke})")
             if lage["empfehlung"] and quelle["id"] == lage["empfehlung"]["id"]:
-                vorwahl = eintraege[-1]
+                empfohlen = eintraege[-1]
+            # Was tatsaechlich auf der Platte liegt, hat Vorrang vor der
+            # Empfehlung: sonst zeigt die Liste "standard", waehrend das
+            # 14B-Modell laeuft - und widerspricht damit der Zeile darueber.
+            if any(name in gefunden for name in
+                   ([quelle["datei"]] if quelle.get("datei") else [])):
+                installiert = eintraege[-1]
+
         self.modell_auswahl.configure(values=eintraege)
-        if vorwahl:
-            self.modell_wahl.set(vorwahl)
-        elif eintraege:
-            self.modell_wahl.set(eintraege[0])
+        # Eine ausdrueckliche Wahl des Benutzers wird nie ueberschrieben.
+        if self.modell_wahl.get() not in eintraege:
+            self.modell_wahl.set(installiert or empfohlen or
+                                 (eintraege[0] if eintraege else ""))
 
         hardware = lage["hardware"]
         zeilen = [
@@ -793,6 +812,17 @@ class MainWindow:
         ]
         if quelle.get("geteilt"):
             text.append(f"Teildateien   : {len(quelle['teile'])} - alle gehoeren zusammen")
+        from pkc.hardware import modelleignung
+
+        eignung = modelleignung(
+            quelle["min_ram_gb"],
+            getattr(self, "_modell_lage", {}).get("hardware", {}).get(
+                "arbeitsspeicher_gb"),
+            quelle["groesse_gb"])
+        text += ["", eignung["text"]]
+        if eignung["stufe"] == "zu_gross":
+            text += ["", "Empfehlung: ein kleineres Modell waehlen. Trotzdem "
+                         "laden?"]
         if not quelle["produktiv"]:
             text += ["", "ACHTUNG: Dieses Modell ist nur zum Ausprobieren. "
                          "Fuer Fachfragen ist es NICHT geeignet."]
@@ -926,6 +956,7 @@ class MainWindow:
                 "Das Sprachmodell ist einsatzbereit.",
                 f"  Antwortzeit : {probe['dauer_s']} s",
                 f"  Tempo       : {probe['token_je_sekunde']} Token je Sekunde",
+                *self._tempo_zeilen(probe["token_je_sekunde"]),
                 "", "Probeantwort:", "  " + probe.get("text", ""),
             ]
         else:
@@ -947,6 +978,40 @@ class MainWindow:
                 "Das Modell liegt vor, hat aber nicht geantwortet:\n\n"
                 + str(probe.get("grund", "ohne Angabe")), parent=self.root)
 
+    def _tempo_zeilen(self, token_je_sekunde: float) -> list[str]:
+        """Ordnet die gemessene Geschwindigkeit ein - und nennt den Hebel.
+
+        "0,3 Token je Sekunde" ist keine Auskunft. Der Benutzer will wissen,
+        ob das normal ist und was daran zu aendern waere. Beides steht hier -
+        ohne etwas zu versprechen, was auf reiner CPU nicht geht.
+        """
+        from pkc.hardware import modelleignung, tempoeinschaetzung
+
+        einschaetzung = tempoeinschaetzung(token_je_sekunde)
+        zeilen = [f"  Einordnung  : {einschaetzung['stufe']} - {einschaetzung['text']}"]
+        if einschaetzung["stufe"] in ("langsam", "sehr langsam"):
+            quelle = self._gewaehlte_quelle() or {}
+            hardware = getattr(self, "_modell_lage", {}).get("hardware", {})
+            eignung = modelleignung(quelle.get("min_ram_gb", 0),
+                                    hardware.get("arbeitsspeicher_gb"),
+                                    quelle.get("groesse_gb", 0.0))
+            zeilen += ["", "  Was hilft:"]
+            if eignung["stufe"] in ("knapp", "zu_gross"):
+                zeilen.append("    - ein kleineres Modell waehlen (Auswahl oben). "
+                              "Das ist hier der groesste Hebel.")
+            zeilen += [
+                "    - der mitgelieferte Modelldienst rechnet nur auf der CPU. "
+                "Mit einer",
+                "      Grafikkarte waere es ein Vielfaches - dafuer braucht es "
+                "eine",
+                "      GPU-Fassung von llama.cpp in runtime\\llama und "
+                "Einstellungen und",
+                "      Status -> Grafikschichten groesser 0.",
+            ]
+            if hardware.get("grafik"):
+                zeilen.append(f"      Erkannt wurde: {hardware['grafik']}")
+        return zeilen
+
     def _modell_probe(self) -> None:
         """Stellt dem Modell eine Frage - der Nachweis, nicht die Behauptung."""
         if self.busy:
@@ -964,8 +1029,9 @@ class MainWindow:
                     f"  Anbieter    : {probe.get('anbieter', '?')}\n"
                     f"  Modell      : {probe.get('modell', '?')}\n"
                     f"  Antwortzeit : {probe['dauer_s']} s\n"
-                    f"  Tempo       : {probe['token_je_sekunde']} Token je Sekunde\n\n"
-                    "Probeantwort:\n  " + probe.get("text", ""))
+                    f"  Tempo       : {probe['token_je_sekunde']} Token je Sekunde\n"
+                    + "\n".join(self._tempo_zeilen(probe["token_je_sekunde"]))
+                    + "\n\nProbeantwort:\n  " + probe.get("text", ""))
             else:
                 self._write_modell_log(
                     "Es hat kein Sprachmodell geantwortet.\n  "
@@ -1005,6 +1071,26 @@ class MainWindow:
         add_check("Vor dem Speichern nachfragen", "memory.confirm_before_store")
         add_check("Online-Sprachmodell erlauben (optional)", "network.allow_online_llm")
         add_check("Protokollierung aktiv", "security.audit_enabled")
+
+        # Geschwindigkeit des Sprachmodells. Der mitgelieferte Modelldienst
+        # rechnet auf der CPU; wer eine GPU-Fassung von llama.cpp in
+        # runtime\llama legt, kann hier Schichten auf die Grafikkarte
+        # verlagern. 0 heisst: alles auf der CPU.
+        ttk.Label(left, text="Sprachmodell - Geschwindigkeit",
+                  font=("Segoe UI", 10, "bold")).pack(anchor="w", pady=(PAD, 2))
+        add_choice("Grafikschichten (0 = nur CPU)", "llm.gpu_layers",
+                   ["0", "10", "20", "35", "99"])
+        add_choice("Rechenkerne (0 = automatisch)", "llm.threads",
+                   ["0", "2", "4", "6", "8", "12", "16"])
+        add_choice("Kontextgroesse", "llm.context_tokens",
+                   ["2048", "4096", "8192", "16384"])
+        ttk.Label(left, wraplength=430, justify="left", foreground="#555555",
+                  text=("Grafikschichten wirken nur mit einer GPU-Fassung von "
+                        "llama.cpp in runtime\\llama. Die mitgelieferte "
+                        "Fassung rechnet auf der CPU - dort bringt der Wert "
+                        "nichts. Eine kleinere Kontextgroesse spart "
+                        "Arbeitsspeicher und beschleunigt knappe "
+                        "Rechner.")).pack(anchor="w", pady=(0, PAD))
 
         ttk.Button(left, text="Einstellungen speichern", command=self._save_settings).pack(
             anchor="w", pady=PAD
@@ -1522,14 +1608,37 @@ class MainWindow:
 
     def _save_settings(self) -> None:
         changes: dict[str, Any] = {}
+        # Zahlen muessen als Zahlen in der Konfiguration landen. Als Text
+        # wuerden sie beim naechsten Start stillschweigend auf die Vorgabe
+        # zurueckfallen - die Einstellung waere dann wirkungslos, ohne dass
+        # es jemandem auffiele.
+        zahlen = {"retrieval.top_k", "llm.gpu_layers", "llm.threads",
+                  "llm.context_tokens"}
         for key, variable in self.setting_vars.items():
             value = variable.get()
-            if key == "retrieval.top_k":
+            if key in zahlen:
                 value = int(value)
             changes[key] = value
+        vorher = {s: self.controller.config.get(s) for s in
+                  ("llm.gpu_layers", "llm.threads", "llm.context_tokens")}
         path = self.controller.save_settings(changes)
         self.controller.rag.top_k = int(self.controller.config.get("retrieval.top_k", 8))
-        messagebox.showinfo("Einstellungen", f"Gespeichert in:\n{path}", parent=self.root)
+
+        # Die Werte des Modelldienstes werden beim Start des Dienstes
+        # uebergeben. Ohne Neuaufbau blieben sie bis zum naechsten
+        # Programmstart wirkungslos - und der Benutzer haette den Eindruck,
+        # die Einstellung tue nichts.
+        nachher = {s: self.controller.config.get(s) for s in vorher}
+        hinweis = ""
+        if nachher != vorher:
+            self.controller.modell_neu_laden()
+            hinweis = ("\n\nDie Werte fuer das Sprachmodell wurden sofort "
+                       "uebernommen; der Modelldienst startet bei der "
+                       "naechsten Frage neu.")
+            if hasattr(self, "modell_lage_label"):
+                self._refresh_modell()
+        messagebox.showinfo("Einstellungen", f"Gespeichert in:\n{path}{hinweis}",
+                            parent=self.root)
 
     def _set_busy(self, busy: bool, message: str = "") -> None:
         self.busy = busy
