@@ -171,7 +171,7 @@ for nummer, kapitel in enumerate([
     "In fuenf Minuten startklar",
     "Das Sprachmodell einrichten - damit die KI antwortet",
     "Der Startbildschirm - was er Ihnen sagt",
-    "Der Bildschirm: fuenf Registerkarten",
+    "Der Bildschirm: sechs Registerkarten",
     "Fachfragen ohne Unternehmensdaten - geht sofort",
     "Ihr Unternehmen einrichten - empfohlen, nicht Pflicht",
     "Fragen stellen",
@@ -299,13 +299,25 @@ absatz("Dieses Kapitel ist das wichtigste der ganzen Anleitung. Ohne "
        "sagt das dann auch offen.")
 
 kasten(
-    "Zwei Befehle, dann laeuft es",
+    "Im Fenster: drei Klicks",
+    "1. Registerkarte \"Sprachmodell\" oeffnen.\n"
+    "2. Oben steht, was Ihr Rechner hergibt, und welches Modell dazu passt. "
+    "Die Vorauswahl ist bereits die Empfehlung.\n"
+    "3. Auf \"Sprachmodell einrichten\" klicken. Es erscheint eine "
+    "Rueckfrage mit Groesse, Lizenz und Herkunft - erst Ihr \"Ja\" startet "
+    "den Download.\n\n"
+    "Danach bindet die Anwendung das Modell ein und stellt ihm selbst eine "
+    "kleine Frage. Erst wenn die beantwortet ist, meldet sie \"Das "
+    "Sprachmodell ist einsatzbereit.\" - eine geladene Datei allein waere "
+    "noch kein Nachweis.",
+)
+
+absatz("Wer lieber mit der Kommandozeile arbeitet, erreicht dasselbe mit "
+       "diesen zwei Befehlen:")
+kasten(
+    "Dasselbe in der Konsole",
     "PORTABLE_BUCHHALTER_KONSOLE.exe modell empfehlen\n"
-    "PORTABLE_BUCHHALTER_KONSOLE.exe modell einrichten --bestaetigen\n\n"
-    "Der erste Befehl sieht sich Ihren Rechner an und zeigt die "
-    "Bezugsquellen mit Groesse und Lizenz. Der zweite laedt das passende "
-    "Modell, prueft es und stellt ihm eine kleine Frage. Erst wenn die "
-    "beantwortet ist, meldet er \"Das Sprachmodell ist einsatzbereit.\"",
+    "PORTABLE_BUCHHALTER_KONSOLE.exe modell einrichten --bestaetigen",
 )
 
 doc.add_heading("Was schon fertig mitgeliefert wird", level=2)
@@ -454,8 +466,8 @@ absatz("Ein echter Fehler wuerde die Zeile mit FEHLER kennzeichnen und die "
        "Schaltflaeche BUCHHALTER STARTEN gesperrt lassen.")
 
 # ================================================================ 3
-doc.add_heading("4.  Der Bildschirm: fuenf Registerkarten", level=1)
-absatz("Nach dem Start sehen Sie oben eine Zeile mit fuenf Registerkarten. "
+doc.add_heading("4.  Der Bildschirm: sechs Registerkarten", level=1)
+absatz("Nach dem Start sehen Sie oben eine Zeile mit sechs Registerkarten. "
        "Alles, was Sie tun, geschieht in einer davon.")
 
 tabelle_mit(
@@ -467,6 +479,8 @@ tabelle_mit(
          "Suchbegriffe oben; Angaben ueber \"Neu / Aendern\" oder \"Onboarding fortsetzen\""],
         ["Belege", "Eigene Dokumente einlesen",
          "Keine Eingabe - Sie waehlen ueber \"Beleg hinzufuegen\" eine Datei aus"],
+        ["Sprachmodell", "Das Modell einmalig einrichten und ausprobieren",
+         "Auswahlliste mit dem Modell; sonst nur Schaltflaechen"],
         ["Wissen aktualisieren", "Amtliche Quellen nachladen (braucht Internet)",
          "Keine Eingabe - nur Schaltflaechen"],
         ["Einstellungen und Status", "Verhalten einstellen, Zustand pruefen",

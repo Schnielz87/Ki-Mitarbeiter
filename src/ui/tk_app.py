@@ -286,6 +286,12 @@ class MainWindow:
         self.busy = False
         self.pending_candidates: list = []
 
+        # Fehlt das Sprachmodell, nennt die Antwort den Weg dorthin. Aus dem
+        # Fenster heraus ist das die Registerkarte - nicht ein Befehl fuer
+        # ein Konsolenprogramm, das hier niemand offen hat.
+        from pkc.llm.providers import RetrievalOnlyProvider
+        controller.einrichtungsweg(RetrievalOnlyProvider.WEG_FENSTER)
+
         self.root = tk.Tk()
         self.brand = load_brand(controller.paths, controller.config)
         self.profil = profilname(controller.profile)
@@ -384,6 +390,7 @@ class MainWindow:
         self._build_chat_tab()
         self._build_memory_tab()
         self._build_documents_tab()
+        self._build_model_tab()
         self._build_update_tab()
         self._build_settings_tab()
 
@@ -612,6 +619,287 @@ class MainWindow:
                     f"aktualisiert {run['updated']} · fehlgeschlagen {run['failed']}"
                 )
         return "\n".join(lines)
+
+    # -- Registerkarte: Sprachmodell -----------------------------------
+    def _build_model_tab(self) -> None:
+        """Der Weg zum Sprachmodell - im Fenster, nicht in der Konsole.
+
+        Das Modell liegt bewusst nicht im Auslieferungspaket: es ist mehrere
+        Gigabyte gross, und seine Lizenz waehlt der Betreiber selbst. Es
+        fehlt also beim ersten Start, und die Anwendung sagt das auch. Nur
+        stand als Abhilfe bisher ein Befehl fuer ein **anderes** Programm da.
+        Wer die Anwendung per Doppelklick oeffnet, hat keine Konsole offen -
+        und liest die Meldung als "geht nicht", nicht als "fehlt noch".
+        """
+        frame = ttk.Frame(self.notebook)
+        self.notebook.add(frame, text="Sprachmodell")
+
+        ttk.Label(
+            frame,
+            text=(
+                "Ohne Sprachmodell recherchiert der Buchhalter in seinen Quellen und "
+                "zeigt die Fundstellen - er formuliert aber keine Fachantwort.\n"
+                "Das Modell wird einmalig geladen. Danach steht es dauerhaft auf "
+                "diesem Datentraeger und wird auch ohne Internet verwendet."
+            ),
+            justify="left",
+        ).pack(anchor="w", pady=(0, PAD))
+
+        lage = ttk.LabelFrame(frame, text="Lage auf diesem Rechner")
+        lage.pack(fill="x", pady=(0, PAD))
+        self.modell_lage_label = ttk.Label(lage, text="", font=("Segoe UI", 10, "bold"))
+        self.modell_lage_label.pack(anchor="w", padx=PAD, pady=(PAD // 2, 0))
+        self.modell_detail_label = ttk.Label(lage, text="", wraplength=900,
+                                             justify="left")
+        self.modell_detail_label.pack(anchor="w", padx=PAD, pady=(0, PAD // 2))
+
+        auswahl = ttk.Frame(frame)
+        auswahl.pack(fill="x", pady=(0, PAD))
+        ttk.Label(auswahl, text="Auswahl:").pack(side="left")
+        self.modell_wahl = tk.StringVar()
+        self.modell_auswahl = ttk.Combobox(auswahl, textvariable=self.modell_wahl,
+                                           state="readonly", width=70)
+        self.modell_auswahl.pack(side="left", padx=PAD)
+
+        buttons = ttk.Frame(frame)
+        buttons.pack(fill="x")
+        self.modell_button = ttk.Button(
+            buttons, text="Sprachmodell einrichten", command=self._modell_einrichten
+        )
+        self.modell_button.pack(side="left")
+        ttk.Button(buttons, text="Lage neu pruefen",
+                   command=self._refresh_modell).pack(side="left", padx=PAD)
+        ttk.Button(buttons, text="Modell ausprobieren",
+                   command=self._modell_probe).pack(side="left")
+
+        self.modell_progress = ttk.Progressbar(frame, mode="determinate")
+        self.modell_progress.pack(fill="x", pady=PAD)
+
+        self.modell_log = scrolledtext.ScrolledText(
+            frame, wrap="word", font=FONT_MONO, height=18, state="disabled"
+        )
+        self.modell_log.pack(fill="both", expand=True)
+        self._refresh_modell()
+
+    def _write_modell_log(self, text: str) -> None:
+        self.modell_log.configure(state="normal")
+        self.modell_log.delete("1.0", "end")
+        self.modell_log.insert("1.0", text)
+        self.modell_log.configure(state="disabled")
+
+    def _refresh_modell(self, protokoll: bool = True) -> None:
+        """Zeigt, was da ist und was fehlt - ohne Dateipfade in der Antwort.
+
+        ``protokoll=False`` laesst den Textbereich in Ruhe. Nach einem Bezug
+        steht dort das Ergebnis - also gerade das, was der Benutzer lesen
+        soll. Es durch die Katalogliste zu ersetzen hiesse, ihm die Antwort
+        vor der Nase wegzunehmen.
+        """
+        try:
+            lage = self.controller.modell_lage()
+        except Exception as fehler:                # pragma: no cover - defensiv
+            self.modell_lage_label.configure(text="Lage nicht feststellbar")
+            self.modell_detail_label.configure(text=str(fehler))
+            return
+        self._modell_lage = lage
+
+        if lage["bereit"]:
+            self.modell_lage_label.configure(text="Einsatzbereit")
+            self.modell_detail_label.configure(
+                text=f"Anbieter: {lage['anbieter'].get('anbieter', '?')} · "
+                     f"Modell: {lage['anbieter'].get('modell', '?')}")
+            self.modell_button.configure(text="Anderes Modell einrichten")
+        else:
+            self.modell_lage_label.configure(text="Noch nicht eingerichtet")
+            self.modell_detail_label.configure(
+                text="Es fehlt: " + ", ".join(lage["fehlt"]) if lage["fehlt"]
+                     else lage["hinweis"])
+            self.modell_button.configure(text="Sprachmodell einrichten")
+
+        eintraege, vorwahl = [], ""
+        for quelle in lage["katalog"]:
+            zusatz = " · NUR ZUM AUSPROBIEREN" if not quelle["produktiv"] else ""
+            teile = (f" · {len(quelle['teile'])} Teildateien"
+                     if quelle.get("geteilt") else "")
+            eintraege.append(
+                f"{quelle['profil']:9s} {quelle['name']}  ({quelle['groesse_gb']} GB, "
+                f"ab {quelle['min_ram_gb']} GB RAM{teile}{zusatz})")
+            if lage["empfehlung"] and quelle["id"] == lage["empfehlung"]["id"]:
+                vorwahl = eintraege[-1]
+        self.modell_auswahl.configure(values=eintraege)
+        if vorwahl:
+            self.modell_wahl.set(vorwahl)
+        elif eintraege:
+            self.modell_wahl.set(eintraege[0])
+
+        hardware = lage["hardware"]
+        zeilen = [
+            "Erkannte Hardware",
+            f"  Arbeitsspeicher : {hardware['arbeitsspeicher_gb'] or 'unbekannt'} GB",
+            f"  Prozessorkerne  : {hardware['kerne'] or 'unbekannt'}",
+            f"  Grafikkarte     : {hardware['grafik'] or 'keine erkannt'}",
+            f"  Freier Platz    : {hardware['freier_platz_gb'] or '?'} GB",
+            "",
+            f"Empfohlen: {lage['empfohlenes_profil_text']}",
+            "",
+            "Hinterlegte Bezugsquellen",
+        ]
+        for quelle in lage["katalog"]:
+            zeilen.append(f"  {quelle['id']}  {quelle['name']}")
+            zeilen.append(f"      Lizenz      : {quelle['lizenz']}")
+            zeilen.append(f"      Bezugsquelle: {quelle['pruefstand']}")
+            if quelle["hinweis"]:
+                zeilen.append(f"      {quelle['hinweis']}")
+        if lage["katalogfehler"]:
+            zeilen += ["", lage["katalogfehler"]]
+        if protokoll:
+            self._write_modell_log("\n".join(zeilen))
+
+    def _gewaehlte_quelle(self) -> dict | None:
+        wahl = self.modell_wahl.get().strip()
+        if not wahl:
+            return None
+        profil = wahl.split()[0]
+        for quelle in getattr(self, "_modell_lage", {}).get("katalog", []):
+            if quelle["profil"] == profil:
+                return quelle
+        return None
+
+    def _modell_einrichten(self) -> None:
+        """Laedt das gewaehlte Modell - nach ausdruecklicher Bestaetigung."""
+        if self.busy:
+            return
+        quelle = self._gewaehlte_quelle()
+        if quelle is None:
+            messagebox.showinfo("Sprachmodell", "Bitte zuerst ein Modell auswaehlen.",
+                                parent=self.root)
+            return
+
+        # Was hier bestaetigt wird, muss vorher dastehen: Groesse, Lizenz und
+        # ob die Bezugsquelle ueberhaupt geprueft ist (Abschnitt 42).
+        text = [
+            f"{quelle['name']}",
+            "",
+            f"Groesse       : etwa {quelle['groesse_gb']} GB",
+            f"Lizenz        : {quelle['lizenz']}",
+            f"Herkunft      : {quelle['herkunft']}",
+            f"Bezugsquelle  : {quelle['pruefstand']}",
+        ]
+        if quelle.get("geteilt"):
+            text.append(f"Teildateien   : {len(quelle['teile'])} - alle gehoeren zusammen")
+        if not quelle["produktiv"]:
+            text += ["", "ACHTUNG: Dieses Modell ist nur zum Ausprobieren. "
+                         "Fuer Fachfragen ist es NICHT geeignet."]
+        if not quelle["geprueft"]:
+            text += ["", "Die Adresse dieser Bezugsquelle wurde in diesem "
+                         "Programmstand nicht abgerufen. Die Datei wird beim "
+                         "Laden nicht gegen eine hinterlegte Pruefsumme geprueft."]
+        text += ["", "Jetzt laden? Das kann je nach Verbindung einige Minuten dauern."]
+
+        if not messagebox.askyesno("Sprachmodell einrichten", "\n".join(text),
+                                   parent=self.root):
+            return
+
+        self._set_busy(True, "Das Sprachmodell wird geladen ...")
+        self.modell_progress.configure(value=0, maximum=100)
+        meldungen: queue.Queue = queue.Queue()
+
+        def fortschritt(geladen: int, gesamt: int, tempo: float) -> None:
+            meldungen.put(int(geladen * 100 / gesamt) if gesamt else 0)
+
+        def abholen() -> None:
+            wert = None
+            try:
+                while True:
+                    wert = meldungen.get_nowait()
+            except queue.Empty:
+                pass
+            if wert is not None:
+                self.modell_progress.configure(value=wert)
+
+        def work() -> dict:
+            ergebnis = self.controller.modell_beziehen(
+                quelle["id"], bestaetigt=True, fortschritt=fortschritt)
+            if not ergebnis["ok"]:
+                return ergebnis
+            # Erst wenn das Modell wirklich antwortet, ist es eingerichtet.
+            self.controller.modell_neu_laden()
+            ergebnis["probe"] = self.controller.modell_probe()
+            return ergebnis
+
+        def done(ergebnis: dict | None, error: Exception | None) -> None:
+            self._set_busy(False)
+            # Der Balken zeigt den Bezug, nicht den Aufruf. Ein
+            # abgebrochener Download mit vollem Balken waere eine Anzeige,
+            # die das Gegenteil dessen behauptet, was passiert ist.
+            geglueckt = error is None and bool(ergebnis and ergebnis.get("ok"))
+            self.modell_progress.configure(value=100 if geglueckt else 0)
+            if error is not None:
+                self._write_modell_log(f"Das Modell konnte nicht geladen werden:\n{error}")
+                messagebox.showerror("Sprachmodell", str(error), parent=self.root)
+                self._refresh_modell()
+                return
+            if not ergebnis["ok"]:
+                self._write_modell_log(ergebnis["meldung"])
+                messagebox.showerror("Sprachmodell", ergebnis["meldung"], parent=self.root)
+                self._refresh_modell(protokoll=False)
+                return
+
+            probe = ergebnis.get("probe", {})
+            zeilen = ["Geladen: " + ergebnis["quelle"]["name"], ergebnis["meldung"], ""]
+            if probe.get("ok"):
+                zeilen += [
+                    "Das Sprachmodell ist einsatzbereit.",
+                    f"  Antwortzeit : {probe['dauer_s']} s",
+                    f"  Tempo       : {probe['token_je_sekunde']} Token je Sekunde",
+                    "", "Probeantwort:", "  " + probe.get("text", ""),
+                ]
+            else:
+                zeilen += ["Das Modell wurde geladen, hat aber nicht geantwortet:",
+                           "  " + str(probe.get("grund", "ohne Angabe"))]
+            self._write_modell_log("\n".join(zeilen))
+            self._refresh_modell(protokoll=False)
+            self._refresh_status()
+            if probe.get("ok"):
+                messagebox.showinfo(
+                    "Sprachmodell",
+                    "Das Sprachmodell ist einsatzbereit.\n\n"
+                    f"Es hat in {probe['dauer_s']} Sekunden geantwortet. "
+                    "Ab der naechsten Frage formuliert der Buchhalter wieder "
+                    "Fachantworten.", parent=self.root)
+            else:
+                messagebox.showwarning(
+                    "Sprachmodell",
+                    "Das Modell wurde geladen, hat aber nicht geantwortet:\n\n"
+                    + str(probe.get("grund", "ohne Angabe")), parent=self.root)
+
+        BackgroundTask(self.root).run(work, done, on_tick=abholen)
+
+    def _modell_probe(self) -> None:
+        """Stellt dem Modell eine Frage - der Nachweis, nicht die Behauptung."""
+        if self.busy:
+            return
+        self._set_busy(True, "Das Sprachmodell wird gefragt ...")
+
+        def done(probe: dict | None, error: Exception | None) -> None:
+            self._set_busy(False)
+            if error is not None:
+                messagebox.showerror("Sprachmodell", str(error), parent=self.root)
+                return
+            if probe.get("ok"):
+                self._write_modell_log(
+                    "Das Sprachmodell hat geantwortet.\n"
+                    f"  Anbieter    : {probe.get('anbieter', '?')}\n"
+                    f"  Modell      : {probe.get('modell', '?')}\n"
+                    f"  Antwortzeit : {probe['dauer_s']} s\n"
+                    f"  Tempo       : {probe['token_je_sekunde']} Token je Sekunde\n\n"
+                    "Probeantwort:\n  " + probe.get("text", ""))
+            else:
+                self._write_modell_log(
+                    "Es hat kein Sprachmodell geantwortet.\n  "
+                    + str(probe.get("grund", "ohne Angabe")))
+
+        BackgroundTask(self.root).run(self.controller.modell_probe, done)
 
     # -- Registerkarte: Einstellungen ----------------------------------
     def _build_settings_tab(self) -> None:

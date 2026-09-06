@@ -394,10 +394,21 @@ class RetrievalOnlyProvider:
     fachliche Wuerdigung aussehen koennte.
     """
 
-    def __init__(self, reason: str = ""):
+    #: Wie der Benutzer das Modell einrichtet. Haengt davon ab, womit er
+    #: gerade arbeitet: wer im Fenster sitzt, soll nicht auf ein
+    #: Konsolenprogramm verwiesen werden, das er erst suchen muss. Die
+    #: Oberflaeche setzt den Text beim Start auf ihren eigenen Weg.
+    WEG_KONSOLE = ("Einrichten mit: `PORTABLE_BUCHHALTER_KONSOLE.exe modell "
+                   "empfehlen`")
+    WEG_FENSTER = ("Einrichten: Registerkarte **Sprachmodell** - dort auf "
+                   "*Sprachmodell einrichten*. Das ist ein einmaliger "
+                   "Vorgang.")
+
+    def __init__(self, reason: str = "", weg: str = ""):
         self.name = "kein-modell"
         self.model = "keines"
         self.reason = reason
+        self.weg = weg or self.WEG_KONSOLE
 
     def available(self) -> tuple[bool, str]:
         return True, "Notbetrieb ohne Sprachmodell"
@@ -445,10 +456,7 @@ class RetrievalOnlyProvider:
                 "Zu dieser Frage wurde lokal ausserdem keine passende Fundstelle "
                 "gefunden.",
             ]
-        lines += [
-            "",
-            "Einrichten mit: `PORTABLE_BUCHHALTER_KONSOLE.exe modell empfehlen`",
-        ]
+        lines += ["", self.weg]
         return LlmResponse(
             text="\n".join(lines), provider=self.name, model=self.model,
             meta={"generated": False, "reason": self.reason},

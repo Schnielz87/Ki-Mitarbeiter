@@ -35,6 +35,30 @@ Das Sprachmodell laeuft.
 * Nachgewiesen auf einem Windows-Rechner mit einem echten GGUF-Modell:
   beziehen, starten, eine Fachfrage beantworten, kein verwaister Vorgang
 
+### Der Weg zum Modell fuehrte aus dem Fenster in die Konsole
+
+Aufgefallen im Betrieb. Ohne Modell stand im Fenster:
+
+> Es konnte keine KI-Antwort erzeugt werden. Auf diesem Rechner ist kein
+> Sprachmodell eingerichtet. Einrichten mit:
+> `PORTABLE_BUCHHALTER_KONSOLE.exe modell empfehlen`
+
+Sachlich richtig - das Modell liegt bewusst nicht im Paket und wird einmalig
+geladen. Als Bedienung unbrauchbar: wer die Anwendung per Doppelklick
+oeffnet, hat keine Konsole offen und liest das als "geht nicht", nicht als
+"fehlt noch".
+
+* Neue Registerkarte **Sprachmodell**: Lage, erkannte Hardware, Empfehlung,
+  die hinterlegten Bezugsquellen mit Groesse, Lizenz und Pruefstand, eine
+  Rueckfrage vor dem Laden, ein Fortschrittsbalken - und danach der
+  Nachweis, dass das Modell wirklich antwortet
+* Die Meldung nennt jetzt den Weg, der zur Bedienung passt. Im Fenster die
+  Registerkarte, in der Konsole den Befehl. Das gilt auch fuer den
+  Notbetrieb, der erst mitten in einer Anfrage entsteht
+* Zwei Fehler in der neuen Registerkarte, die eigene Tests gefunden haben:
+  der Ergebnistext wurde sofort von der Katalogliste ueberschrieben, und ein
+  fehlgeschlagener Bezug zeigte einen vollen Fortschrittsbalken
+
 ### Quellenpruefung
 
 * `quellen pruefen` fragte mit HEAD, der Wissensabgleich fragt mit GET.

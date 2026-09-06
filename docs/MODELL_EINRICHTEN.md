@@ -9,7 +9,20 @@ nach Auswahl 0,4 bis 9 GB gross.
 
 ---
 
-## Der kurze Weg
+## Der kurze Weg - im Fenster
+
+1. Registerkarte **Sprachmodell** oeffnen.
+2. Oben steht, was der Rechner hergibt und welches Modell dazu passt; die
+   Vorauswahl ist bereits die Empfehlung.
+3. **Sprachmodell einrichten** anklicken. Die Rueckfrage nennt Groesse,
+   Lizenz, Herkunft und Pruefstand der Bezugsquelle - erst ein "Ja" startet
+   den Download.
+
+Danach bindet die Anwendung das Modell ein und stellt ihm selbst eine
+kleine Frage. Erst wenn die beantwortet ist, meldet sie **"Das Sprachmodell
+ist einsatzbereit."**
+
+## Derselbe Weg in der Konsole
 
 ```
 PORTABLE_BUCHHALTER_KONSOLE.exe modell empfehlen

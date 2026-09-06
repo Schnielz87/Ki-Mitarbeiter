@@ -778,6 +778,32 @@ class AppController:
             "teile": len(ergebnisse),
         }
 
+    def einrichtungsweg(self, text: str) -> None:
+        """Sagt der Anwendung, wie der Benutzer das Modell einrichten kann.
+
+        Fehlt das Modell, nennt die Antwort den Weg dorthin. Welcher Weg das
+        ist, weiss nur die Bedienoberflaeche: wer im Fenster sitzt, soll
+        nicht auf ein Konsolenprogramm verwiesen werden, das er erst suchen
+        muss - und umgekehrt. Der Text wird gemerkt, damit er einen Neuaufbau
+        der Modellanbindung ueberlebt.
+        """
+        self._einrichtungsweg = text
+        self._weg_setzen()
+
+    def _weg_setzen(self) -> None:
+        from pkc.llm.providers import RetrievalOnlyProvider
+
+        weg = getattr(self, "_einrichtungsweg", "")
+        if not weg:
+            return
+        # Zwei Stellen, an denen der Notbetrieb entsteht: als eingerichteter
+        # Anbieter (kein Modell gefunden) und als Rueckfall mitten in einer
+        # Anfrage (alle Anbieter ausgefallen). Beide muessen denselben Weg
+        # nennen, sonst haengt es vom Zufall ab, was der Benutzer liest.
+        self.llm.einrichtungsweg = weg
+        if isinstance(self.llm.primary, RetrievalOnlyProvider):
+            self.llm.primary.weg = weg
+
     def modell_neu_laden(self) -> None:
         """Baut die Modellanbindung neu auf - nach einem Bezug noetig."""
         try:
@@ -786,6 +812,7 @@ class AppController:
             log.debug("Alter Modelldienst liess sich nicht beenden", exc_info=True)
         self.llm = LlmManager.from_config(self.config, self.paths, self.vault.get_quiet)
         self.rag.llm = self.llm
+        self._weg_setzen()
 
     def modell_probe(self, frage: str = "Antworte mit einem Satz: wofuer steht "
                                         "die Abkuerzung UStG?") -> dict:

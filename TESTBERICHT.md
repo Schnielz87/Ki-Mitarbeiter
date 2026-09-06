@@ -4,7 +4,7 @@ Stand: 06.09.2026 · Branch `claude/portable-ki-buchhalter-xr1qlj`
 
 ## Zusammenfassung
 
-**509 automatische Tests bestanden, 1 uebersprungen** (unter Windows einer
+**524 automatische Tests bestanden, 1 uebersprungen** (unter Windows einer
 mehr uebersprungen). Ausfuehrungszeit rund 25 Sekunden. Reproduzierbar mit:
 
 ```
@@ -288,6 +288,9 @@ aufgefuehrt, weil ein Testbericht ohne Fundstellen wenig wert ist.
 | „Lokales Modell: OK" trotz fehlendem Modell | Der Notbetrieb meldete sich als verfuegbar | Systempruefung meldet HINWEIS und beschreibt den Notbetrieb |
 | HTML-Titel wurde falsch erkannt | `<title>` liegt in `<head>`, das uebersprungen wurde | Titel wird vor der Bereichspruefung ausgewertet |
 | Deutsche Abkuerzungen zerteilten Saetze | „GmbH & Co. KG" wurde als Satzende gelesen | Abkuerzungsliste in der Satztrennung |
+| Der Weg zum Sprachmodell fuehrte aus dem Fenster in die Konsole | Ohne Modell meldete die Anwendung im Fenster "Einrichten mit: PORTABLE_BUCHHALTER_KONSOLE.exe modell empfehlen". Sachlich richtig - das Modell liegt bewusst nicht im Paket -, als Bedienung aber unbrauchbar: wer per Doppelklick startet, hat keine Konsole offen und liest das als "geht nicht" statt "fehlt noch". Genau so kam es aus dem Betrieb zurueck | Neue Registerkarte **Sprachmodell** mit Lage, Empfehlung, Bezugsquellen, Rueckfrage, Fortschritt und anschliessendem Nachweis, dass das Modell antwortet. Die Meldung nennt den Weg, der zur Bedienung passt - auch der Notbetrieb, der erst mitten in einer Anfrage entsteht. 15 neue Tests, drei Gegenproben gemacht |
+| Der Ergebnistext der Modelleinrichtung wurde sofort ueberschrieben | Nach dem Laden schrieb die Registerkarte "einsatzbereit" samt Probeantwort in den Textbereich - und ersetzte ihn unmittelbar danach durch die Katalogliste. Der Benutzer haette das Ergebnis nie gesehen | Die Uebersicht laesst den Textbereich nach einem Bezug in Ruhe; ein Test haelt das fest. Gefunden von den Tests zu dieser Registerkarte, nicht im Betrieb |
+| Ein fehlgeschlagener Modellbezug zeigte einen vollen Fortschrittsbalken | Der Balken richtete sich danach, ob ein Programmfehler auftrat - nicht danach, ob das Modell ankam. Ein abgebrochener Download stand damit auf 100 Prozent | Der Balken zeigt den Bezug, nicht den Aufruf. Gegenprobe gemacht |
 | Die Quellenpruefung mass etwas anderes als der Betrieb | `quellen pruefen` fragte mit HEAD, der Wissensabgleich fragt mit GET. Server, die HEAD nicht oder anders beantworten, wurden damit als kaputt gemeldet, obwohl sie laufen - und jemand haette eine Adresse ausgebessert, die nie falsch war. Derselbe Fehler steckte im Windows-Bauablauf, der die Pruefung als PowerShell-Schnipsel fuehrte und beim ersten Online-Lauf 23 Ausfaelle ohne brauchbaren Grund lieferte | Beide fragen jetzt mit GET, also genau wie der Abgleich. Der Bauablauf ruft dafuer `tools/quellen_pruefen.py` auf, das denselben HTTP-Zugriff benutzt wie die Anwendung, und nennt zu jedem Ausfall den Grund. Ein Test haelt fest, mit welchem Verfahren abgerufen wird; Gegenprobe gemacht |
 | Die Anleitung nannte Modellgroessen, die niemand gemessen hatte | "0,4 GB", "4,7 GB" und "9 GB" standen fest im Erzeuger. Gemessen wurden spaeter 0,49, 4,68 und 8,99 GB - und die beiden groesseren Modelle kommen ueberhaupt in mehreren Teildateien | Die Tabelle der Anleitung wird aus `config/model_catalog.json` gebaut, und der traegt nur, was der Bauablauf abgerufen hat. Zwei Tests vergleichen Anleitung und Katalog; Gegenprobe gemacht |
 | Firmennamen wurden faelschlich als eigenes Unternehmen erkannt | Jede GmbH-Nennung loeste die Regel aus | Zusaetzliche Bedingung: der Satz muss sich erkennbar auf das eigene Unternehmen beziehen |

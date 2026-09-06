@@ -112,6 +112,9 @@ class LlmManager:
         self.allow_online = bool(allow_online)
         self.last_error = ""
         self.notices: list[str] = []
+        #: Wie der Benutzer ein fehlendes Modell einrichtet. Setzt die
+        #: Bedienoberflaeche; leer heisst "der Notbetrieb entscheidet selbst".
+        self.einrichtungsweg = ""
 
     # -- Aufbau --------------------------------------------------------
     @classmethod
@@ -313,7 +316,10 @@ class LlmManager:
             # Nichts von dem, was bereits durchlief, darf als Antwort
             # stehenbleiben: es kam von einem Anbieter, der abgebrochen hat.
             on_token("")
-        fallback = RetrievalOnlyProvider(self.last_error)
+        # Auch der Notbetrieb, der hier erst entsteht, muss den Weg zum
+        # Modell kennen - sonst nennt ausgerechnet die Antwort nach einem
+        # Anbieterausfall einen Weg, den es auf dieser Oberflaeche nicht gibt.
+        fallback = RetrievalOnlyProvider(self.last_error, weg=self.einrichtungsweg)
         response = fallback.generate(messages, max_tokens, temperature, stop)
         response.meta["fallback_von"] = errors
         return response
