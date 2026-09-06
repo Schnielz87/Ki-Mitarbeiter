@@ -3,6 +3,63 @@
 Format angelehnt an „Keep a Changelog". Versionierung nach Bedeutung, nicht
 nach Zeitplan.
 
+## [0.4.0] - 2026-09-06
+
+Das Sprachmodell laeuft.
+
+### Sprachmodell (E6.13, E6.14)
+
+* Der Modelldienst **liegt bei**: `llama-server` aus llama.cpp (MIT) unter
+  `runtime/llama`. Nichts zu installieren, nichts zu uebersetzen. Fuer
+  llama-cpp-python gibt es keine fertigen Pakete - der Kunde haette einen
+  Compiler gebraucht
+* Die Anwendung startet den Dienst selbst, und zwar erst bei der ersten
+  Frage; er hoert nur auf 127.0.0.1, oeffnet kein Fenster und wird beim
+  Beenden heruntergefahren
+* `modell einrichten` fuehrt zum Modell: Hardware ansehen, Vorschlag,
+  Bezugsquellen mit Groesse, Lizenz und Pruefstand, Bezug nach
+  ausdruecklicher Bestaetigung, Pruefsumme, und zum Schluss eine echte
+  Frage an das Modell. Erst dann heisst es "einsatzbereit"
+* Modelle in Teildateien werden vollstaendig bezogen; ein halb geladenes
+  Modell gilt nicht als einsatzbereit
+* Der Katalog behauptet keine geprueften Quellen: der Pruefstand kommt aus
+  dem Bauablauf, der jede Adresse tatsaechlich abruft
+* Nachgewiesen auf einem Windows-Rechner mit einem echten GGUF-Modell:
+  beziehen, starten, eine Fachfrage beantworten, kein verwaister Vorgang
+
+### Plugins (E5.108)
+
+* Jedes Plugin laeuft in einem **eigenen Vorgang**, ohne Datenbank, ohne
+  Tresor, ohne Objekte der Anwendung. Es kann nur fragen; entschieden wird
+  im Hauptvorgang
+* Angemeldete Faehigkeiten und Ausgabeformate werden als Stellvertreter
+  gefuehrt
+* Offen bleibt die Beschraenkung durch das Betriebssystem
+
+### Wissenssynchronisierung (E2.20)
+
+* Intervalle je Quellenart: Gesetze, Rechtsprechung und
+  Verwaltungsanweisungen woechentlich, allgemeine Behoerdeninformationen
+  und Fachmodule monatlich - aenderbar an der Quelle, je Art oder als
+  Vorgabe, ohne Programmaenderung
+* Nur die Automatik richtet sich danach; von Hand wird alles geprueft
+
+### Berichtigt
+
+* `modell empfehlen` stuerzte ab - ausgerechnet der Befehl, auf den die
+  Anleitung fuer die Einrichtung verwies
+* "Bereit: ja" stand da, obwohl kein Modell vorhanden war
+* `kunde anlegen` und `kunde loeschen` brachen mit einem Fehler ab
+* Vier Ausweichzweige der Oberflaeche haetten selbst einen Fehler ausgeloest
+* Die Versionsauskunft nannte einen anderen Produktnamen als das Fenster
+
+### Unterlagen
+
+* Bedienungsanleitung: neues Kapitel 2 zum Sprachmodell, jetzt 19 Kapitel
+* `docs/MODELL_EINRICHTEN.md` neu geschrieben
+* Abnahme um die Punkte K und L erweitert
+* Lizenzregister: llama.cpp wird mitgeliefert, MIT-Hinweis liegt bei
+
 ## [0.3.0] - 2026-09-06
 
 Umsetzung der nachgereichten Erweiterungen E1 bis E6 (Masterprompt Teil 4).

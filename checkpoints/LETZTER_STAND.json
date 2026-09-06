@@ -1,10 +1,10 @@
 {
-  "task_number": "26",
-  "task_name": "Erweiterungen E1 bis E6 umgesetzt und nachgewiesen",
+  "task_number": "27",
+  "task_name": "Sprachmodell laeuft, Plugins getrennt, offene Punkte geschlossen",
   "status": "abgeschlossen",
-  "created_at": "2026-09-06T08:43:33+00:00",
-  "git_commit": "cdcb4d7cff25decb54a0bfbfd71a21cafc2cd46d",
-  "next_task": "Abnahme (docs/ABNAHME.md), insbesondere B, C, D, F, G, K, L",
-  "resume_hint": "Alles aus Teil 4 ist umgesetzt oder ausdruecklich als offen benannt. Naechster Schritt ist die Abnahme, nicht weiterer Code.",
-  "checkpoint_file": "TASK_26_erweiterungen_e1_bis_e6_umgesetzt_und_nachgewiesen.json"
+  "created_at": "2026-09-06T13:00:39+00:00",
+  "git_commit": "782a13d16cdf7a5c743d87ba5b5ea0efda436620",
+  "next_task": "Abnahme auf einem Windows-Rechner: B, D, F, K, L",
+  "resume_hint": "Das Sprachmodell laeuft und ist im Windows-Ablauf mit einem echten Modell nachgewiesen. Offen sind nur noch Punkte, die einen Menschen an einem Windows-Rechner brauchen.",
+  "checkpoint_file": "TASK_27_sprachmodell_laeuft_plugins_getrennt_offene_punkte_geschloss.json"
 }

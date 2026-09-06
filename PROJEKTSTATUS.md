@@ -4,7 +4,7 @@
 > Sie wird nach jedem abgeschlossenen Task aktualisiert (Masterprompt 44/45).
 
 Stand: 06.09.2026 · Branch `claude/portable-ki-buchhalter-xr1qlj` ·
-Version 0.3.0
+Version 0.4.0
 
 ---
 
@@ -15,8 +15,10 @@ Der portable KI-Mitarbeiter - Produktname **PORTIVA** - ist als
 waehlbarer Betriebsart, persistentes Unternehmensgedaechtnis, lokale
 Fachwissensbasis mit Quellenbelegen, Wissensupdate mit Ruecknahme,
 Geheimnistresor, Freigabepflicht, Connector-Rahmen, Dateiausgabe in acht
-Formaten, Plugin-System, grafische Oberflaeche und Kommandozeile -
-abgesichert durch **431 automatische Tests**.
+Formaten, Plugin-System mit eigenem Vorgang je Plugin, mitgeliefertem
+Modelldienst und gefuehrtem Weg zum Sprachmodell, grafische Oberflaeche und
+Kommandozeile -
+abgesichert durch **484 automatische Tests**.
 
 **Noch nicht abgenommen** sind die Schritte, die zwingend Windows, eine
 echte grafische Oberflaeche, ein echtes Sprachmodell oder Zugriff auf die
@@ -82,11 +84,12 @@ Er lautet: **fertig zur Abnahme**. Der Weg dorthin steht in
 | 28 | E3 Fachfragen ohne Unternehmensdaten | GETESTET | 3 Tests; Antwort mit Fundstellen bei leerem Gedaechtnis |
 | 29 | E6 Qualitative Antworten und Darstellung | GETESTET | 14 Tests der zehn Pruefaufgaben; Markdown, Abbruch, schrittweise Ausgabe |
 | 30 | E4 Datei- und Artefakterzeugung | GETESTET | 20 Tests; acht Formate, von fremden Lesebibliotheken gegengeprueft |
-| 31 | E5 Plugin- und Erweiterungssystem | TEILWEISE | 22 Tests; Isolation, Katalog und Lizenzierung offen (`PLUGIN_KONZEPT.md`) |
+| 31 | E5 Plugin- und Erweiterungssystem | TEILWEISE | 32 Tests; eigener Vorgang je Plugin. Katalog und Lizenzierung offen (`PLUGIN_KONZEPT.md`) |
+| 32 | Sprachmodell laeuft | GETESTET | Modelldienst mitgeliefert, `modell einrichten`; 37 Tests. Mit echtem GGUF-Modell im Windows-Ablauf nachgewiesen |
 
 ## 4. Was tatsaechlich geprueft ist
 
-**431 Tests bestanden, 1 uebersprungen** (`python -m pytest tests -q`).
+**484 Tests bestanden, 1 uebersprungen** (`python -m pytest tests -q`).
 Auf einem echten Windows-Rechner sind alle 13 Schritte des Bauablaufs
 bestanden - zuletzt
 https://github.com/Schnielz87/Ki-Mitarbeiter/actions/runs/33973618581
@@ -112,13 +115,13 @@ und mit stark eingeschraenktem Netzzugang** statt.
 |---|---|---|
 | Windows-EXE | **Erledigt.** In dieser Entwicklungsumgebung nicht baubar, aber auf einem echten Windows-Rechner gebaut und ausgefuehrt - siehe Abschnitt 1. Das Paket kann als Artefakt heruntergeladen werden, statt selbst zu bauen. | `docs/ABNAHME.md` A |
 | Tkinter-Oberflaeche | Weder Tkinter noch Bildschirm in der Entwicklungsumgebung. Die Oberflaechenlogik ist gegen ein Tkinter-Doppel geprueft, und auf Windows ist Tkinter nachweislich vorhanden - **das Fenster selbst wurde aber nie geoeffnet**. | B |
-| Lokales Sprachmodell | Modellquellen waren gesperrt. Die Anbindung ist gegen einen echten lokalen Modelldienst geprueft, **nicht mit einem echten GGUF-Modell**. | C |
+| Lokales Sprachmodell | **Erledigt.** In dieser Entwicklungsumgebung ist Hugging Face gesperrt; auf dem Windows-Rechner des Bauablaufs nicht. Dort wird das Modell bezogen, der mitgelieferte llama.cpp-Dienst gestartet und eine Fachfrage tatsaechlich vom Modell beantwortet. Auf **Ihrem** Rechner bleibt der einmalige Bezug (`modell einrichten`). | C |
 | Amtliche Quellen | `gesetze-im-internet.de`, `bundesfinanzministerium.de` und weitere waren durch die Netzrichtlinie gesperrt (403 des Proxys). Die Abrufkette ist gegen einen lokalen Server vollstaendig geprueft, **nicht gegen die echten Quellen**. Alle Registereintraege tragen `verified: false`. | G |
 | Zweiter PC, echter Laufwerkswechsel | Der **Laufwerkswechsel ist auf echtem Windows geprueft** (`subst`, Zielpfad mit Leerzeichen) - das Unternehmenswissen war dort vorhanden. Ein physisch zweiter Rechner und ein echter USB-Datentraeger standen nicht zur Verfuegung. | F |
 | Fachliche Qualitaet der Antworten | Haengt vom eingesetzten Sprachmodell ab. Geprueft ist, dass das **richtige Material** gefunden wird **und dass es das Modell erreicht** (ein Testdoppel zeichnet den Kontext auf). | D |
 | Erzeugte Office-Dateien | Word-, Excel-, PowerPoint- und PDF-Dateien werden von den ueblichen Lesebibliotheken (python-docx, openpyxl, python-pptx, pypdf) wieder eingelesen. **Ob Microsoft Office sie anzeigt**, laesst sich nur auf einem Windows-Rechner feststellen. | K |
-| Plugin-Isolation | Ein Plugin laeuft im selben Prozess mit den Rechten der Anwendung. Die Rechtepruefung ist eine vermittelte Schnittstelle, **kein Sandkasten**. Fuer Plugins Dritter ist der Stand nicht freigabereif. | `PLUGIN_KONZEPT.md` 9.1 |
-| Schrittweise Ausgabe mit echtem Modell | Gegen einen echten HTTP-Ereignisstrom und ein Doppel des lokalen Modells geprueft, **nicht mit einem echten GGUF-Modell**. | C |
+| Fachliche Guete der Modellantworten | Haengt vom gewaehlten Modell ab. Der Bauablauf weist nach, **dass** das Modell antwortet - nicht, wie gut. Das gehoert zur Abnahme. | D |
+| Plugins fremder Herkunft | Jedes Plugin laeuft in einem eigenen Vorgang ohne Zugriff auf die Daten der Anwendung. Eine Beschraenkung durch das **Betriebssystem** gibt es nicht. | `PLUGIN_KONZEPT.md` 9.1 |
 
 ## 5a. Stand der kommerziellen Anforderungen
 
@@ -138,16 +141,17 @@ vergeben. Die wichtigsten offenen Punkte:
 3. Externe Sicherheitspruefung und Datenschutzkonzept (§ 70, 71)
 4. Pruefschluessel des Herausgebers und Code-Signing (§ 86, 92)
 5. Klaerung der Weitergabe des Sprachmodells (§ 63)
-6. Plugin-Isolation, Plugin-Katalog und Plugin-Lizenzierung (E5.108, 116,
-   119) - fuer Plugins Dritter zwingend, fuer mitgelieferte Plugins nicht
+6. Plugin-Katalog und Plugin-Lizenzierung (E5.116, 119) sowie die
+   Beschraenkung der Plugin-Vorgaenge durch das Betriebssystem - fuer
+   Plugins fremder Herkunft zwingend, fuer mitgelieferte nicht
 
 ## 6. Naechste Schritte
 
-1. **Abnahme durchfuehren** - `docs/ABNAHME.md`. Punkt A ist bereits durch
-   den Windows-Ablauf belegt; das fertige Paket kann dort heruntergeladen
-   werden. Zu pruefen bleiben vor allem B (Fenster oeffnet sich),
-   C (Sprachmodell), D (fachliche Qualitaet), F (zweiter Rechner) und
-   G (echte Quellen).
+1. **Abnahme durchfuehren** - `docs/ABNAHME.md`. Die Punkte A (Bau),
+   C (Sprachmodell) und G (echte Quellen) sind durch den Windows-Ablauf
+   belegt; das fertige Paket kann dort heruntergeladen werden. Zu pruefen
+   bleiben B (Fenster oeffnet sich), D (fachliche Qualitaet der Antworten
+   im Betrieb), F (zweiter Rechner) sowie K und L.
 2. **Quellenregister validieren** - der erste Online-Lauf zeigt, welche URLs
    noch stimmen; Korrekturen erfolgen in `config/source_registry.json` ohne
    Programmaenderung.

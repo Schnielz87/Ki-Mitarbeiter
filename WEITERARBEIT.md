@@ -11,7 +11,7 @@ Datentraeger.
 | Branch | `claude/portable-ki-buchhalter-xr1qlj` |
 | Letzter Commit | siehe `git log -1` |
 | Gepusht | ja |
-| Tests | **431 gruen, 1 uebersprungen** (`python -m pytest tests -q`) |
+| Tests | **484 gruen, 1 uebersprungen** (`python -m pytest tests -q`) |
 | Windows | alle 13 Schritte bestanden, Ablauf https://github.com/Schnielz87/Ki-Mitarbeiter/actions/runs/33973618581 |
 | Tasks 01 bis 18 | abgeschlossen (Masterprompt 48) |
 | Tasks 19 bis 25 | abgeschlossen (Erweiterung, Masterprompt 58 bis 97) |
@@ -51,8 +51,9 @@ Paket kann heruntergeladen statt selbst gebaut werden. Offen sind die
 Punkte, die diese Entwicklungsumgebung nicht leisten konnte:
 
 * **B** - Fenster oeffnet sich per Doppelklick (hier kein Bildschirm)
-* **C** - echtes Sprachmodell (keine Modellquelle erreichbar), Anleitung in
-  `docs/MODELL_EINRICHTEN.md`
+* **C** - erledigt: der Bauablauf bezieht ein echtes Modell, startet den
+  mitgelieferten Dienst und laesst eine Fachfrage beantworten. Auf einem
+  Kundenrechner bleibt der einmalige Bezug (`modell einrichten`)
 * **D** - fachliche Qualitaet der Antworten im echten Betrieb
 * **F** - physisch zweiter Rechner
 * **G** - echte amtliche Quellen (die Netzrichtlinie sperrte die Hosts)
@@ -77,13 +78,13 @@ Reihenfolge:
 5. oeffentlicher Pruefschluessel des Herausgebers, dann Code-Signing
 6. Freigabe zur Weitergabe des Sprachmodells
 
-### 3. Plugin-System zu Ende bauen (nur fuer Plugins Dritter noetig)
+### 3. Plugin-System zu Ende bauen (nur fuer Plugins fremder Herkunft)
 
-`PLUGIN_KONZEPT.md` Abschnitt 9 nennt die offenen Punkte. Der wichtigste:
-ein Plugin laeuft heute im selben Prozess. Fuer fremde Plugins braucht es
-einen eigenen Prozess mit eingeschraenkten Rechten und eine Uebergabe ueber
-eine Leitung statt ueber Objekte. Fuer mitgelieferte Plugins ist der Stand
-tragfaehig.
+`PLUGIN_KONZEPT.md` Abschnitt 9 nennt die offenen Punkte. Die Trennung auf
+Vorgangsebene steht seit dieser Fassung: jedes Plugin laeuft in einem
+eigenen Vorgang ohne Zugriff auf Datenbank, Tresor und Objekte der
+Anwendung. Offen bleibt die Beschraenkung durch das Betriebssystem - ein
+eigenes Benutzerkonto oder ein Job-Objekt.
 
 ### 4. Quellenregister validieren
 

@@ -1,0 +1,51 @@
+# Checkpoint 27 - Sprachmodell laeuft, Plugins getrennt, offene Punkte geschlossen
+
+* Zeitpunkt: 2026-09-06T13:00:39+00:00
+* Status: **ABGESCHLOSSEN**
+* Git-Commit: `782a13d16cdf7a5c743d87ba5b5ea0efda436620`
+* Naechster Task: Abnahme auf einem Windows-Rechner: B, D, F, K, L
+
+## Fortsetzungspunkt
+
+Das Sprachmodell laeuft und ist im Windows-Ablauf mit einem echten Modell nachgewiesen. Offen sind nur noch Punkte, die einen Menschen an einem Windows-Rechner brauchen.
+
+## Erledigte Arbeit
+
+- Modelldienst llama.cpp wird mitgeliefert und von der Anwendung selbst gestartet
+- modell einrichten: gefuehrter Weg mit Katalog, Bestaetigung, Pruefsumme und Probe
+- Modelle in Teildateien werden vollstaendig bezogen
+- E5.108 Plugins laufen in einem eigenen Vorgang ohne Zugriff auf die Daten der Anwendung
+- E2.20 quellenspezifische Updateintervalle auf drei Ebenen
+- Quellenregister und Modellquellen werden im Bauablauf gegen die echten Server geprueft
+- Behoben: modell empfehlen stuerzte ab, kunde anlegen/loeschen brachen ab, vier Ausweichzweige der Oberflaeche, Bereit-Anzeige ohne Modell, Produktname in der Versionsauskunft
+
+## Dateien
+
+- src/pkc/llm/server.py
+- src/pkc/llm/katalog.py
+- config/model_catalog.json
+- src/pkc/plugins/prozess.py
+- src/pkc/plugins/worker.py
+- src/pkc/plugins/protokoll.py
+- src/pkc/updater/zeitplan.py
+- .github/workflows/build-windows.yml
+- docs/MODELL_EINRICHTEN.md
+- docs/BEDIENUNGSANLEITUNG.docx
+- PLUGIN_KONZEPT.md
+
+## Tests
+
+- python -m pytest tests -q
+- Windows-Ablauf 34033752742: alle 22 Schritte bestanden
+
+**Testergebnis:** 484 bestanden, 1 uebersprungen | Sprachmodell bezogen, Dienst gestartet, Fachfrage vom Modell beantwortet, kein verwaister Vorgang | Bezugsquellen geprueft: 0.5B und 3B erreichbar, 7B und 14B als Teildateien
+
+## Offene Punkte
+
+- Beschraenkung der Plugin-Vorgaenge durch das Betriebssystem (E5.108)
+- Plugin-Katalog (E5.116) und Plugin-Lizenzierung (E5.119)
+- Abnahme B (Fenster per Doppelklick), D (fachliche Guete), F (zweiter Rechner), K und L
+
+## Hinweise
+
+Status bleibt 'fertig zur Abnahme'.

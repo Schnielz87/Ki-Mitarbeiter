@@ -4,7 +4,7 @@ Stand: 06.09.2026 · Branch `claude/portable-ki-buchhalter-xr1qlj`
 
 ## Zusammenfassung
 
-**431 automatische Tests bestanden, 1 uebersprungen** (unter Windows einer
+**484 automatische Tests bestanden, 1 uebersprungen** (unter Windows einer
 mehr uebersprungen). Ausfuehrungszeit rund 25 Sekunden. Reproduzierbar mit:
 
 ```
@@ -30,14 +30,16 @@ python -m pytest tests -q
 | `test_produktreife.py` | 15 bestanden | Telemetriefreiheit, Lizenzregister, SBOM, Reifegrad, Schluesselschutz |
 | `test_branding.py` | 19 bestanden | Marke PORTIVA: Pfade, Titel, Symbole, Ableitung der Varianten |
 | `test_betriebsmodi.py` | 14 bestanden | HYBRID, OFFLINE, ONLINE; Dauerhaftigkeit, Protokoll, Modellrouting |
-| `test_wissenszeitplan.py` | 19 bestanden | Faelligkeit, Pausieren im Offlinebetrieb, Ueberfaelligkeit |
+| `test_wissenszeitplan.py` | 26 bestanden | Faelligkeit, Pausieren im Offlinebetrieb, Intervalle je Quelle |
 | `test_fragetyp.py` | 25 bestanden | Einstufung der Nachricht vor der Recherche |
 | `test_markdown.py` | 18 bestanden | Umwandlung der Auszeichnungen fuer Fenster und Konsole |
 | `test_antwortdarstellung.py` | 19 bestanden | Antwort und Rohtreffer getrennt, keine technischen Angaben |
 | `test_antwortqualitaet.py` | 14 bestanden | Die zehn Pruefaufgaben aus E6.25, Regressionsschutz, Fachfrage ohne Firmendaten |
 | `test_artefakte.py` | 20 bestanden | Acht Ausgabeformate, gegengeprueft mit fremden Lesebibliotheken |
-| `test_plugins.py` | 23 bestanden | Paket, Signatur, Berechtigungen, Kundentrennung |
+| `test_plugins.py` | 32 bestanden | Paket, Signatur, Berechtigungen, Kundentrennung, eigener Vorgang je Plugin |
 | `test_anleitung.py` | 4 bestanden | Die Anleitung nennt nur Befehle, die es wirklich gibt |
+| `test_modelldienst.py` | 18 bestanden | Modelldienst starten, warten, antworten, beenden |
+| `test_modell_einrichten.py` | 19 bestanden | Katalog, Sperren vor dem Bezug, Modelle in Teilen, Betrieb mit Modell |
 
 Uebersprungen werden Tests, die das jeweilige Betriebssystem nicht
 zulaesst: das schreibgeschuetzte Verzeichnis (als `root` sind Dateirechte
@@ -297,7 +299,10 @@ Ehrlich und vollstaendig:
 2. **Echte Tkinter-Oberflaeche** - das Fenster wurde nie geoeffnet. Auf
    Windows ist Tkinter nachweislich vorhanden, die Oberflaechenlogik ist
    gegen ein Doppel geprueft - der Doppelklick selbst steht aus.
-3. **Echtes Sprachmodell** - keine Modellquelle erreichbar.
+3. **Echtes Sprachmodell in DIESER Umgebung** - Hugging Face ist hier
+   gesperrt. Auf dem Windows-Rechner des Bauablaufs nicht: dort wird ein
+   echtes GGUF-Modell bezogen, der mitgelieferte llama.cpp-Dienst gestartet
+   und eine Fachfrage tatsaechlich vom Modell beantwortet.
 4. **Echte amtliche Quellen** - die Netzrichtlinie sperrte
    `gesetze-im-internet.de`, `bundesfinanzministerium.de` und die uebrigen.
    Die URLs im Quellenregister tragen deshalb `verified: false`.
@@ -313,11 +318,12 @@ Ehrlich und vollstaendig:
 9. **Erzeugte Office-Dateien in Microsoft Office** - die Dateien werden von
    python-docx, openpyxl, python-pptx und pypdf wieder eingelesen; ob Word,
    Excel und PowerPoint sie anzeigen, gehoert zur Abnahme (Punkt K).
-10. **Plugin-Isolation** - geprueft ist die Rechtepruefung der vermittelten
-    Schnittstelle. Eine Trennung auf Prozessebene gibt es nicht und wird
-    auch nicht behauptet (`PLUGIN_KONZEPT.md` 9.1).
-11. **Schrittweise Ausgabe mit einem echten GGUF-Modell** - geprueft gegen
-    einen echten HTTP-Ereignisstrom und ein Doppel des lokalen Modells.
+10. **Beschraenkung der Plugins durch das Betriebssystem** - die Trennung
+    auf Vorgangsebene ist geprueft (anderer Vorgang, keine Objekte der
+    Anwendung, ohne Recht kein Zugriff). Ein eigenes Benutzerkonto oder ein
+    Job-Objekt gibt es nicht (`PLUGIN_KONZEPT.md` 9.1).
+11. **Fachliche Guete der Modellantworten** - haengt vom gewaehlten Modell
+    ab. Der Bauablauf weist nach, DASS das Modell antwortet, nicht wie gut.
 
 Fuer die Punkte 1 bis 6 fuehrt `docs/ABNAHME.md` Schritt fuer Schritt durch
 die Pruefung.
