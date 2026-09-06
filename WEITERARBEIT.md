@@ -12,7 +12,7 @@ Datentraeger.
 | Letzter Commit | siehe `git log -1` |
 | Gepusht | ja |
 | Tests | **509 gruen, 1 uebersprungen** (`python -m pytest tests -q`) |
-| Windows | alle 23 Schritte bestanden, Ablauf https://github.com/Schnielz87/Ki-Mitarbeiter/actions/runs/34035777317 |
+| Windows | alle 23 Schritte bestanden, Ablauf https://github.com/Schnielz87/Ki-Mitarbeiter/actions/runs/34037502726 |
 | Tasks 01 bis 18 | abgeschlossen (Masterprompt 48) |
 | Tasks 19 bis 25 | abgeschlossen (Erweiterung, Masterprompt 58 bis 97) |
 | Tasks 26 bis 31 | E1 bis E6 (Masterprompt Teil 4); E5 teilweise |

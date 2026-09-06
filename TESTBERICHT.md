@@ -206,8 +206,10 @@ Je Fall wird geprueft:
 ## Pruefung auf einem echten Windows-Rechner
 
 Zuletzt bestaetigt durch Ablauf
-https://github.com/Schnielz87/Ki-Mitarbeiter/actions/runs/34035777317
-(Stand `12d74d7`) - **alle 23 Schritte bestanden**. Davor ebenso die
+https://github.com/Schnielz87/Ki-Mitarbeiter/actions/runs/34037502726
+(Stand `4321909`) - **alle 23 Schritte bestanden**. Der Befund des
+Quellenregisters ist dabei in zwei unabhaengigen Laeufen (34035777317 und
+34037502726) Dokument fuer Dokument derselbe. Davor ebenso die
 Ablaeufe 19, 20 und 23 - der Windows-Ablauf ist damit nicht einmalig
 durchgelaufen, sondern stabil. Der erste vollstaendige
 Nachweis war Ablauf
