@@ -58,6 +58,16 @@ oeffnet, hat keine Konsole offen und liest das als "geht nicht", nicht als
 * Zwei Fehler in der neuen Registerkarte, die eigene Tests gefunden haben:
   der Ergebnistext wurde sofort von der Katalogliste ueberschrieben, und ein
   fehlgeschlagener Bezug zeigte einen vollen Fortschrittsbalken
+* **Vorhandene Modelldatei uebernehmen** - fuer einen zweiten Datentraeger,
+  ein Buero mit gesperrtem Download oder eine Leitung, ueber die 4,7 GB
+  nicht zweimal gehen. Die Datei wird auf den Datentraeger kopiert, nicht
+  verknuepft: ein Verweis waere kleiner, aber der Datentraeger liefe nicht
+  mehr fuer sich allein. Braucht kein Internet, geht auch im Modus OFFLINE.
+  Auch als `modell uebernehmen --datei ...`
+* Kapitel 2 der Bedienungsanleitung erklaert die Registerkarte jetzt Feld
+  fuer Feld und sagt ausdruecklich, dass **einmal** geladen wird. Vorher
+  stand dort ein Kasten mit drei Klicks und darunter weiter Konsolentext.
+  Ein Test vergleicht die genannten Schaltflaechen mit denen im Fenster
 
 ### Quellenpruefung
 

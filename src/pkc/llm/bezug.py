@@ -109,3 +109,89 @@ def laden(
                         f"Fertig: {ziel.name} "
                         f"({ziel.stat().st_size/1024**3:.2f} GB). {hinweis}",
                         geladen)
+
+
+def uebernehmen(
+    quelle: Path,
+    zielordner: Path,
+    name: str = "",
+    ueberschreiben: bool = False,
+    fortschritt: Callable[[int, int, float], None] | None = None,
+) -> Ladeergebnis:
+    """Nimmt eine bereits vorhandene Modelldatei auf den Datentraeger.
+
+    Das Modell muss nicht auf jedem Rechner neu geladen werden. Wer es
+    einmal hat - auf einem anderen Stick, im Firmennetz, auf einer externen
+    Platte -, kann es hier uebernehmen. Genau dafuer gibt es diesen Weg:
+
+    * ein zweiter Datentraeger fuer eine Kollegin,
+    * ein Buero, in dem der Download gesperrt ist,
+    * eine Leitung, ueber die man 4,7 GB nicht zweimal ziehen will.
+
+    Kopiert wird bewusst, statt nur zu verweisen. Ein Verweis auf ein
+    Netzlaufwerk waere kleiner, aber der Datentraeger waere dann nicht mehr
+    fuer sich allein lauffaehig - und das ist der Sinn dieser Anwendung.
+    """
+    quelle = Path(quelle)
+    zielordner = Path(zielordner)
+    if not quelle.is_file():
+        return Ladeergebnis(False, None, meldung=f"Es gibt keine Datei {quelle}.")
+    if quelle.suffix.lower() != ".gguf":
+        return Ladeergebnis(
+            False, None,
+            meldung=f"{quelle.name} ist keine GGUF-Datei. Andere Formate "
+                    "(safetensors, GPTQ, AWQ) kann der Modelldienst nicht laden.")
+
+    zielordner.mkdir(parents=True, exist_ok=True)
+    ziel = zielordner / (name or quelle.name)
+    try:
+        if ziel.exists() and ziel.samefile(quelle):
+            return Ladeergebnis(True, ziel, meldung=f"{ziel.name} liegt bereits hier.",
+                                bytes_geladen=0)
+    except OSError:                                # pragma: no cover - defensiv
+        pass
+    if ziel.exists() and not ueberschreiben:
+        return Ladeergebnis(False, ziel,
+                            meldung=f"Es gibt bereits {ziel.name}. "
+                                    "Zum Ersetzen ausdruecklich ueberschreiben.")
+
+    gesamt = quelle.stat().st_size
+    frei = shutil.disk_usage(zielordner).free
+    if gesamt > frei:
+        return Ladeergebnis(
+            False, None,
+            meldung=f"Zu wenig Speicherplatz: {gesamt/1024**3:.1f} GB noetig, "
+                    f"{frei/1024**3:.1f} GB frei.")
+
+    # Dieselbe Vorsicht wie beim Download: bis zum Abschluss heisst die
+    # Datei ".teil". Ein abgebrochener Vorgang - Stick abgezogen, Platte
+    # voll - hinterlaesst so nie eine halbe Datei, die der Modelldienst
+    # spaeter fuer ein Modell haelt.
+    teil = ziel.with_suffix(ziel.suffix + ".teil")
+    pruefsumme = hashlib.sha256()
+    begonnen = time.monotonic()
+    kopiert = 0
+    try:
+        with quelle.open("rb") as ein, teil.open("wb") as aus:
+            while True:
+                block = ein.read(BLOCK)
+                if not block:
+                    break
+                aus.write(block)
+                pruefsumme.update(block)
+                kopiert += len(block)
+                if fortschritt is not None:
+                    fortschritt(kopiert, gesamt,
+                                kopiert / max(time.monotonic() - begonnen, 0.001))
+    except OSError as exc:
+        teil.unlink(missing_ok=True)
+        log.warning("Modelldatei liess sich nicht uebernehmen: %s", exc)
+        return Ladeergebnis(False, None, meldung=f"Uebernahme fehlgeschlagen: {exc}")
+
+    teil.replace(ziel)
+    return Ladeergebnis(
+        True, ziel, pruefsumme.hexdigest(),
+        f"Uebernommen: {ziel.name} ({ziel.stat().st_size/1024**3:.2f} GB). "
+        "Die Datei liegt jetzt auf diesem Datentraeger und wird auch ohne "
+        "Internet verwendet.",
+        kopiert)

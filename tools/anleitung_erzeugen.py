@@ -312,12 +312,85 @@ kasten(
     "noch kein Nachweis.",
 )
 
-absatz("Wer lieber mit der Kommandozeile arbeitet, erreicht dasselbe mit "
-       "diesen zwei Befehlen:")
+doc.add_heading("Nur einmal - nicht bei jedem Start", level=2)
+absatz("Das Modell wird EINMAL geladen. Danach liegt es im Ordner models "
+       "auf diesem Datentraeger - nicht auf dem Rechner, an dem Sie es "
+       "geladen haben. Es bleibt dort ueber Neustarts hinweg, an jedem "
+       "anderen Rechner, unter jedem Laufwerksbuchstaben und fuer alle "
+       "Kundenbereiche gemeinsam. Auch ohne Internet.")
+punkt("Beim naechsten Start wird nichts nachgeladen.")
+punkt("Ziehen Sie den Stick an einen anderen Rechner, geht es dort sofort "
+      "weiter.")
+punkt("Legen Sie einen zweiten Kundenbereich an, wird dasselbe Modell "
+      "verwendet - es wird nicht ein zweites Mal abgelegt.")
+
+absatz("Warum liegt das Modell dann nicht gleich im Paket? Zwei Gruende: es "
+       "ist je nach Auswahl bis zu neun Gigabyte gross, und unter welcher "
+       "Lizenz Sie ein Modell einsetzen, ist Ihre Entscheidung und nicht "
+       "unsere.")
+
+doc.add_heading("Sie haben das Modell schon? Dann nicht noch einmal laden", level=2)
+absatz("Wenn die Datei bereits irgendwo liegt - auf dem Stick einer "
+       "Kollegin, auf einer externen Platte, im Firmennetz -, koennen Sie "
+       "sie uebernehmen, statt sie erneut zu ziehen. Das ist der Weg fuer "
+       "einen zweiten Datentraeger, fuer ein Buero mit gesperrtem Download "
+       "und fuer jede Leitung, ueber die man 4,7 GB nicht zweimal schicken "
+       "will.")
 kasten(
-    "Dasselbe in der Konsole",
+    "Vorhandene Datei uebernehmen",
+    "Registerkarte \"Sprachmodell\" -> \"Vorhandene Modelldatei "
+    "uebernehmen\" -> die .gguf-Datei auswaehlen.\n\n"
+    "Die Datei wird auf diesen Datentraeger KOPIERT, nicht nur verknuepft. "
+    "Nur so laeuft der Datentraeger auch an einem Rechner, der die Herkunft "
+    "gar nicht erreicht - und genau das ist der Sinn dieser Anwendung.",
+)
+absatz("Dafuer braucht es kein Internet; die Uebernahme funktioniert auch "
+       "im Betriebsmodus OFFLINE.")
+
+doc.add_heading("Die Registerkarte im Einzelnen", level=2)
+tabelle_mit(
+    ["Was Sie sehen", "Was es bedeutet"],
+    [
+        ["Lage auf diesem Rechner",
+         "\"Noch nicht eingerichtet\" oder \"Einsatzbereit\". Darunter steht, "
+         "was fehlt - die Modelldatei, der Modelldienst, oder beides."],
+        ["Auswahl",
+         "Das Modell, das geladen wird. Vorausgewaehlt ist bereits das, was "
+         "zu Ihrem Arbeitsspeicher passt."],
+        ["Sprachmodell einrichten",
+         "Laedt das ausgewaehlte Modell - erst nach einer Rueckfrage, die "
+         "Groesse, Lizenz, Herkunft und Pruefstand nennt."],
+        ["Vorhandene Modelldatei uebernehmen",
+         "Nimmt eine .gguf-Datei auf, die Sie schon haben. Kein Download."],
+        ["Lage neu pruefen",
+         "Sieht noch einmal nach - etwa wenn Sie eine Datei von Hand in den "
+         "Ordner models kopiert haben."],
+        ["Modell ausprobieren",
+         "Stellt dem Modell eine kleine Frage und zeigt Antwortzeit und "
+         "Geschwindigkeit. Der Nachweis, dass es wirklich laeuft."],
+        ["Textbereich unten",
+         "Vor dem Einrichten: Ihre Hardware und die Bezugsquellen mit "
+         "Lizenz und Pruefstand. Danach: das Ergebnis samt Probeantwort."],
+    ],
+    breiten=[5.0, 10.8],
+)
+
+absatz("Beim Einrichten wandert der Balken bis 100 Prozent. Danach bindet "
+       "die Anwendung das Modell ein und stellt ihm selbst eine Frage. Erst "
+       "wenn die beantwortet ist, meldet sie \"Das Sprachmodell ist "
+       "einsatzbereit\". Eine geladene Datei allein ist noch kein Nachweis - "
+       "sie koennte beschaedigt sein oder zu gross fuer Ihren "
+       "Arbeitsspeicher.")
+
+doc.add_heading("Dasselbe in der Kommandozeile", level=2)
+absatz("Wer lieber mit der Konsole arbeitet, erreicht alles auch dort:")
+kasten(
+    "Befehle",
+    "PORTABLE_BUCHHALTER_KONSOLE.exe modell status\n"
     "PORTABLE_BUCHHALTER_KONSOLE.exe modell empfehlen\n"
-    "PORTABLE_BUCHHALTER_KONSOLE.exe modell einrichten --bestaetigen",
+    "PORTABLE_BUCHHALTER_KONSOLE.exe modell einrichten --bestaetigen\n"
+    "PORTABLE_BUCHHALTER_KONSOLE.exe modell uebernehmen --datei D:\\modell.gguf\n"
+    "PORTABLE_BUCHHALTER_KONSOLE.exe modell pruefen",
 )
 
 doc.add_heading("Was schon fertig mitgeliefert wird", level=2)
@@ -357,13 +430,16 @@ absatz("Die beiden groesseren Modelle liegen beim Anbieter in mehreren "
        "Dateien vor. Die Anwendung laedt alle Teile und legt sie zusammen "
        "in den Ordner models ab. Bitte nichts davon umbenennen oder "
        "verschieben - die Teile gehoeren zusammen.")
-absatz("Ein anderes als das vorgeschlagene Profil waehlen Sie mit "
-       "--profil light (oder standard, high, probe).")
+absatz("Ein anderes als das vorgeschlagene Modell waehlen Sie im Fenster "
+       "ueber die Auswahlliste \"Auswahl\" - in der Konsole mit --profil "
+       "light (oder standard, high, probe).")
 
 doc.add_heading("Was die Anwendung dabei nicht tut", level=2)
-punkt("Sie laedt nichts ohne Ihre Bestaetigung. Ohne --bestaetigen nennt "
-      "sie nur Groesse, Lizenz und Herkunft und hoert auf.")
-punkt("Sie laedt nichts im Betriebsmodus OFFLINE.")
+punkt("Sie laedt nichts ohne Ihre Bestaetigung. Im Fenster kommt vorher "
+      "eine Rueckfrage mit Groesse, Lizenz und Herkunft; in der Konsole "
+      "braucht es --bestaetigen.")
+punkt("Sie laedt nichts im Betriebsmodus OFFLINE. Eine vorhandene Datei "
+      "uebernehmen koennen Sie trotzdem - dabei wird nichts abgerufen.")
 punkt("Sie behauptet keine geprueften Bezugsquellen. Steht dort \"nicht "
       "geprueft\", wurde die Adresse in diesem Programmstand nicht "
       "abgerufen - dann wird die Datei auch nicht gegen eine hinterlegte "

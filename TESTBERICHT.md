@@ -4,7 +4,7 @@ Stand: 06.09.2026 · Branch `claude/portable-ki-buchhalter-xr1qlj`
 
 ## Zusammenfassung
 
-**524 automatische Tests bestanden, 1 uebersprungen** (unter Windows einer
+**539 automatische Tests bestanden, 1 uebersprungen** (unter Windows einer
 mehr uebersprungen). Ausfuehrungszeit rund 25 Sekunden. Reproduzierbar mit:
 
 ```

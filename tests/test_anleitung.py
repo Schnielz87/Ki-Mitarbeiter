@@ -108,3 +108,40 @@ def test_anleitung_nennt_die_gemessenen_groessen():
         if quelle.geteilt:
             assert f"{len(quelle.teile)} Teildateien" in groesse, (
                 f"{profil}: die Teildateien muessen angekuendigt werden")
+
+
+def test_anleitung_erklaert_die_registerkarte_sprachmodell():
+    """Eine neue Registerkarte ohne Anleitung ist eine halbe Lieferung.
+
+    Anlass ist die Rueckfrage "hast du das auch in der Betriebsanleitung
+    ergaenzt?". Der Kasten mit den drei Klicks stand da bereits - der Rest
+    des Kapitels sprach aber weiter von Konsolenschaltern.
+    """
+    from docx import Document
+
+    text = "\n".join(p.text for p in
+                     Document(str(ROOT / "docs" / "BEDIENUNGSANLEITUNG.docx")).paragraphs)
+    tabellen = "\n".join(z.text for t in
+                         Document(str(ROOT / "docs" / "BEDIENUNGSANLEITUNG.docx")).tables
+                         for r in t.rows for z in r.cells)
+    alles = text + "\n" + tabellen
+
+    # Die Kernaussage auf die Rueckfrage "muss ich das immer laden?"
+    assert "EINMAL geladen" in alles
+    assert "Beim naechsten Start wird nichts nachgeladen." in alles
+    # Der Weg fuer den zweiten Datentraeger
+    assert "Vorhandene Modelldatei uebernehmen" in alles
+    assert "KOPIERT, nicht nur verknuepft" in alles
+    # Und die Registerkarte selbst, Feld fuer Feld
+    for stueck in ("Lage auf diesem Rechner", "Modell ausprobieren",
+                   "Lage neu pruefen", "Sprachmodell einrichten"):
+        assert stueck in alles, f"die Anleitung erklaert '{stueck}' nicht"
+
+
+def test_anleitung_nennt_nur_schaltflaechen_die_es_gibt():
+    """Sonst sucht jemand einen Knopf, den niemand gebaut hat."""
+    oberflaeche = (ROOT / "src" / "ui" / "tk_app.py").read_text(encoding="utf-8")
+    for schaltflaeche in ("Sprachmodell einrichten", "Vorhandene Modelldatei uebernehmen",
+                          "Lage neu pruefen", "Modell ausprobieren"):
+        assert f'text="{schaltflaeche}"' in oberflaeche, (
+            f"Die Anleitung nennt '{schaltflaeche}' - im Fenster gibt es das nicht.")

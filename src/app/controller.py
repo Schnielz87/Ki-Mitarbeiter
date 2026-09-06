@@ -778,6 +778,37 @@ class AppController:
             "teile": len(ergebnisse),
         }
 
+    def modell_uebernehmen(self, datei, *, ueberschreiben: bool = False,
+                           fortschritt=None) -> dict:
+        """Nimmt eine vorhandene Modelldatei auf - ohne sie neu zu laden.
+
+        Das Modell gehoert auf den Datentraeger, nicht ins Netz. Wer es
+        einmal hat, soll es nicht ein zweites Mal ziehen muessen: fuer einen
+        weiteren Stick, fuer ein Buero mit gesperrtem Download, fuer eine
+        Leitung, ueber die 4,7 GB nicht zweimal gehen.
+
+        Hier wird nichts aus dem Internet geholt - der Betriebsmodus spielt
+        deshalb keine Rolle, auch OFFLINE nicht.
+        """
+        from pkc.llm.bezug import uebernehmen
+
+        quelle = Path(datei)
+        self.audit.record("modell_uebernahme", "modell", quelle.name,
+                          herkunft=str(quelle.parent))
+        ergebnis = uebernehmen(quelle, self.paths.get("models"),
+                               ueberschreiben=ueberschreiben,
+                               fortschritt=fortschritt)
+        self.audit.record("modell_uebernahme_ende", "modell", quelle.name,
+                          status="ok" if ergebnis.ok else "fehler",
+                          meldung=ergebnis.meldung)
+        return {
+            "ok": ergebnis.ok,
+            "pfad": str(ergebnis.pfad) if ergebnis.pfad else "",
+            "meldung": ergebnis.meldung,
+            "pruefsumme": ergebnis.pruefsumme,
+            "bytes": ergebnis.bytes_geladen,
+        }
+
     def einrichtungsweg(self, text: str) -> None:
         """Sagt der Anwendung, wie der Benutzer das Modell einrichten kann.
 

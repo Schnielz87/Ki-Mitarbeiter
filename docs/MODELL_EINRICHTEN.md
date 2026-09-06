@@ -22,6 +22,36 @@ Danach bindet die Anwendung das Modell ein und stellt ihm selbst eine
 kleine Frage. Erst wenn die beantwortet ist, meldet sie **"Das Sprachmodell
 ist einsatzbereit."**
 
+---
+
+## Nur einmal - nicht bei jedem Start
+
+Das Modell wird **einmal** geladen. Danach liegt es in `models\` **auf dem
+Datentraeger**, nicht auf dem Rechner. Es bleibt dort ueber Neustarts, an
+jedem anderen Rechner, unter jedem Laufwerksbuchstaben - und alle
+Kundenbereiche teilen sich dieselbe Datei.
+
+Warum liegt es dann nicht gleich im Paket? Es ist bis zu neun Gigabyte
+gross, und unter welcher Lizenz Sie ein Modell einsetzen, ist Ihre
+Entscheidung.
+
+## Sie haben das Modell schon? Dann nicht noch einmal laden
+
+Fuer einen zweiten Datentraeger, ein Buero mit gesperrtem Download oder eine
+Leitung, ueber die 4,7 GB nicht zweimal gehen:
+
+Registerkarte **Sprachmodell** -> **Vorhandene Modelldatei uebernehmen** ->
+die `.gguf`-Datei auswaehlen. Oder in der Konsole:
+
+```
+PORTABLE_BUCHHALTER_KONSOLE.exe modell uebernehmen --datei D:\modell.gguf
+```
+
+Die Datei wird **kopiert**, nicht verknuepft. Ein Verweis auf ein
+Netzlaufwerk waere kleiner - aber dann liefe der Datentraeger nicht mehr
+fuer sich allein, und genau das ist der Sinn dieser Anwendung. Internet
+braucht es dafuer nicht; das geht auch im Betriebsmodus OFFLINE.
+
 ## Derselbe Weg in der Konsole
 
 ```
@@ -118,7 +148,8 @@ PORTABLE_BUCHHALTER_KONSOLE.exe modell laden --url <Adresse> [--pruefsumme <sha2
 ```
 
 Oder ganz ohne Befehl: die GGUF-Datei einfach nach `models\` kopieren. Die
-Anwendung findet sie beim naechsten Start.
+Anwendung findet sie beim naechsten Start - oder sofort ueber **Lage neu
+pruefen** in der Registerkarte.
 
 Die hinterlegten Bezugsquellen stehen in `config\model_catalog.json` und
 lassen sich dort ergaenzen, ohne die Anwendung neu zu bauen.

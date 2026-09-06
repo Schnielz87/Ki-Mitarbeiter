@@ -493,6 +493,26 @@ def cmd_modell(args) -> int:
             controller.modell_neu_laden()
             return _probe_ausgeben(controller)
 
+        if args.aktion == "uebernehmen":
+            # Kein Internet noetig: hier wird nichts geholt, sondern eine
+            # vorhandene Datei auf den Datentraeger genommen. Deshalb greift
+            # auch die Sperre der Betriebsart OFFLINE nicht.
+            if not args.datei:
+                print("Es wird --datei benoetigt.", file=sys.stderr)
+                return 2
+            print(f"Uebernehme nach {lage['modellverzeichnis']}")
+            ergebnis = controller.modell_uebernehmen(
+                args.datei, ueberschreiben=args.ueberschreiben,
+                fortschritt=_fortschritt)
+            print()
+            print(ergebnis["meldung"])
+            if not ergebnis["ok"]:
+                return 1
+            if ergebnis["pruefsumme"]:
+                print(f"SHA-256: {ergebnis['pruefsumme']}")
+            controller.modell_neu_laden()
+            return _probe_ausgeben(controller)
+
         if args.aktion == "pruefen":
             return _probe_ausgeben(controller)
 
@@ -924,7 +944,8 @@ def build_parser() -> argparse.ArgumentParser:
 
     modell = neu("modell", "Sprachmodell einrichten und pruefen")
     modell.add_argument("aktion", nargs="?", default="status",
-                        choices=["status", "empfehlen", "einrichten", "laden", "pruefen"])
+                        choices=["status", "empfehlen", "einrichten", "uebernehmen",
+                                 "laden", "pruefen"])
     modell.add_argument("--profil", default="",
                         help="probe, light, standard oder high")
     modell.add_argument("--modell-id", dest="modell_id", default="",
@@ -935,6 +956,8 @@ def build_parser() -> argparse.ArgumentParser:
     modell.add_argument("--url", default="", help="Bezugsadresse der Modelldatei")
     modell.add_argument("--pruefsumme", default="", help="erwartete SHA-256")
     modell.add_argument("--name", default="", help="Dateiname im Modellordner")
+    modell.add_argument("--datei", default="",
+                        help="vorhandene GGUF-Datei uebernehmen, statt neu zu laden")
     modell.set_defaults(func=cmd_modell)
 
     datei = neu("datei", "Ergebnisse als Datei ausgeben (Excel, Word, PDF ...)")

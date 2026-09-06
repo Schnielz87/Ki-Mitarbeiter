@@ -667,10 +667,16 @@ class MainWindow:
             buttons, text="Sprachmodell einrichten", command=self._modell_einrichten
         )
         self.modell_button.pack(side="left")
+        # Wer das Modell schon hat, soll es nicht ein zweites Mal ziehen -
+        # fuer einen weiteren Stick, fuer ein Buero mit gesperrtem Download.
+        self.modell_uebernehmen_button = ttk.Button(
+            buttons, text="Vorhandene Modelldatei uebernehmen",
+            command=self._modell_uebernehmen)
+        self.modell_uebernehmen_button.pack(side="left", padx=PAD)
         ttk.Button(buttons, text="Lage neu pruefen",
-                   command=self._refresh_modell).pack(side="left", padx=PAD)
+                   command=self._refresh_modell).pack(side="left")
         ttk.Button(buttons, text="Modell ausprobieren",
-                   command=self._modell_probe).pack(side="left")
+                   command=self._modell_probe).pack(side="left", padx=PAD)
 
         self.modell_progress = ttk.Progressbar(frame, mode="determinate")
         self.modell_progress.pack(fill="x", pady=PAD)
@@ -827,53 +833,119 @@ class MainWindow:
             ergebnis["probe"] = self.controller.modell_probe()
             return ergebnis
 
-        def done(ergebnis: dict | None, error: Exception | None) -> None:
-            self._set_busy(False)
-            # Der Balken zeigt den Bezug, nicht den Aufruf. Ein
-            # abgebrochener Download mit vollem Balken waere eine Anzeige,
-            # die das Gegenteil dessen behauptet, was passiert ist.
-            geglueckt = error is None and bool(ergebnis and ergebnis.get("ok"))
-            self.modell_progress.configure(value=100 if geglueckt else 0)
-            if error is not None:
-                self._write_modell_log(f"Das Modell konnte nicht geladen werden:\n{error}")
-                messagebox.showerror("Sprachmodell", str(error), parent=self.root)
-                self._refresh_modell()
-                return
+        # Bezug und Uebernahme enden gleich - siehe _modell_fertig.
+        BackgroundTask(self.root).run(work, self._modell_fertig, on_tick=abholen)
+
+    def _modell_uebernehmen(self) -> None:
+        """Nimmt eine schon vorhandene GGUF-Datei auf den Datentraeger.
+
+        Das Modell muss nicht auf jedem Rechner neu geladen werden. Es
+        gehoert auf den Datentraeger - und von dort laesst es sich
+        weitergeben.
+        """
+        if self.busy:
+            return
+        pfad = filedialog.askopenfilename(
+            title="Modelldatei auswaehlen",
+            filetypes=[("GGUF-Modelldateien", "*.gguf"), ("Alle Dateien", "*.*")],
+        )
+        if not pfad:
+            return
+
+        quelle = Path(pfad)
+        try:
+            groesse_gb = quelle.stat().st_size / 1024 ** 3
+        except OSError as fehler:                  # pragma: no cover - defensiv
+            messagebox.showerror("Sprachmodell", str(fehler), parent=self.root)
+            return
+
+        if not messagebox.askyesno(
+            "Modelldatei uebernehmen",
+            f"{quelle.name}\n\n"
+            f"Groesse: etwa {groesse_gb:.2f} GB\n"
+            f"Herkunft: {quelle.parent}\n\n"
+            "Die Datei wird auf diesen Datentraeger kopiert - nicht nur "
+            "verknuepft. Nur so laeuft der Datentraeger auch an einem "
+            "Rechner, der die Herkunft nicht erreicht.\n\n"
+            "Jetzt uebernehmen?",
+            parent=self.root,
+        ):
+            return
+
+        self._set_busy(True, "Die Modelldatei wird uebernommen ...")
+        self.modell_progress.configure(value=0, maximum=100)
+        meldungen: queue.Queue = queue.Queue()
+
+        def fortschritt(kopiert: int, gesamt: int, tempo: float) -> None:
+            meldungen.put(int(kopiert * 100 / gesamt) if gesamt else 0)
+
+        def abholen() -> None:
+            wert = None
+            try:
+                while True:
+                    wert = meldungen.get_nowait()
+            except queue.Empty:
+                pass
+            if wert is not None:
+                self.modell_progress.configure(value=wert)
+
+        def work() -> dict:
+            ergebnis = self.controller.modell_uebernehmen(quelle, fortschritt=fortschritt)
             if not ergebnis["ok"]:
-                self._write_modell_log(ergebnis["meldung"])
-                messagebox.showerror("Sprachmodell", ergebnis["meldung"], parent=self.root)
-                self._refresh_modell(protokoll=False)
-                return
+                return ergebnis
+            self.controller.modell_neu_laden()
+            ergebnis["probe"] = self.controller.modell_probe()
+            return ergebnis
 
-            probe = ergebnis.get("probe", {})
-            zeilen = ["Geladen: " + ergebnis["quelle"]["name"], ergebnis["meldung"], ""]
-            if probe.get("ok"):
-                zeilen += [
-                    "Das Sprachmodell ist einsatzbereit.",
-                    f"  Antwortzeit : {probe['dauer_s']} s",
-                    f"  Tempo       : {probe['token_je_sekunde']} Token je Sekunde",
-                    "", "Probeantwort:", "  " + probe.get("text", ""),
-                ]
-            else:
-                zeilen += ["Das Modell wurde geladen, hat aber nicht geantwortet:",
-                           "  " + str(probe.get("grund", "ohne Angabe"))]
-            self._write_modell_log("\n".join(zeilen))
+        BackgroundTask(self.root).run(work, self._modell_fertig, on_tick=abholen)
+
+    def _modell_fertig(self, ergebnis: dict | None, error: Exception | None) -> None:
+        """Gemeinsamer Abschluss fuer Bezug und Uebernahme.
+
+        Beide Wege enden gleich: geladen ist nicht eingerichtet. Erst wenn
+        das Modell geantwortet hat, steht "einsatzbereit" da.
+        """
+        self._set_busy(False)
+        geglueckt = error is None and bool(ergebnis and ergebnis.get("ok"))
+        self.modell_progress.configure(value=100 if geglueckt else 0)
+        if error is not None:
+            self._write_modell_log(f"Das Modell konnte nicht eingerichtet werden:\n{error}")
+            messagebox.showerror("Sprachmodell", str(error), parent=self.root)
             self._refresh_modell(protokoll=False)
-            self._refresh_status()
-            if probe.get("ok"):
-                messagebox.showinfo(
-                    "Sprachmodell",
-                    "Das Sprachmodell ist einsatzbereit.\n\n"
-                    f"Es hat in {probe['dauer_s']} Sekunden geantwortet. "
-                    "Ab der naechsten Frage formuliert der Buchhalter wieder "
-                    "Fachantworten.", parent=self.root)
-            else:
-                messagebox.showwarning(
-                    "Sprachmodell",
-                    "Das Modell wurde geladen, hat aber nicht geantwortet:\n\n"
-                    + str(probe.get("grund", "ohne Angabe")), parent=self.root)
+            return
+        if not ergebnis["ok"]:
+            self._write_modell_log(ergebnis["meldung"])
+            messagebox.showerror("Sprachmodell", ergebnis["meldung"], parent=self.root)
+            self._refresh_modell(protokoll=False)
+            return
 
-        BackgroundTask(self.root).run(work, done, on_tick=abholen)
+        probe = ergebnis.get("probe", {})
+        zeilen = [ergebnis["meldung"], ""]
+        if probe.get("ok"):
+            zeilen += [
+                "Das Sprachmodell ist einsatzbereit.",
+                f"  Antwortzeit : {probe['dauer_s']} s",
+                f"  Tempo       : {probe['token_je_sekunde']} Token je Sekunde",
+                "", "Probeantwort:", "  " + probe.get("text", ""),
+            ]
+        else:
+            zeilen += ["Das Modell liegt vor, hat aber nicht geantwortet:",
+                       "  " + str(probe.get("grund", "ohne Angabe"))]
+        self._write_modell_log("\n".join(zeilen))
+        self._refresh_modell(protokoll=False)
+        self._refresh_status()
+        if probe.get("ok"):
+            messagebox.showinfo(
+                "Sprachmodell",
+                "Das Sprachmodell ist einsatzbereit.\n\n"
+                f"Es hat in {probe['dauer_s']} Sekunden geantwortet. Ab der "
+                "naechsten Frage formuliert der Buchhalter wieder Fachantworten.",
+                parent=self.root)
+        else:
+            messagebox.showwarning(
+                "Sprachmodell",
+                "Das Modell liegt vor, hat aber nicht geantwortet:\n\n"
+                + str(probe.get("grund", "ohne Angabe")), parent=self.root)
 
     def _modell_probe(self) -> None:
         """Stellt dem Modell eine Frage - der Nachweis, nicht die Behauptung."""
