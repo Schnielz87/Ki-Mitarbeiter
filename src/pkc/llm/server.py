@@ -175,7 +175,7 @@ class Llamaserver:
             befehl += ["-ngl", str(self.gpu_layers)]
         return befehl
 
-    def _tempoflags(self) -> list[str]:
+    def _tempoflags(self) -> list[list[str]]:
         """Schalter, die messbar Zeit sparen - aber nicht in jeder Fassung.
 
         * ``-fa`` (Flash Attention) beschleunigt vor allem die Verarbeitung
@@ -185,21 +185,31 @@ class Llamaserver:
           wird - und Auslagern kostet nicht Prozente, sondern das Zehnfache.
         * ``-tb`` gibt der Kontextverarbeitung alle Kerne.
 
-        Sie stehen bewusst getrennt: llama.cpp aendert seine Schalter
-        zwischen Fassungen. Kennt die vorliegende Programmdatei einen davon
-        nicht, beendet sie sich sofort - dann waere gar kein Sprachmodell da.
-        Deshalb wird beim Fehlstart ohne diese Schalter erneut versucht.
+        Zurueckgegeben wird eine **Liste** von Saetzen, absteigend nach
+        Wirkung: llama.cpp aendert seine Schalter zwischen Fassungen, und
+        wer einen unbekannten uebergibt, bekommt eine Hilfeseite statt eines
+        Dienstes. Beim Fehlstart wird deshalb der naechste Satz versucht,
+        zuletzt gar keiner. Lieber langsamer als gar nicht.
         """
-        flags = ["-fa", "--cache-type-k", "q8_0", "--cache-type-v", "q8_0"]
         kerne = self.threads or (os.cpu_count() or 0)
-        if kerne:
-            flags += ["-tb", str(kerne)]
-        return flags
+        kern = ["-tb", str(kerne)] if kerne else []
+        kontext = ["--cache-type-k", "q8_0", "--cache-type-v", "q8_0"]
+        # Absteigend nach Wirkung. Der Bauablauf hat gezeigt, warum es eine
+        # Liste sein muss und kein fester Satz: die vorliegende Fassung
+        # verlangte "-fa on", eine aeltere kennt nur "-fa" ohne Wert, und wer
+        # den falschen nimmt, bekommt eine Hilfeseite statt eines Dienstes.
+        return [
+            ["-fa", "on", *kontext, *kern],
+            ["-fa", *kontext, *kern],
+            [*kontext, *kern],
+            kern,
+        ]
 
     def _befehl(self, programm: Path | None = None) -> list[str]:
+        """Der Aufruf, der zuerst versucht wird - mit dem besten Schaltersatz."""
         befehl = self._grundbefehl(programm)
         if self.tempoflags:
-            befehl += self._tempoflags()
+            befehl += self._tempoflags()[0]
         return befehl
 
     def starten(self, protokollordner: Path | None = None) -> str:
@@ -240,27 +250,30 @@ class Llamaserver:
         if self.rueckfall is not None and Path(self.rueckfall).is_file():
             programme.append(Path(self.rueckfall))
 
+        saetze = self._tempoflags() if self.tempoflags else []
+        saetze = [*saetze, []]                 # zuletzt ganz ohne Zusatz
+
         letzte = ""
         for programm in programme:
-            for mit_tempo in ([True, False] if self.tempoflags else [False]):
-                self.tempoflags_aktiv = mit_tempo
+            for satz in saetze:
+                self.tempoflags_aktiv = bool(satz)
                 self.benutzt = programm
-                befehl = self._befehl(programm) if mit_tempo else self._grundbefehl(programm)
+                befehl = self._grundbefehl(programm) + satz
                 self._vorgang = subprocess.Popen(
                     befehl, stdout=ausgabe, stderr=subprocess.STDOUT,
                     stdin=subprocess.DEVNULL, cwd=str(programm.parent), **zusatz,
                 )
                 if self._warten():
-                    log.info("Modelldienst bereit auf %s (%s, Tempoflags: %s)",
+                    log.info("Modelldienst bereit auf %s (%s, Zusatzschalter: %s)",
                              self.adresse, programm.parent.name,
-                             "ja" if mit_tempo else "nein")
+                             " ".join(satz) if satz else "keine")
                     return self.adresse
 
                 letzte = self.letzte_ausgabe()
                 self.beenden()
-                log.warning("Modelldienst kam nicht hoch (%s, Tempoflags: %s). "
+                log.warning("Modelldienst kam nicht hoch (%s, Zusatzschalter: %s). "
                             "Letzte Ausgabe: %s", programm.parent.name,
-                            "ja" if mit_tempo else "nein", letzte)
+                            " ".join(satz) if satz else "keine", letzte)
                 self.port = _freier_port()
 
         self.tempoflags_aktiv = False

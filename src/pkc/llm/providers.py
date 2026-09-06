@@ -367,14 +367,25 @@ class MitgelieferterServerProvider(OpenAICompatibleProvider):
         )
 
     def _sicherstellen(self) -> None:
-        if self.server.laeuft:
-            return
+        """Sorgt dafuer, dass der Dienst laeuft **und** erreichbar ist.
+
+        Beides, und immer im Schloss. Der erste Entwurf pruefte vor dem
+        Schloss nur, ob der Vorgang lebt - und liess durch, waehrend der
+        Vorladefaden noch startete. Die Adresse stand dann noch auf Port 0,
+        und die Frage lief in "WinError 10049: die angeforderte Adresse ist
+        in diesem Zusammenhang nicht gueltig". Aufgefallen im Bauablauf,
+        nicht im Test: es ist ein Wettlauf, und der braucht zwei Faeden.
+
+        Ein lebender Vorgang ist ausserdem noch kein bereiter Dienst. Beim
+        Start wird ein Aufruf verworfen, dessen Schalter die vorliegende
+        Fassung nicht kennt - dieser Vorgang lebt einen Wimpernschlag lang.
+        """
         with self._schloss:
-            # Zweite Pruefung im Schloss: der Vorladefaden koennte den Dienst
-            # inzwischen gestartet haben. Zweimal starten waere nicht nur
-            # Verschwendung - es waeren zwei Vorgaenge mit je mehreren
-            # Gigabyte Arbeitsspeicher.
-            if self.server.laeuft:
+            if self.server.laeuft and self.server.port and self.server.bereit():
+                # Die Adresse immer vom Dienst nehmen, nie zwischenspeichern:
+                # sie aendert sich, wenn ein Startversuch scheitert und der
+                # naechste einen anderen Port bekommt.
+                self.base_url = self.server.adresse.rstrip("/")
                 return
             try:
                 self.base_url = self.server.starten(self.protokollordner).rstrip("/")

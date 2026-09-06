@@ -99,6 +99,17 @@ beides zusammen erklaert Minuten.
 * Neuer Befehl `einstellungen setzen`, und der Bauablauf misst damit die
   Wartezeit je Tempostufe auf einem echten Rechner mit echtem Modell
 
+Zwei weitere Fehler fand der Bauablauf, nicht der Test:
+
+* **Vorladen und erste Frage liefen in einen Wettlauf.** Wer fragte,
+  waehrend der Dienst noch startete, zog mit Port 0 los und bekam "kein
+  Sprachmodell eingerichtet" - obwohl eines dalag. Behoben; zwei Tests
+  bilden den Fall mit zwei Faeden nach
+* **"-fa" verlangt in der vorliegenden llama.cpp-Fassung einen Wert.** Der
+  blosse Schalter erzeugte eine Hilfeseite statt eines Dienstes. Der
+  eingebaute Rueckfall hat genau das aufgefangen und die Ursache ins
+  Protokoll geschrieben - jetzt wird "-fa on" zuerst versucht
+
 Zwei Fehler, die dabei auffielen:
 
 * **Das Antworttempo wirkte erst nach einem Neustart.** Kontextgroesse und

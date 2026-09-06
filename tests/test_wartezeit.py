@@ -275,6 +275,36 @@ def test_tempoflags_stehen_im_befehl(tmp_path):
     assert "-tb" in befehl, "die Kontextverarbeitung soll alle Kerne bekommen"
 
 
+def test_flash_attention_wird_mit_wert_uebergeben(tmp_path):
+    """Der Bauablauf hat gezeigt, dass die Fassung einen Wert verlangt.
+
+    Der blosse Schalter "-fa" fuehrte zu einer Hilfeseite und einem sofort
+    beendeten Vorgang - also zu gar keinem Sprachmodell, bis der Rueckfall
+    griff.
+    """
+    from pkc.llm.server import Llamaserver
+
+    saetze = Llamaserver(programm=tmp_path / "llama-server",
+                         modell=tmp_path / "m.gguf", port=1)._tempoflags()
+    erster = saetze[0]
+    assert erster[:2] == ["-fa", "on"], f"erster Satz ist {erster[:2]}"
+    # Und eine aeltere Fassung, die den Wert nicht kennt, muss auch bedient
+    # werden - deshalb mehrere Saetze statt eines festen.
+    assert ["-fa"] == saetze[1][:1]
+    assert len(saetze) >= 3, "es braucht einen Satz ohne Flash Attention"
+    assert saetze[-1] and "-fa" not in saetze[-1]
+
+
+def test_jeder_folgesatz_ist_kleiner_als_der_vorige(tmp_path):
+    """Absteigend nach Wirkung - sonst waere die Reihenfolge willkuerlich."""
+    from pkc.llm.server import Llamaserver
+
+    saetze = Llamaserver(programm=tmp_path / "llama-server",
+                         modell=tmp_path / "m.gguf", port=1)._tempoflags()
+    laengen = [len(s) for s in saetze]
+    assert laengen == sorted(laengen, reverse=True), laengen
+
+
 def test_ohne_tempoflags_bleibt_der_befehl_schlicht(tmp_path):
     """Fuer die Fehlersuche muss der einfache Aufruf erreichbar bleiben."""
     from pkc.llm.server import Llamaserver
@@ -457,3 +487,103 @@ def test_probe_gibt_die_wartezeit_getrennt_aus(portable_root, capsys, monkeypatc
     text = capsys.readouterr().out
     assert "erstes Wort" in text and "2.5" in text
     assert "9.2 Token je Sekunde" in text
+
+
+def test_vorladen_und_frage_gleichzeitig_treffen_die_richtige_adresse(tmp_path):
+    """Der Wettlauf, der im Bauablauf zuschlug - und im Test nicht sichtbar war.
+
+    Der Vorladefaden startet den Dienst. Waehrend er das tut, lebt bereits
+    ein Vorgang, ist aber noch nicht erreichbar. Wer in diesem Moment fragt,
+    darf nicht mit der alten Adresse losziehen: die stand noch auf Port 0,
+    und die Anfrage lief in "WinError 10049 - die angeforderte Adresse ist
+    in diesem Zusammenhang nicht gueltig". Nach aussen sah das aus wie "kein
+    Sprachmodell eingerichtet", obwohl eines dalag.
+    """
+    from pkc.llm.providers import MitgelieferterServerProvider
+
+    class Server:
+        """Startet langsam - und wird erst spaet erreichbar."""
+
+        def __init__(self):
+            self.port = 0
+            self._lebt = False
+            self._bereit = False
+            self.starts = 0
+            self.programm = tmp_path / "llama-server"
+            self.modell = tmp_path / "m.gguf"
+            self.programm.write_text("x")
+            self.modell.write_text("x")
+
+        @property
+        def adresse(self):
+            return f"http://127.0.0.1:{self.port}"
+
+        @property
+        def laeuft(self):
+            return self._lebt
+
+        def bereit(self):
+            return self._bereit
+
+        def starten(self, protokollordner=None):
+            self.starts += 1
+            self._lebt = True          # Vorgang lebt - aber antwortet noch nicht
+            time.sleep(0.2)
+            self.port = 8123
+            self._bereit = True
+            return self.adresse
+
+    server = Server()
+    anbieter = MitgelieferterServerProvider(server)
+    gesehen: list[str] = []
+
+    def fragen():
+        anbieter._sicherstellen()
+        gesehen.append(anbieter.base_url)
+
+    vorlauf = threading.Thread(target=anbieter.vorladen)
+    vorlauf.start()
+    time.sleep(0.05)                   # mitten im Startvorgang fragen
+    frage = threading.Thread(target=fragen)
+    frage.start()
+    vorlauf.join(timeout=5)
+    frage.join(timeout=5)
+
+    assert server.starts == 1, f"der Dienst wurde {server.starts} Mal gestartet"
+    assert gesehen == ["http://127.0.0.1:8123"], (
+        f"die Frage ging an {gesehen} statt an den laufenden Dienst")
+
+
+def test_lebender_aber_noch_nicht_bereiter_dienst_gilt_nicht_als_fertig(tmp_path):
+    """Ein Vorgang, der gleich wieder aussteigt, ist kein Modelldienst.
+
+    Genau das passiert beim Start mit einem Schalter, den die vorliegende
+    Fassung nicht kennt: llama-server gibt eine Hilfeseite aus und endet.
+    """
+    from pkc.llm.providers import MitgelieferterServerProvider
+
+    class Server:
+        def __init__(self):
+            self.port = 9999
+            self.starts = 0
+            self.programm = tmp_path / "llama-server"
+            self.modell = tmp_path / "m.gguf"
+            self.programm.write_text("x")
+            self.modell.write_text("x")
+
+        adresse = "http://127.0.0.1:9999"
+        laeuft = True                  # lebt ...
+
+        def bereit(self):
+            return False               # ... antwortet aber nicht
+
+        def starten(self, protokollordner=None):
+            self.starts += 1
+            return "http://127.0.0.1:7777"
+
+    server = Server()
+    anbieter = MitgelieferterServerProvider(server)
+    anbieter._sicherstellen()
+
+    assert server.starts == 1, "ein stummer Vorgang muss neu gestartet werden"
+    assert anbieter.base_url == "http://127.0.0.1:7777"
