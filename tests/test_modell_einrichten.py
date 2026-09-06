@@ -293,3 +293,69 @@ def test_der_dienst_wird_beim_beenden_heruntergefahren(portable_root):
 
 def _darf_nicht(*args, **kwargs):
     raise AssertionError("Hier darf nichts geladen werden.")
+
+
+# -- Modelle in Teilen ---------------------------------------------------
+
+def test_geteiltes_modell_wird_vollstaendig_geladen(anwendung, portable_root, monkeypatch):
+    """Grosse Modelle liegen bei den Anbietern in Teilen vor.
+
+    llama.cpp laedt sie ueber die erste Datei - aber nur, wenn alle
+    danebenliegen. Fertig ist der Bezug also erst, wenn jeder Teil da ist.
+    """
+    from pkc.llm.bezug import Ladeergebnis
+
+    katalog = json.loads(json.dumps(KATALOG))
+    katalog["modelle"][1]["teile"] = [
+        "https://beispiel.invalid/gross-00001-of-00003.gguf",
+        "https://beispiel.invalid/gross-00002-of-00003.gguf",
+        "https://beispiel.invalid/gross-00003-of-00003.gguf",
+    ]
+    (portable_root.get("config") / "model_catalog.json").write_text(
+        json.dumps(katalog), encoding="utf-8")
+
+    geladen: list[str] = []
+
+    def merken(url, ziel, pruefsumme="", name="", ueberschreiben=False, fortschritt=None):
+        geladen.append(name)
+        return Ladeergebnis(ok=True, pfad=Path(ziel) / name, pruefsumme="e" * 64,
+                            meldung="geladen", bytes_geladen=10)
+
+    monkeypatch.setattr("pkc.llm.bezug.laden", merken)
+    anwendung.network.force(True, "Test: online")
+    ergebnis = anwendung.modell_beziehen("gross-geprueft", bestaetigt=True)
+
+    assert geladen == ["gross-00001-of-00003.gguf", "gross-00002-of-00003.gguf",
+                       "gross-00003-of-00003.gguf"]
+    assert ergebnis["ok"] and ergebnis["teile"] == 3
+    assert ergebnis["pfad"].endswith("gross-00001-of-00003.gguf"), \
+        "eingebunden wird ueber den ersten Teil"
+    assert "daneben liegen bleiben" in ergebnis["meldung"]
+    assert not ergebnis["pruefsumme_vergleichbar"], \
+        "eine Pruefsumme ueber ein geteiltes Modell gibt es nicht"
+
+
+def test_ein_fehlender_teil_macht_den_bezug_ungueltig(anwendung, portable_root, monkeypatch):
+    """Ein halb geladenes Modell darf nicht als einsatzbereit gelten."""
+    from pkc.llm.bezug import Ladeergebnis
+
+    katalog = json.loads(json.dumps(KATALOG))
+    katalog["modelle"][1]["teile"] = [
+        "https://beispiel.invalid/gross-00001-of-00002.gguf",
+        "https://beispiel.invalid/gross-00002-of-00002.gguf",
+    ]
+    (portable_root.get("config") / "model_catalog.json").write_text(
+        json.dumps(katalog), encoding="utf-8")
+
+    def zweiter_faellt_aus(url, ziel, pruefsumme="", name="", ueberschreiben=False,
+                           fortschritt=None):
+        if name.startswith("gross-00002"):
+            return Ladeergebnis(ok=False, pfad=None, meldung="Verbindung verloren")
+        return Ladeergebnis(ok=True, pfad=Path(ziel) / name, meldung="geladen")
+
+    monkeypatch.setattr("pkc.llm.bezug.laden", zweiter_faellt_aus)
+    anwendung.network.force(True, "Test: online")
+    ergebnis = anwendung.modell_beziehen("gross-geprueft", bestaetigt=True)
+
+    assert not ergebnis["ok"]
+    assert "Verbindung verloren" in ergebnis["meldung"]

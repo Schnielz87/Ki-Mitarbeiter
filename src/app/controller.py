@@ -740,20 +740,42 @@ class AppController:
             )
 
         self.audit.record("modell_bezug", "modell", quelle.id, url=quelle.url,
-                          geprueft=quelle.geprueft)
-        ergebnis = laden(quelle.url, ziel, quelle.sha256, quelle.datei,
-                         ueberschreiben=ueberschreiben, fortschritt=fortschritt)
+                          geprueft=quelle.geprueft, teile=len(quelle.adressen))
+
+        # Grosse Modelle kommen in Teilen. llama.cpp laedt sie ueber die
+        # erste Datei, sofern alle danebenliegen - also muessen alle da sein,
+        # bevor irgendetwas als fertig gilt.
+        ergebnisse = []
+        for nummer, adresse in enumerate(quelle.adressen, start=1):
+            name = quelle.datei if len(quelle.adressen) == 1 else adresse.split("/")[-1]
+            pruefsumme = quelle.sha256 if len(quelle.adressen) == 1 else ""
+            ergebnis = laden(adresse, ziel, pruefsumme, name,
+                             ueberschreiben=ueberschreiben, fortschritt=fortschritt)
+            ergebnisse.append(ergebnis)
+            if not ergebnis.ok:
+                break
+
+        letztes = ergebnisse[-1]
+        vollstaendig = all(e.ok for e in ergebnisse)
+        erste_datei = ergebnisse[0].pfad if ergebnisse and ergebnisse[0].pfad else None
+        meldung = letztes.meldung
+        if vollstaendig and len(ergebnisse) > 1:
+            meldung = (f"{len(ergebnisse)} Teile geladen. Das Modell wird ueber "
+                       f"{erste_datei.name if erste_datei else 'den ersten Teil'} "
+                       "eingebunden; die uebrigen Teile muessen daneben liegen bleiben.")
+
         self.audit.record("modell_bezug_ende", "modell", quelle.id,
-                          status="ok" if ergebnis.ok else "fehler",
-                          meldung=ergebnis.meldung)
+                          status="ok" if vollstaendig else "fehler",
+                          meldung=meldung, teile=len(ergebnisse))
         return {
-            "ok": ergebnis.ok,
+            "ok": vollstaendig,
             "quelle": quelle.as_dict(),
-            "pfad": str(ergebnis.pfad) if ergebnis.pfad else "",
-            "pruefsumme": ergebnis.pruefsumme,
-            "meldung": ergebnis.meldung,
-            "pruefsumme_vergleichbar": bool(quelle.sha256),
-            "bytes": ergebnis.bytes_geladen,
+            "pfad": str(erste_datei) if erste_datei else "",
+            "pruefsumme": ergebnisse[0].pruefsumme if ergebnisse else "",
+            "meldung": meldung,
+            "pruefsumme_vergleichbar": bool(quelle.sha256) and not quelle.geteilt,
+            "bytes": sum(e.bytes_geladen for e in ergebnisse),
+            "teile": len(ergebnisse),
         }
 
     def modell_neu_laden(self) -> None:

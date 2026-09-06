@@ -43,6 +43,9 @@ class Modellquelle:
     min_ram_gb: int = 0
     hinweis: str = ""
     produktiv: bool = True
+    #: Grosse Modelle liegen oft in Teilen vor (...-00001-of-00003.gguf).
+    #: Dann stehen hier alle Teile; llama.cpp laedt sie ueber den ersten.
+    teile: list[str] = field(default_factory=list)
     pruefung: dict = field(default_factory=dict)
 
     # -- Pruefstand ----------------------------------------------------
@@ -55,6 +58,15 @@ class Modellquelle:
     def sha256(self) -> str:
         """Nur eine im Bauablauf gebildete Pruefsumme zaehlt."""
         return str(self.pruefung.get("sha256", "") or "")
+
+    @property
+    def geteilt(self) -> bool:
+        return len(self.teile) > 1
+
+    @property
+    def adressen(self) -> list[str]:
+        """Alles, was geladen werden muss - eine Datei oder mehrere Teile."""
+        return list(self.teile) if self.teile else [self.url]
 
     @property
     def pruefstand(self) -> str:
@@ -75,6 +87,7 @@ class Modellquelle:
             "datei": self.datei, "groesse_gb": self.groesse_gb,
             "min_ram_gb": self.min_ram_gb, "hinweis": self.hinweis,
             "produktiv": self.produktiv, "geprueft": self.geprueft,
+            "teile": list(self.teile), "geteilt": self.geteilt,
             "sha256": self.sha256, "pruefstand": self.pruefstand,
         }
 
@@ -138,6 +151,7 @@ def laden(config_dir: Path) -> Katalog:
                 min_ram_gb=int(eintrag.get("min_ram_gb", 0) or 0),
                 hinweis=str(eintrag.get("hinweis", "")),
                 produktiv=bool(eintrag.get("produktiv", True)),
+                teile=[str(t) for t in (eintrag.get("teile") or [])],
                 pruefung=dict(eintrag.get("pruefung", {}) or {}),
             ))
         except (KeyError, TypeError, ValueError) as fehler:
