@@ -33,12 +33,29 @@ FONT_MONO = ("Consolas", 10)
 FONT_TITLE = ("Segoe UI", 14, "bold")
 
 
+class Abgebrochen(Exception):
+    """Der Benutzer hat die Erzeugung abgebrochen - kein Fehler."""
+
+
 class BackgroundTask:
     """Fuehrt langlaufende Arbeit ausserhalb des Oberflaechen-Threads aus."""
 
     def __init__(self, widget: tk.Misc):
         self.widget = widget
         self.results: queue.Queue = queue.Queue()
+        #: Wird gesetzt, wenn der Benutzer abbricht (Abschnitt 22).
+        self.abgebrochen = False
+
+    def abbrechen(self) -> None:
+        """Bricht das Warten ab.
+
+        Der Arbeitsfaden selbst laeuft zu Ende - ihn mitten in einer
+        Modellberechnung abzuschiessen waere weder sauber moeglich noch
+        ratsam. Sein Ergebnis wird aber verworfen, und die Oberflaeche ist
+        sofort wieder bedienbar. Das ist der ehrliche Umfang dessen, was
+        hier zugesichert werden kann.
+        """
+        self.abgebrochen = True
 
     def run(
         self,
@@ -65,6 +82,9 @@ class BackgroundTask:
         done: Callable[[Any, Exception | None], None],
         on_tick: Callable[[], None] | None = None,
     ) -> None:
+        if self.abgebrochen:
+            done(None, Abgebrochen("Die Erzeugung wurde abgebrochen."))
+            return
         if on_tick is not None:
             on_tick()
         try:
@@ -389,6 +409,10 @@ class MainWindow:
         buttons.pack(side="right", fill="y", padx=(PAD, 0))
         self.send_button = ttk.Button(buttons, text="Absenden", command=self._send)
         self.send_button.pack(fill="x")
+        # Abschnitt 22: waehrend einer laengeren Antwort abbrechen koennen.
+        self.stop_button = ttk.Button(buttons, text="Generierung stoppen",
+                                      command=self._abbrechen, state="disabled")
+        self.stop_button.pack(fill="x", pady=(4, 0))
         ttk.Button(buttons, text="Neue Unterhaltung", command=self._new_conversation).pack(
             fill="x", pady=(4, 0)
         )
@@ -637,6 +661,14 @@ class MainWindow:
 
         def done(outcome: AskOutcome | None, error: Exception | None) -> None:
             self._set_busy(False)
+            self.stop_button.configure(state="disabled")
+            self._laufende_aufgabe = None
+            if isinstance(error, Abgebrochen):
+                self._append_chat(
+                    "System",
+                    "Abgebrochen. Die Frage wurde gespeichert, es wurde nur keine "
+                    "Antwort erzeugt.", "system")
+                return
             if error is not None:
                 self._append_chat("Fehler", f"{type(error).__name__}: {error}", "hinweis")
                 return
@@ -646,8 +678,16 @@ class MainWindow:
             self._refresh_conversations()
             self._ask_about_candidates(outcome)
 
-        BackgroundTask(self.root).run(work, done)
+        self._laufende_aufgabe = BackgroundTask(self.root)
+        self.stop_button.configure(state="normal")
+        self._laufende_aufgabe.run(work, done)
         return "break"
+
+    def _abbrechen(self) -> None:
+        """Bricht eine laufende Erzeugung ab (Abschnitt 22)."""
+        if getattr(self, "_laufende_aufgabe", None) is not None:
+            self._laufende_aufgabe.abbrechen()
+            self.stop_button.configure(state="disabled")
 
     def _show_sources(self, outcome: AskOutcome) -> None:
         references = outcome.answer.used_references or outcome.answer.references

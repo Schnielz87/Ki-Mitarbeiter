@@ -189,6 +189,20 @@ class RagEngine:
                 "Die Antwort nennt keine der gefundenen Fundstellen. Bitte besonders "
                 "sorgfaeltig pruefen."
             )
+        # Abschnitt 17: Nur Sekundaerquellen tragen keine belastbare
+        # steuerliche Bewertung. Das muss dastehen - sonst sieht eine
+        # Antwort aus Fachmodulen genauso belegt aus wie eine aus dem
+        # Gesetzestext.
+        if (einstufung.typ in (Fragetyp.FACHLICH, Fragetyp.KOMPLEX)
+                and bundle.references
+                and all(ref.priority >= 5 for ref in bundle.references)):
+            warnings.append(
+                "Fuer diese Aussage liegen im lokalen Wissensbestand nur "
+                "Sekundaerquellen vor (Fachmodule, keine Primaerquellen). Fuer eine "
+                "belastbare steuerliche Bewertung ist die Primaerquelle zu pruefen - "
+                "Gesetzestext, Verwaltungsanweisung oder Rechtsprechung."
+            )
+
         if not bundle.has_knowledge and einstufung.braucht_recherche:
             # Nur wenn ueberhaupt gesucht wurde. Bei Smalltalk waere der
             # Hinweis irrefuehrend: es fehlt nichts, es wurde bewusst nicht
@@ -310,6 +324,14 @@ def _tiefenanweisung(typ: Fragetyp, profile) -> list[str]:
         ]
     abschnitte = ", ".join(getattr(profile, "answer_sections", []) or [])
     return [
+        "**Fehlen entscheidende Angaben, frage gezielt nach, statt zu raten.**",
+        "Stelle dann hoechstens drei nummerierte Fragen und beantworte den Rest,",
+        "soweit er ohne diese Angaben beantwortbar ist. Beispiel:",
+        "",
+        "> Fuer die umsatzsteuerliche Beurteilung brauche ich noch zwei Angaben:",
+        "> 1. In welchem Land sitzt der Lieferant?",
+        "> 2. Wann wurde die Leistung ausgefuehrt?",
+        "",
         "Ein geschilderter Einzelfall - hier ist die vollstaendige fachliche "
         "Wuerdigung angebracht.",
         "",

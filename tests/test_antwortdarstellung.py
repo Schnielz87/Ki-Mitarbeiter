@@ -184,3 +184,52 @@ def test_download_ueberschreibt_nicht_versehentlich(tmp_path, http_server):
     assert laden(url, tmp_path).ok
     zweiter = laden(url, tmp_path)
     assert not zweiter.ok and "bereits" in zweiter.meldung
+
+
+# ------------------------------------------- Primaerquellen (Abschnitt 17)
+def test_warnt_wenn_nur_sekundaerquellen_vorliegen(portable_root):
+    """Eine Antwort aus Fachmodulen sieht sonst genauso belegt aus wie eine
+    aus dem Gesetzestext."""
+    controller = make_controller(portable_root)
+    controller.bootstrap()
+    try:
+        ergebnis = controller.ask("Was ist Reverse Charge?")
+        assert ergebnis.answer.references
+        assert all(r.priority >= 5 for r in ergebnis.answer.references), \
+            "im Auslieferungszustand gibt es nur Fachmodule"
+        warnungen = " ".join(ergebnis.answer.warnings)
+        assert "Sekundaerquellen" in warnungen
+        assert "Primaerquelle" in warnungen
+    finally:
+        controller.shutdown()
+
+
+def test_keine_sekundaerwarnung_bei_smalltalk(portable_root):
+    controller = make_controller(portable_root)
+    controller.bootstrap()
+    try:
+        ergebnis = controller.ask("Hallo")
+        assert "Sekundaerquellen" not in " ".join(ergebnis.answer.warnings)
+    finally:
+        controller.shutdown()
+
+
+# ------------------------------------------------ Rueckfragen (Abschnitt 10)
+def test_komplexer_fall_fordert_rueckfragen_an(portable_root):
+    """Bei fehlenden Angaben soll gefragt statt geraten werden."""
+    controller = make_controller(portable_root)
+    controller.bootstrap()
+    try:
+        from pkc.rag.fragetyp import einstufen
+
+        frage = ("Wir haben eine Rechnung aus Frankreich von einem Unternehmer "
+                 "erhalten, wie buchen wir das?")
+        bundle = controller.rag.builder.build([], [])
+        nachrichten = controller.rag.build_messages(
+            frage, bundle, einstufung=einstufen(frage))
+        anweisung = "\n".join(m.content for m in nachrichten if m.role == "system")
+        assert "gezielt nach" in anweisung
+        assert "statt zu raten" in anweisung
+        assert "hoechstens drei" in anweisung
+    finally:
+        controller.shutdown()

@@ -225,3 +225,26 @@ def test_systemhinweise_bleiben_unveraendert(gui):
     window, controller, _, _ = gui
     window._append_chat("System", "Ein Hinweis mit ** darin", "system")
     assert "** darin" in window.chat.buffer
+
+
+def test_generierung_laesst_sich_abbrechen(gui):
+    """Abschnitt 22: waehrend einer laengeren Antwort abbrechen koennen."""
+    from ui.tk_app import Abgebrochen, BackgroundTask
+
+    window, controller, _, _ = gui
+    aufgabe = BackgroundTask(window.root)
+    assert aufgabe.abgebrochen is False
+
+    ergebnisse = []
+    aufgabe.abbrechen()
+    aufgabe._poll(lambda wert, fehler: ergebnisse.append((wert, fehler)))
+
+    assert ergebnisse, "der Abbruch muss die Oberflaeche sofort freigeben"
+    wert, fehler = ergebnisse[0]
+    assert wert is None
+    assert isinstance(fehler, Abgebrochen)
+
+
+def test_stoppschaltflaeche_ist_zunaechst_gesperrt(gui):
+    window, _, _, _ = gui
+    assert window.stop_button.options.get("state") == "disabled"
