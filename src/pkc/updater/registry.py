@@ -71,6 +71,10 @@ class Source:
     enabled: bool = True
     notes: str = ""
     verified: bool = False         # URL in dieser Umgebung nicht geprueft?
+    #: Woher ``verified`` kommt: Datum, Zaehlung, nicht erreichbare
+    #: Dokumente und der Ablauf, in dem geprueft wurde. Gesetzt von
+    #: ``tools/quellen_pruefen.py``, nicht von Hand.
+    pruefung: dict[str, Any] = field(default_factory=dict)
     documents: list[DocumentRef] = field(default_factory=list)
     meta: dict[str, Any] = field(default_factory=dict)
 
@@ -97,6 +101,7 @@ class Source:
             fetcher=data.get("fetcher", "static"), licence=data.get("licence", ""),
             enabled=bool(data.get("enabled", True)), notes=data.get("notes", ""),
             verified=bool(data.get("verified", False)), documents=docs,
+            pruefung=dict(data.get("pruefung", {}) or {}),
             meta=data.get("meta", {}),
         )
 
@@ -105,7 +110,8 @@ class Source:
             "source_id": self.source_id, "name": self.name, "publisher": self.publisher,
             "priority": self.priority, "kind": self.kind, "base_url": self.base_url,
             "fetcher": self.fetcher, "licence": self.licence, "enabled": self.enabled,
-            "notes": self.notes, "verified": self.verified, "meta": self.meta,
+            "notes": self.notes, "verified": self.verified,
+            "pruefung": self.pruefung, "meta": self.meta,
             "documents": [
                 {
                     "doc_uid": d.doc_uid, "url": d.url, "title": d.title, "kind": d.kind,

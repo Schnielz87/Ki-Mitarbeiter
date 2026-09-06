@@ -587,13 +587,18 @@ def cmd_quellen(args) -> int:
             if controller.mode is Mode.OFFLINE:
                 print("Betriebsart OFFLINE - es wird nichts abgerufen.")
                 return 2
+            # Abgerufen wird mit GET - genau wie beim Wissensabgleich. Eine
+            # Pruefung mit HEAD misst etwas anderes: manche Server
+            # beantworten HEAD gar nicht oder anders als GET. Dann meldet
+            # dieser Befehl eine Quelle als kaputt, die im Betrieb laeuft
+            # (oder umgekehrt) - und beides ist schlimmer als langsam.
             client = HttpClient()
             fehler = 0
             for quelle in quellen:
                 if args.quelle and quelle["source_id"] not in args.quelle:
                     continue
                 for dokument in quelle.get("documents", []):
-                    ergebnis = client.fetch(dokument["url"], method="HEAD")
+                    ergebnis = client.fetch(dokument["url"])
                     zeichen = "OK  " if ergebnis.ok else "FEHL"
                     print(f"{zeichen} {dokument['doc_uid']:24} {dokument['url']}")
                     if not ergebnis.ok:

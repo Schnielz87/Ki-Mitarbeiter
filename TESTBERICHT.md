@@ -4,7 +4,7 @@ Stand: 06.09.2026 · Branch `claude/portable-ki-buchhalter-xr1qlj`
 
 ## Zusammenfassung
 
-**484 automatische Tests bestanden, 1 uebersprungen** (unter Windows einer
+**509 automatische Tests bestanden, 1 uebersprungen** (unter Windows einer
 mehr uebersprungen). Ausfuehrungszeit rund 25 Sekunden. Reproduzierbar mit:
 
 ```
@@ -206,8 +206,8 @@ Je Fall wird geprueft:
 ## Pruefung auf einem echten Windows-Rechner
 
 Zuletzt bestaetigt durch Ablauf
-https://github.com/Schnielz87/Ki-Mitarbeiter/actions/runs/33973618581
-(Stand `914b588`) - **alle 13 Schritte bestanden**. Davor ebenso die
+https://github.com/Schnielz87/Ki-Mitarbeiter/actions/runs/34035777317
+(Stand `12d74d7`) - **alle 23 Schritte bestanden**. Davor ebenso die
 Ablaeufe 19, 20 und 23 - der Windows-Ablauf ist damit nicht einmalig
 durchgelaufen, sondern stabil. Der erste vollstaendige
 Nachweis war Ablauf
@@ -286,6 +286,8 @@ aufgefuehrt, weil ein Testbericht ohne Fundstellen wenig wert ist.
 | „Lokales Modell: OK" trotz fehlendem Modell | Der Notbetrieb meldete sich als verfuegbar | Systempruefung meldet HINWEIS und beschreibt den Notbetrieb |
 | HTML-Titel wurde falsch erkannt | `<title>` liegt in `<head>`, das uebersprungen wurde | Titel wird vor der Bereichspruefung ausgewertet |
 | Deutsche Abkuerzungen zerteilten Saetze | „GmbH & Co. KG" wurde als Satzende gelesen | Abkuerzungsliste in der Satztrennung |
+| Die Quellenpruefung mass etwas anderes als der Betrieb | `quellen pruefen` fragte mit HEAD, der Wissensabgleich fragt mit GET. Server, die HEAD nicht oder anders beantworten, wurden damit als kaputt gemeldet, obwohl sie laufen - und jemand haette eine Adresse ausgebessert, die nie falsch war. Derselbe Fehler steckte im Windows-Bauablauf, der die Pruefung als PowerShell-Schnipsel fuehrte und beim ersten Online-Lauf 23 Ausfaelle ohne brauchbaren Grund lieferte | Beide fragen jetzt mit GET, also genau wie der Abgleich. Der Bauablauf ruft dafuer `tools/quellen_pruefen.py` auf, das denselben HTTP-Zugriff benutzt wie die Anwendung, und nennt zu jedem Ausfall den Grund. Ein Test haelt fest, mit welchem Verfahren abgerufen wird; Gegenprobe gemacht |
+| Die Anleitung nannte Modellgroessen, die niemand gemessen hatte | "0,4 GB", "4,7 GB" und "9 GB" standen fest im Erzeuger. Gemessen wurden spaeter 0,49, 4,68 und 8,99 GB - und die beiden groesseren Modelle kommen ueberhaupt in mehreren Teildateien | Die Tabelle der Anleitung wird aus `config/model_catalog.json` gebaut, und der traegt nur, was der Bauablauf abgerufen hat. Zwei Tests vergleichen Anleitung und Katalog; Gegenprobe gemacht |
 | Firmennamen wurden faelschlich als eigenes Unternehmen erkannt | Jede GmbH-Nennung loeste die Regel aus | Zusaetzliche Bedingung: der Satz muss sich erkennbar auf das eigene Unternehmen beziehen |
 
 ---
@@ -303,9 +305,19 @@ Ehrlich und vollstaendig:
    gesperrt. Auf dem Windows-Rechner des Bauablaufs nicht: dort wird ein
    echtes GGUF-Modell bezogen, der mitgelieferte llama.cpp-Dienst gestartet
    und eine Fachfrage tatsaechlich vom Modell beantwortet.
-4. **Echte amtliche Quellen** - die Netzrichtlinie sperrte
-   `gesetze-im-internet.de`, `bundesfinanzministerium.de` und die uebrigen.
-   Die URLs im Quellenregister tragen deshalb `verified: false`.
+4. **Echte amtliche Quellen** - hier gepruefte Teilaussage. In dieser
+   Entwicklungsumgebung sperrt die Netzrichtlinie die amtlichen Hosts; auf
+   dem Windows-Baurechner nicht. Dort wurde am 2026-09-06 jede der 32
+   Adressen mit dem HTTP-Zugriff der Anwendung abgerufen (Lauf
+   34035777317). Ergebnis: **9 erreichbar**, sechs Adressen antworten mit
+   HTTP 404 und zeigen damit nachweislich ins Leere
+   (`ELSTER_START`, `BZST_USTID`, `BZST_ZM`, `BVERFG_ENTSCHEIDUNGEN`,
+   `BGBL_START`, `DIHK_STEUERN`), und zu `gesetze-im-internet.de` mit
+   seinen 17 Gesetzestexten kam **gar keine Antwort** - der Verbindungs-
+   aufbau lief in den Zeitablauf. Das ist ausdruecklich **keine** Aussage
+   ueber diese Adressen, sondern eine ueber das Netz des Baurechners; sie
+   bleiben deshalb unveraendert und `verified: false`. Jede Quelle traegt
+   ihren Befund unter `pruefung`, mit dem Lauf als Beleg.
 5. **Echter zweiter PC und echter Laufwerksbuchstabe** - nur ueber wechselnde
    Wurzelverzeichnisse simuliert (im Windows-Ablauf zusaetzlich ueber
    `subst`).

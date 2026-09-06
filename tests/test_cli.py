@@ -152,6 +152,34 @@ def test_quellen_pruefen_ruft_offline_nichts_ab(portable_root, capsys, monkeypat
     assert "OFFLINE" in capsys.readouterr().out
 
 
+def test_quellen_pruefen_fragt_wie_der_abgleich(portable_root, capsys, monkeypatch):
+    """Geprueft werden muss das, was im Betrieb passiert.
+
+    Der Befehl fragte mit HEAD, der Wissensabgleich fragt mit GET. Manche
+    Server beantworten HEAD gar nicht - dann meldet der Befehl eine Quelle
+    als kaputt, die laeuft, und jemand bessert eine Adresse aus, die nie
+    falsch war. Der umgekehrte Fall ist noch unangenehmer.
+    """
+    from pkc.updater.http_client import FetchResult
+    from ui.cli import main
+
+    verfahren = []
+
+    def merken(self, url, etag=None, last_modified=None, method="GET"):
+        verfahren.append(method)
+        return FetchResult(url, 200, True, content=b"x")
+
+    monkeypatch.setattr("pkc.updater.http_client.HttpClient.fetch", merken)
+
+    code = main(["--root", str(portable_root.root), "quellen", "pruefen",
+                 "--quelle", "Q01_GESETZE_IM_INTERNET"])
+    capsys.readouterr()
+    assert code == 0
+    assert verfahren, "es wurde gar nichts abgerufen"
+    assert set(verfahren) == {"GET"}, (
+        f"abgerufen wurde mit {sorted(set(verfahren))} - der Abgleich nimmt GET")
+
+
 # ======================================================================
 # Die Unterbefehle mit einer Kennung
 #

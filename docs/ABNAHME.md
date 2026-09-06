@@ -198,11 +198,22 @@ Mit Internet: Registerkarte **Wissen aktualisieren** →
 **Erwartung:** Ein Fortschrittsbalken laeuft, danach erscheint ein Bericht
 mit den Zahlen geprueft/aktualisiert/unveraendert/fehlgeschlagen.
 
-> Hier zeigt sich, ob die URLs im Quellenregister stimmen. Sie sind mit
-> `verified: false` gekennzeichnet, weil sie in der Entwicklungsumgebung
-> nicht erreichbar waren. Fehlschlaege stehen einzeln im Bericht unter
-> `updates\<Lauf-ID>\bericht.md`. Eine geaenderte Adresse wird in
-> `config\source_registry.json` korrigiert - ohne Programmaenderung.
+> Hier zeigt sich, ob die URLs im Quellenregister stimmen. Fehlschlaege
+> stehen einzeln im Bericht unter `updates\<Lauf-ID>\bericht.md`. Eine
+> geaenderte Adresse wird in `config\source_registry.json` korrigiert -
+> ohne Programmaenderung.
+>
+> Wer nur wissen will, welche Adressen noch stimmen, ohne gleich alles zu
+> laden:
+>
+> ```
+> PORTABLE_BUCHHALTER_KONSOLE.exe quellen pruefen
+> ```
+>
+> Der Befehl ruft jede Adresse genauso ab wie der Abgleich selbst und
+> nennt zu jedem Fehlschlag den Grund. Eine Quelle traegt `verified: true`
+> nur dann, wenn **jedes** ihrer Dokumente erreichbar war; woher diese
+> Angabe stammt, steht bei der Quelle unter `pruefung`.
 
 Dann Internet trennen, Anwendung neu starten und eine Frage zu einem soeben
 geladenen Inhalt stellen.

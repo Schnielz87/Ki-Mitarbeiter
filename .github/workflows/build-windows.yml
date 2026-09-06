@@ -295,23 +295,6 @@ jobs:
             Write-Host "::warning::Nicht erreichbare Bezugsquellen: $(($fehlend | ForEach-Object { $_.id }) -join ', ')"
           }
 
-      - name: Quellenregister gegen die echten Adressen pruefen
-        shell: pwsh
-        continue-on-error: true
-        run: |
-          # In der Entwicklungsumgebung sind die amtlichen Server gesperrt;
-          # hier nicht. Geprueft wird mit dem HTTP-Zugriff der Anwendung
-          # selbst - nicht mit einem fremden Werkzeug. Sonst wuerde der
-          # Bauablauf etwas bestaetigen, das die Anwendung so gar nicht tut
-          # (eigenes Nutzerkennzeichen, eigener Zertifikatsspeicher,
-          # robots.txt, Wiederholungen, GET statt HEAD).
-          # Einzelne Ausfaelle sind normal (Umbauten, Sperren gegen
-          # automatische Abrufe) und duerfen den Bau nicht anhalten - das
-          # Ergebnis wird berichtet, nicht behauptet.
-          python tools\quellen_pruefen.py `
-            --register config\source_registry.json `
-            --ziel "$env:RUNNER_TEMP\quellenregister_pruefung.json"
-
       - name: Sprachmodell - beziehen, starten, antworten lassen
         shell: pwsh
         timeout-minutes: 15
@@ -351,6 +334,28 @@ jobs:
           $rest = Get-Process llama-server -ErrorAction SilentlyContinue
           if ($rest) { throw "Der Modelldienst laeuft nach dem Programmende weiter." }
           Write-Host "Kein verwaister Vorgang - in Ordnung."
+
+      - name: Quellenregister gegen die echten Adressen pruefen
+        shell: pwsh
+        continue-on-error: true
+        # Bewusst NACH der Modellprobe: hier wird wirklich geladen, und
+        # amtliche Server sind manchmal langsam. Liefe die Pruefung davor,
+        # koennte sie im schlechten Fall die Zeit des Auftrags aufbrauchen -
+        # und ausgerechnet der wichtigste Schritt fiele aus.
+        timeout-minutes: 10
+        run: |
+          # In der Entwicklungsumgebung sind die amtlichen Server gesperrt;
+          # hier nicht. Geprueft wird mit dem HTTP-Zugriff der Anwendung
+          # selbst - nicht mit einem fremden Werkzeug. Sonst wuerde der
+          # Bauablauf etwas bestaetigen, das die Anwendung so gar nicht tut
+          # (eigenes Nutzerkennzeichen, eigener Zertifikatsspeicher,
+          # robots.txt, Wiederholungen, GET statt HEAD).
+          # Einzelne Ausfaelle sind normal (Umbauten, Sperren gegen
+          # automatische Abrufe) und duerfen den Bau nicht anhalten - das
+          # Ergebnis wird berichtet, nicht behauptet.
+          python tools\quellen_pruefen.py `
+            --register config\source_registry.json `
+            --ziel "$env:RUNNER_TEMP\quellenregister_pruefung.json"
 
       - name: Pruefergebnisse sichern
         if: always()

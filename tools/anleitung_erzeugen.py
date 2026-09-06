@@ -42,6 +42,7 @@ PRODUKTFASSUNG = DEFAULTS["product"]["version"]
 #: Marke und Profilname wie im Fenstertitel - damit die Anleitung dasselbe
 #: nennt, was der Benutzer vor sich sieht.
 from pkc.branding import MARKE  # noqa: E402
+from pkc.llm import katalog as _katalog  # noqa: E402
 
 profil = json.loads((REPO / "src/profiles/buchhalter/profile.json").read_text(encoding="utf-8"))
 
@@ -319,20 +320,31 @@ punkt("Beim Schliessen der Anwendung wird es mit beendet.")
 
 absatz()
 doc.add_heading("Welches Modell?", level=2)
+# Die Groessen stehen nicht hier, sondern im ausgelieferten Katalog - und
+# der traegt, was der Windows-Bauablauf tatsaechlich abgerufen hat. So kann
+# in der Anleitung keine Zahl stehen, die niemand gemessen hat.
+_ZWECK = {
+    "probe": "Nur zum Ausprobieren. Fuer Buchhaltungsfragen NICHT geeignet.",
+    "light": "Aeltere Buerorechner. Lizenz beachten - nicht Apache-2.0.",
+    "standard": "Empfehlung fuer den normalen Betrieb.",
+    "high": "Beste Qualitaet. Auf einem Rechner ohne Grafikkarte langsam.",
+}
+_zeilen = []
+for _quelle in _katalog.laden(REPO / "config"):
+    _groesse = f"{_quelle.groesse_gb:.2f}".replace(".", ",") + " GB"
+    if _quelle.geteilt:
+        _groesse += f"\n({len(_quelle.teile)} Teildateien)"
+    _zeilen.append([_quelle.profil, _groesse, f"{_quelle.min_ram_gb} GB RAM",
+                    _ZWECK.get(_quelle.profil, _quelle.hinweis)])
 tabelle_mit(
     ["Auswahl", "Groesse", "Braucht", "Wofuer"],
-    [
-        ["probe", "0,4 GB", "2 GB RAM",
-         "Nur zum Ausprobieren. Fuer Buchhaltungsfragen NICHT geeignet."],
-        ["light", "2 GB", "6 GB RAM",
-         "Aeltere Buerorechner. Lizenz beachten - nicht Apache-2.0."],
-        ["standard", "4,7 GB", "12 GB RAM",
-         "Empfehlung fuer den normalen Betrieb."],
-        ["high", "9 GB", "24 GB RAM",
-         "Beste Qualitaet. Auf einem Rechner ohne Grafikkarte langsam."],
-    ],
+    _zeilen,
     breiten=[2.6, 2.2, 2.6, 7.6],
 )
+absatz("Die beiden groesseren Modelle liegen beim Anbieter in mehreren "
+       "Dateien vor. Die Anwendung laedt alle Teile und legt sie zusammen "
+       "in den Ordner models ab. Bitte nichts davon umbenennen oder "
+       "verschieben - die Teile gehoeren zusammen.")
 absatz("Ein anderes als das vorgeschlagene Profil waehlen Sie mit "
        "--profil light (oder standard, high, probe).")
 

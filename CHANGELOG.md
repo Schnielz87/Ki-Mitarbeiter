@@ -23,9 +23,44 @@ Das Sprachmodell laeuft.
 * Modelle in Teildateien werden vollstaendig bezogen; ein halb geladenes
   Modell gilt nicht als einsatzbereit
 * Der Katalog behauptet keine geprueften Quellen: der Pruefstand kommt aus
-  dem Bauablauf, der jede Adresse tatsaechlich abruft
+  dem Bauablauf, der jede Adresse tatsaechlich abruft. Jeder Eintrag nennt
+  den Lauf, in dem das geschah - nachzulesen statt zu glauben
+* Der ausgelieferte Katalog traegt jetzt gemessene Werte: erreichbare
+  Adressen, echte Groessen (0,49 / 2,10 / 4,68 / 8,99 GB), die Teildateien
+  der beiden grossen Modelle und die Pruefsumme des Probemodells. Ein Test
+  laesst keinen ungepruefen Eintrag mehr durch
+* Die Modelltabelle der Bedienungsanleitung wird aus diesem Katalog gebaut.
+  Vorher standen dort Zahlen, die niemand gemessen hatte - und sie waren
+  falsch
 * Nachgewiesen auf einem Windows-Rechner mit einem echten GGUF-Modell:
   beziehen, starten, eine Fachfrage beantworten, kein verwaister Vorgang
+
+### Quellenpruefung
+
+* `quellen pruefen` fragte mit HEAD, der Wissensabgleich fragt mit GET.
+  Damit mass der Befehl etwas anderes als den Betrieb und konnte eine
+  laufende Quelle als kaputt melden. Beide fragen jetzt gleich
+* Neu: `tools/quellen_pruefen.py`. Es prueft das Quellenregister mit dem
+  HTTP-Zugriff der Anwendung selbst, nennt zu jedem Ausfall den Grund und
+  traegt das Ergebnis auf Wunsch ins Register ein (`--uebernehmen`).
+  `verified` gilt fuer eine Quelle nur, wenn **jedes** ihrer Dokumente
+  erreichbar war
+* Der Windows-Bauablauf benutzt dieses Werkzeug statt eines
+  PowerShell-Schnipsels mit HEAD-Anfragen. Der erste Online-Lauf hatte so
+  23 Ausfaelle ohne brauchbaren Grund gemeldet
+* Der Pruefstand einer Quelle geht beim Speichern des Registers nicht mehr
+  verloren
+* **robots.txt konnte den Wissensabgleich endlos anhalten.**
+  `RobotFileParser.read()` ruft `urlopen` ohne Zeitgrenze auf. Ein Server,
+  der die Verbindung annimmt und dann schweigt, haette den Abgleich
+  angehalten - ohne Fehler, ohne Meldung, noch vor dem ersten Dokument.
+  Jetzt mit Zeitgrenze und Groessengrenze; vier neue Tests, davon einer
+  gegen einen absichtlich schweigenden Server
+* Das Register traegt den Befund des Laufs 34035777317: 9 von 32 Adressen
+  erreichbar. Sechs antworten mit 404 (`art: adresse_tot`), zu
+  gesetze-im-internet.de kam vom Baurechner gar keine Antwort
+  (`art: nicht_erreicht`) - das ist keine Aussage ueber diese Adressen,
+  und sie bleiben deshalb unveraendert
 
 ### Plugins (E5.108)
 

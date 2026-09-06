@@ -60,3 +60,51 @@ def test_die_anleitung_liegt_vor():
     ziel = ROOT / "docs" / "BEDIENUNGSANLEITUNG.docx"
     assert ziel.is_file() and ziel.stat().st_size > 20_000, \
         "docs/BEDIENUNGSANLEITUNG.docx fehlt oder ist unvollstaendig."
+
+
+def test_modellgroessen_stehen_nicht_fest_im_text():
+    """Zahlen in der Anleitung muessen aus dem Katalog kommen, nicht aus dem Kopf.
+
+    Vorher standen "0,4 GB", "4,7 GB" und "9 GB" als Text im Erzeuger. Der
+    Bauablauf hat spaeter gemessen, dass es 0,49, 4,68 und 8,99 GB sind -
+    die Anleitung war damit falsch, ohne dass es jemandem auffiel. Jetzt
+    baut sie die Tabelle aus `config/model_catalog.json`.
+    """
+    assert "_katalog.laden(REPO" in QUELLE, (
+        "Die Modelltabelle der Anleitung muss aus dem Katalog kommen.")
+    for erfunden in ('"0,4 GB"', '"4,7 GB"', '"9 GB"', '"2 GB"'):
+        assert erfunden not in QUELLE, (
+            f"{erfunden} steht wieder fest im Text - dann kann es veralten.")
+
+
+def test_anleitung_nennt_die_gemessenen_groessen():
+    """Und die erzeugte Datei muss diese Zahlen dann auch wirklich zeigen."""
+    from docx import Document
+
+    import sys
+    sys.path.insert(0, str(ROOT / "src"))
+    from pkc.llm import katalog as katalogmodul
+
+    quellen = {q.profil: q for q in katalogmodul.laden(ROOT / "config")}
+    assert quellen, "ohne Katalog sagt dieser Test nichts aus"
+
+    tabelle = None
+    for kandidat in Document(str(ROOT / "docs" / "BEDIENUNGSANLEITUNG.docx")).tables:
+        if [z.text for z in kandidat.rows[0].cells][:2] == ["Auswahl", "Groesse"]:
+            tabelle = kandidat
+            break
+    assert tabelle is not None, "Die Modelltabelle fehlt in der Anleitung."
+
+    gesehen = {}
+    for zeile in tabelle.rows[1:]:
+        felder = [z.text for z in zeile.cells]
+        gesehen[felder[0]] = (felder[1], felder[2])
+    assert set(gesehen) == set(quellen), "Die Tabelle deckt sich nicht mit dem Katalog."
+
+    for profil, quelle in quellen.items():
+        groesse, ram = gesehen[profil]
+        assert f"{quelle.groesse_gb:.2f}".replace(".", ",") in groesse, profil
+        assert f"{quelle.min_ram_gb} GB RAM" == ram, profil
+        if quelle.geteilt:
+            assert f"{len(quelle.teile)} Teildateien" in groesse, (
+                f"{profil}: die Teildateien muessen angekuendigt werden")

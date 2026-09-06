@@ -18,7 +18,7 @@ Geheimnistresor, Freigabepflicht, Connector-Rahmen, Dateiausgabe in acht
 Formaten, Plugin-System mit eigenem Vorgang je Plugin, mitgeliefertem
 Modelldienst und gefuehrtem Weg zum Sprachmodell, grafische Oberflaeche und
 Kommandozeile -
-abgesichert durch **484 automatische Tests**.
+abgesichert durch **509 automatische Tests**.
 
 **Noch nicht abgenommen** sind die Schritte, die zwingend Windows, eine
 echte grafische Oberflaeche, ein echtes Sprachmodell oder Zugriff auf die
@@ -89,11 +89,11 @@ Er lautet: **fertig zur Abnahme**. Der Weg dorthin steht in
 
 ## 4. Was tatsaechlich geprueft ist
 
-**484 Tests bestanden, 1 uebersprungen** (`python -m pytest tests -q`).
-Auf einem echten Windows-Rechner sind alle 13 Schritte des Bauablaufs
+**509 Tests bestanden, 1 uebersprungen** (`python -m pytest tests -q`).
+Auf einem echten Windows-Rechner sind alle 23 Schritte des Bauablaufs
 bestanden - zuletzt
-https://github.com/Schnielz87/Ki-Mitarbeiter/actions/runs/33973618581
-(Stand `914b588`), Artefakt 22.958.149 Bytes. Einzelheiten in
+https://github.com/Schnielz87/Ki-Mitarbeiter/actions/runs/34035777317
+(Stand `12d74d7`), Artefakt 56.839.619 Bytes. Einzelheiten in
 `TESTBERICHT.md`. Besonders hervorzuheben:
 
 * Die **vollstaendige Nutzungskette** aus Masterprompt 49 laeuft in einem
@@ -152,9 +152,12 @@ vergeben. Die wichtigsten offenen Punkte:
    belegt; das fertige Paket kann dort heruntergeladen werden. Zu pruefen
    bleiben B (Fenster oeffnet sich), D (fachliche Qualitaet der Antworten
    im Betrieb), F (zweiter Rechner) sowie K und L.
-2. **Quellenregister validieren** - der erste Online-Lauf zeigt, welche URLs
-   noch stimmen; Korrekturen erfolgen in `config/source_registry.json` ohne
-   Programmaenderung.
+2. **Sechs tote Adressen ersetzen** - der Online-Lauf hat das Register
+   geprueft: 9 von 32 Adressen erreichbar. Sechs antworten mit HTTP 404 und
+   brauchen je eine neue Adresse (`quellen setzen`, ohne Programmaenderung).
+   Zu `gesetze-im-internet.de` kam vom Baurechner gar keine Antwort - diese
+   17 Adressen sind damit weder bestaetigt noch widerlegt und bleiben
+   unveraendert. Einzelheiten in `WEITERARBEIT.md`, Abschnitt 4.
 3. **Ergebnis eintragen** - die tatsaechlich beobachteten Ergebnisse in
    `TESTBERICHT.md` und hier vermerken.
 4. **Erzeugte Dateien in Office oeffnen** - je eine XLSX-, DOCX-, PPTX- und

@@ -11,8 +11,8 @@ Datentraeger.
 | Branch | `claude/portable-ki-buchhalter-xr1qlj` |
 | Letzter Commit | siehe `git log -1` |
 | Gepusht | ja |
-| Tests | **495 gruen, 1 uebersprungen** (`python -m pytest tests -q`) |
-| Windows | alle Schritte bestanden, Ablauf https://github.com/Schnielz87/Ki-Mitarbeiter/actions/runs/34034625286 |
+| Tests | **509 gruen, 1 uebersprungen** (`python -m pytest tests -q`) |
+| Windows | alle 23 Schritte bestanden, Ablauf https://github.com/Schnielz87/Ki-Mitarbeiter/actions/runs/34035777317 |
 | Tasks 01 bis 18 | abgeschlossen (Masterprompt 48) |
 | Tasks 19 bis 25 | abgeschlossen (Erweiterung, Masterprompt 58 bis 97) |
 | Tasks 26 bis 31 | E1 bis E6 (Masterprompt Teil 4); E5 teilweise |
@@ -102,9 +102,32 @@ messen als der Betrieb; der erste Lauf tat genau das (PowerShell, HEAD
 statt GET) und lieferte deshalb Zahlen, die nichts ueber die Anwendung
 aussagen.
 
-Der naechste Lauf liefert die belastbare Liste. Korrekturen erfolgen dann in
-`config/source_registry.json` **ohne** Programmaenderung; eine Adresse, die
-sich nicht klaeren laesst, wird abgeschaltet statt stehengelassen.
+Das Ergebnis steht seit dem Lauf
+https://github.com/Schnielz87/Ki-Mitarbeiter/actions/runs/34035777317 in
+`config/source_registry.json` bei jeder Quelle unter `pruefung`, mit dem
+Lauf als Beleg: **9 von 32 Adressen erreichbar**.
+
+Zwei Faelle, die nicht verwechselt werden duerfen:
+
+| Befund | Was es heisst | Betroffen |
+|---|---|---|
+| `art: adresse_tot` | HTTP 404 - die Adresse zeigt ins Leere und braucht eine neue | `ELSTER_START`, `BZST_USTID`, `BZST_ZM`, `BVERFG_ENTSCHEIDUNGEN`, `BGBL_START`, `DIHK_STEUERN` |
+| `art: nicht_erreicht` | gar keine Antwort - die Adresse ist weder bestaetigt noch widerlegt, nur dieser Rechner kam nicht hin | alle 17 Gesetzestexte von `gesetze-im-internet.de` |
+
+**Hier ansetzen:** die sechs toten Adressen brauchen je eine neue. Sie
+lassen sich nicht aus dieser Umgebung ermitteln - dort ist der Zugang
+gesperrt - sondern von einem Buerorechner aus:
+
+```
+PORTABLE_BUCHHALTER_KONSOLE.exe quellen pruefen
+PORTABLE_BUCHHALTER_KONSOLE.exe quellen setzen --dokument BGBL_START --url <neue Adresse>
+```
+
+Die 17 Gesetzestexte sind ausdruecklich **nicht** auszubessern, solange
+nichts gegen sie spricht: der Baurechner nimmt zu diesem Server gar keine
+Verbindung auf (Zeitablauf beim Verbindungsaufbau, kein HTTP-Fehler). Das
+ist eine Eigenschaft dieses Netzes, keine Aussage ueber die Adresse. Auf
+einem Buerorechner zuerst `quellen pruefen` laufen lassen.
 
 ## Wo der Stand nachzulesen ist
 

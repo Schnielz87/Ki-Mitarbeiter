@@ -236,6 +236,34 @@ def test_shipped_registry_is_valid():
     assert len(registry) >= 12 and registry.document_count() >= 30
 
 
+def test_pruefstand_der_quellen_geht_beim_speichern_nicht_verloren(tmp_path):
+    """Warum ``verified`` wahr ist, muss ein Speichern ueberleben.
+
+    Der Pruefstand wird von tools/quellen_pruefen.py eingetragen. Wuerde ihn
+    das Register beim Zurueckschreiben stillschweigend wegwerfen, stuende
+    spaeter "geprueft" da, ohne dass noch jemand nachsehen koennte, wo.
+    """
+    from pathlib import Path as _Path
+
+    quelle = _Path(__file__).resolve().parents[1] / "config" / "source_registry.json"
+    daten = json.loads(quelle.read_text(encoding="utf-8"))
+    daten["sources"][0]["pruefung"] = {
+        "geprueft_am": "2026-09-06", "dokumente": 17, "erreichbar": 17,
+        "beleg": "https://example.invalid/lauf/1",
+    }
+    pfad = tmp_path / "source_registry.json"
+    pfad.write_text(json.dumps(daten, ensure_ascii=False), encoding="utf-8")
+
+    registry = SourceRegistry.load(pfad)
+    assert registry.sources[0].pruefung["beleg"] == "https://example.invalid/lauf/1"
+
+    ziel = tmp_path / "erneut.json"
+    registry.save(ziel)
+    danach = json.loads(ziel.read_text(encoding="utf-8"))
+    assert danach["sources"][0]["pruefung"]["beleg"] == "https://example.invalid/lauf/1"
+    assert danach["sources"][0]["pruefung"]["erreichbar"] == 17
+
+
 def test_binary_content_is_not_indexed(setup):
     """Binaerdaten duerfen nicht als vermeintliches Fachwissen im Index landen."""
     pipeline, store, _, _, http_server = setup

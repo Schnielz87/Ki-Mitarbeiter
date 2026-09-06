@@ -39,7 +39,7 @@ Stand siehe `PROJEKTSTATUS.md`. Statusbegriffe nach Masterprompt 52:
 | 24 | Standardlogik und Antwortschema | IMPLEMENTIERT | `prompts/system.md`, `pkc.rag` | Schema wird erzwungen |
 | 25 | Zeitbezogener Rechtsstand | IMPLEMENTIERT | `gueltig_ab/bis`, `as_of` | `pkc.retrieval.search._valid_at` |
 | 26 | Quellenhierarchie | GETESTET | Prioritaet 1-5 im Ranking | `test_updater_pipeline.py` |
-| 27 | Quellenregister Q01-Q12 | GETESTET | `config/source_registry.json` | `test_updater_pipeline.py` |
+| 27 | Quellenregister Q01-Q12 | GETESTET | `config/source_registry.json`, Adressen mit `tools/quellen_pruefen.py` gegen die echten Server geprueft (im Windows-Bauablauf) | `test_updater_pipeline.py`, `test_quellenpruefung.py` |
 | 28 | Keine blossen Links | GETESTET | Abrufkette mit Originalablage | `test_updater_pipeline.py` |
 | 29 | Lokale Wissensdatenbank | GETESTET | `resources/`, `knowledge.db` | Systempruefung |
 | 30 | RAG mit Quellenvorrang | GETESTET | `pkc.rag` | `test_fachliche_faelle.py` |

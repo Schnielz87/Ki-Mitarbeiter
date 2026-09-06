@@ -132,3 +132,119 @@ def test_hoeflichkeit_bleibt_erhalten(register, monkeypatch):
     monkeypatch.setattr(quellen_pruefen, "HttpClient", Merkend)
     quellen_pruefen.pruefen(register)
     assert gesehen.get("min_delay", 0) >= 1.0
+
+
+# -- Uebernahme ins Register ---------------------------------------------
+
+def test_uebernahme_setzt_verified_nur_bei_vollstaendiger_quelle(register, tmp_path):
+    """Eine Quelle, bei der ein Dokument fehlt, ist nicht geprueft.
+
+    Sonst stuende bei Q01 "geprueft", obwohl die Haelfte der Gesetzestexte
+    nicht ankommt - das waere genau die Scheinerfuellung, die Abschnitt 52
+    verbietet.
+    """
+    zeilen = quellen_pruefen.pruefen(register)
+    aenderungen = quellen_pruefen.uebernehmen(
+        register, zeilen, beleg="https://example.invalid/lauf/7")
+    daten = json.loads(register.read_text(encoding="utf-8"))
+    quellen = {q["source_id"]: q for q in daten["sources"]}
+
+    assert quellen["Q01_TEST"]["verified"] is False
+    assert quellen["Q01_TEST"]["pruefung"]["nicht_erreichbar"] == ["SCHLECHT"]
+    assert quellen["Q01_TEST"]["pruefung"]["erreichbar"] == 1
+    assert "Name nicht aufloesbar" in quellen["Q01_TEST"]["pruefung"]["grund"]
+
+    assert quellen["Q02_TEST"]["verified"] is True
+    assert quellen["Q02_TEST"]["pruefung"]["beleg"] == "https://example.invalid/lauf/7"
+    assert "nicht_erreichbar" not in quellen["Q02_TEST"]["pruefung"]
+
+    assert aenderungen == ["Q02_TEST: verified false -> true"]
+
+
+def test_uebernahme_nimmt_verified_auch_wieder_zurueck(register):
+    """Was einmal geprueft war, kann kaputtgehen - dann muss es zurueckfallen."""
+    daten = json.loads(register.read_text(encoding="utf-8"))
+    for quelle in daten["sources"]:
+        quelle["verified"] = True
+    register.write_text(json.dumps(daten), encoding="utf-8")
+
+    aenderungen = quellen_pruefen.uebernehmen(
+        register, quellen_pruefen.pruefen(register))
+    assert aenderungen == ["Q01_TEST: verified true -> false"]
+
+
+def test_uebernahme_laesst_fremde_quellen_unberuehrt(register):
+    """Ein Teillauf (--quelle) darf den Rest des Registers nicht abwerten."""
+    daten = json.loads(register.read_text(encoding="utf-8"))
+    daten["sources"][0]["verified"] = True
+    register.write_text(json.dumps(daten), encoding="utf-8")
+
+    quellen_pruefen.uebernehmen(
+        register, quellen_pruefen.pruefen(register, nur="Q02_TEST"))
+    danach = json.loads(register.read_text(encoding="utf-8"))
+    assert danach["sources"][0]["verified"] is True, (
+        "eine nicht gepruefte Quelle darf nicht angefasst werden")
+    assert "pruefung" not in danach["sources"][0]
+
+
+def test_uebernahme_ueber_den_befehl(register, tmp_path, capsys):
+    ergebnis = tmp_path / "ergebnis.json"
+    quellen_pruefen.main(["--register", str(register), "--ziel", str(ergebnis)])
+    capsys.readouterr()
+
+    code = quellen_pruefen.main([
+        "--register", str(register), "--uebernehmen", str(ergebnis),
+        "--beleg", "https://example.invalid/lauf/9"])
+    text = capsys.readouterr().out
+    assert code == 1, "der Befund bleibt ein Befund, auch beim Uebernehmen"
+    assert "Q02_TEST: verified false -> true" in text
+    quellen = {q["source_id"]: q for q in
+               json.loads(register.read_text(encoding="utf-8"))["sources"]}
+    assert quellen["Q02_TEST"]["pruefung"]["beleg"] == "https://example.invalid/lauf/9"
+
+
+def test_toter_link_und_unerreichbarer_server_werden_unterschieden(tmp_path):
+    """404 heisst "neue Adresse noetig", Zeitablauf heisst "anderer Weg noetig".
+
+    Im ersten Online-Lauf war beides gemischt: 17 Gesetzestexte antworteten
+    gar nicht (der Baurechner kommt an diesen Server nicht heran), sechs
+    Adressen gaben 404 (die zeigen wirklich ins Leere). Wer das gleich
+    behandelt, bessert 17 Adressen aus, die nie falsch waren.
+    """
+    register = tmp_path / "r.json"
+    register.write_text(json.dumps({"sources": [
+        {"source_id": "Q_TOT", "documents": [{"doc_uid": "A", "url": "u"}]},
+        {"source_id": "Q_STUMM", "documents": [{"doc_uid": "B", "url": "u"}]},
+    ]}), encoding="utf-8")
+
+    quellen_pruefen.uebernehmen(register, [
+        {"quelle": "Q_TOT", "dokument": "A", "status": 404, "erreichbar": False,
+         "fehler": "HTTP 404", "geprueft_am": "2026-09-06"},
+        {"quelle": "Q_STUMM", "dokument": "B", "status": 0, "erreichbar": False,
+         "fehler": "Zeitablauf", "geprueft_am": "2026-09-06"},
+    ])
+    quellen = {q["source_id"]: q for q in
+               json.loads(register.read_text(encoding="utf-8"))["sources"]}
+    assert quellen["Q_TOT"]["pruefung"]["art"] == "adresse_tot"
+    assert quellen["Q_STUMM"]["pruefung"]["art"] == "nicht_erreicht"
+
+
+def test_mitgeliefertes_register_traegt_seinen_befund():
+    """Im ausgelieferten Register muss stehen, was der Lauf ergeben hat."""
+    from pathlib import Path as _Pfad
+
+    register = json.loads(
+        (_Pfad(__file__).resolve().parents[1] / "config" / "source_registry.json")
+        .read_text(encoding="utf-8"))
+    quellen = {q["source_id"]: q for q in register["sources"]}
+
+    for kennung, quelle in quellen.items():
+        pruefung = quelle.get("pruefung")
+        assert pruefung, f"{kennung} traegt keinen Befund"
+        assert pruefung.get("beleg", "").startswith("https://"), kennung
+        assert quelle["verified"] == (not pruefung.get("nicht_erreichbar")), (
+            f"{kennung}: verified passt nicht zum Befund")
+
+    # Die Gesetzestexte antworteten nicht - das ist etwas anderes als tot.
+    assert quellen["Q01_GESETZE_IM_INTERNET"]["pruefung"]["art"] == "nicht_erreicht"
+    assert quellen["Q03_ELSTER"]["pruefung"]["art"] == "adresse_tot"

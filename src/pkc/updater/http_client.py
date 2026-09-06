@@ -37,6 +37,12 @@ USER_AGENT = (
 #: damit selbst, dass das Problem voruebergehend ist.
 WIEDERHOLBAR = frozenset({408, 425, 429, 500, 502, 503, 504})
 
+#: robots.txt ist eine kleine Textdatei. Laenger als ein paar Sekunden darf
+#: sie nicht brauchen, und groesser als das hier wird sie nicht - sonst
+#: haelt ein einziger langsamer Server den ganzen Abgleich auf.
+ROBOTS_ZEITGRENZE = 10.0
+ROBOTS_HOECHSTLAENGE = 512 * 1024
+
 #: Zahl der Versuche insgesamt und Wartezeit davor (Sekunden).
 VERSUCHE = 3
 WARTEZEITEN = (2.0, 5.0)
@@ -158,7 +164,18 @@ class HttpClient:
             parser = urllib.robotparser.RobotFileParser()
             parser.set_url(base + "/robots.txt")
             try:
-                parser.read()
+                # Nicht parser.read(): das ruft urlopen **ohne Zeitgrenze**
+                # auf. Ein Server, der die Verbindung annimmt und dann
+                # schweigt, laesst den Abgleich sonst haengen - ohne
+                # Meldung, ohne Ende, und noch bevor ein einziges Dokument
+                # geladen wurde.
+                anfrage = urllib.request.Request(parser.url)
+                anfrage.add_header("User-Agent", self.user_agent)
+                with urllib.request.urlopen(
+                        anfrage, timeout=min(self.timeout, ROBOTS_ZEITGRENZE),
+                        context=self._ssl) as antwort:
+                    roh = antwort.read(ROBOTS_HOECHSTLAENGE)
+                parser.parse(roh.decode("utf-8", errors="replace").splitlines())
                 self._robots[base] = parser
             except Exception:  # robots nicht abrufbar -> nicht blockieren
                 self._robots[base] = None

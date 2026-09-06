@@ -16,6 +16,16 @@ Aufruf::
 Der Rueckgabewert ist 0, wenn jede Adresse erreichbar war, sonst 1. Der
 Bauablauf ruft das Werkzeug mit ``continue-on-error`` auf: eine amtliche
 Seite, die gerade umgebaut wird, ist ein Befund - kein Baufehler.
+
+Das Ergebnis eines Laufs laesst sich anschliessend ins Register
+uebernehmen::
+
+    python tools/quellen_pruefen.py --uebernehmen ergebnis.json \
+                                    --beleg https://.../runs/12345
+
+Auch das bewusst als Befehl und nicht von Hand: ``verified: true`` soll aus
+einer Messung stammen und nicht aus dem Gedaechtnis dessen, der die Datei
+zuletzt offen hatte.
 """
 
 from __future__ import annotations
@@ -80,13 +90,78 @@ def bericht(zeilen: list[dict]) -> str:
     return "\n".join(reihen)
 
 
+def uebernehmen(register: Path, zeilen: list[dict], beleg: str = "") -> list[str]:
+    """Traegt ein Pruefergebnis ins Quellenregister ein.
+
+    ``verified`` gilt fuer eine Quelle nur dann, wenn **jedes** ihrer
+    Dokumente erreichbar war. Eine Quelle, bei der eines von zwoelf fehlt,
+    ist nicht geprueft - sie ist zur Haelfte kaputt, und das soll dastehen.
+    """
+    daten = json.loads(register.read_text(encoding="utf-8"))
+    je_quelle: dict[str, list[dict]] = {}
+    for zeile in zeilen:
+        je_quelle.setdefault(zeile["quelle"], []).append(zeile)
+
+    aenderungen: list[str] = []
+    for quelle in daten.get("sources", []):
+        kennung = str(quelle.get("source_id", ""))
+        ergebnisse = je_quelle.get(kennung)
+        if not ergebnisse:
+            continue
+        fehlend = [z["dokument"] for z in ergebnisse if not z["erreichbar"]]
+        vorher = bool(quelle.get("verified"))
+        quelle["verified"] = not fehlend
+        pruefung = {
+            "geprueft_am": ergebnisse[0]["geprueft_am"],
+            "dokumente": len(ergebnisse),
+            "erreichbar": len(ergebnisse) - len(fehlend),
+        }
+        if fehlend:
+            pruefung["nicht_erreichbar"] = fehlend
+            pruefung["grund"] = next(z["fehler"] for z in ergebnisse if not z["erreichbar"])
+            # Der Unterschied ist der wichtigste Teil des Befundes: eine
+            # Adresse, die 404 sagt, ist tot und braucht eine neue. Eine,
+            # die gar nicht antwortet, sagt nichts ueber sich selbst - da
+            # kam nur dieser Rechner nicht hin. Wer beides gleich behandelt,
+            # bessert Adressen aus, die nie falsch waren.
+            pruefung["art"] = (
+                "adresse_tot"
+                if any(400 <= z["status"] < 500 for z in ergebnisse if not z["erreichbar"])
+                else "nicht_erreicht"
+            )
+        if beleg:
+            pruefung["beleg"] = beleg
+        quelle["pruefung"] = pruefung
+        if vorher != quelle["verified"]:
+            aenderungen.append(
+                f"{kennung}: verified {str(vorher).lower()} -> "
+                f"{str(quelle['verified']).lower()}")
+
+    register.write_text(json.dumps(daten, ensure_ascii=False, indent=2) + "\n",
+                        encoding="utf-8")
+    return aenderungen
+
+
 def main(argv: list[str] | None = None) -> int:
     zerleger = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     zerleger.add_argument("--register", default=str(WURZEL / "config" / "source_registry.json"))
     zerleger.add_argument("--ziel", default="", help="Ergebnis als JSON ablegen")
     zerleger.add_argument("--quelle", default="", help="nur diese Quelle pruefen")
     zerleger.add_argument("--zeitgrenze", type=float, default=45.0)
+    zerleger.add_argument("--uebernehmen", default="",
+                          help="ein fruehes Ergebnis ins Register eintragen, "
+                               "statt neu zu pruefen")
+    zerleger.add_argument("--beleg", default="",
+                          help="wo die Pruefung nachzulesen ist (Ablauf-Adresse)")
     argumente = zerleger.parse_args(argv)
+
+    if argumente.uebernehmen:
+        zeilen = json.loads(Path(argumente.uebernehmen).read_text(encoding="utf-8"))
+        aenderungen = uebernehmen(Path(argumente.register), zeilen, argumente.beleg)
+        print(bericht(zeilen))
+        print("\nIns Register uebernommen: "
+              + (", ".join(aenderungen) if aenderungen else "keine Aenderung"))
+        return 0 if all(z["erreichbar"] for z in zeilen) else 1
 
     zeilen = pruefen(Path(argumente.register), argumente.quelle, argumente.zeitgrenze)
     print(bericht(zeilen))
