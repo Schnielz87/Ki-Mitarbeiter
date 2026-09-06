@@ -39,6 +39,16 @@ log = get_logger(__name__)
 #: Unterverzeichnis im portablen Ordner, in dem die Programmdatei erwartet wird.
 LAUFZEIT_UNTERORDNER = ("llama", "llama.cpp", ".")
 
+#: Die mitgelieferten Fassungen des Modelldienstes, in der Reihenfolge, in
+#: der sie versucht werden, wenn eine Grafikkarte erkannt wurde.
+#:
+#: Der Unterschied ist nicht klein: die CPU-Fassung rechnet auf dem
+#: Prozessor, die Vulkan-Fassung auf der Grafikkarte. Auf einem Rechner mit
+#: GPU liegen dazwischen Faktoren, nicht Prozente. Vulkan und nicht CUDA,
+#: weil es mit Karten von NVIDIA, AMD und Intel gleichermassen laeuft und
+#: keine zusaetzliche Installation braucht.
+FASSUNGEN = ("vulkan", "cpu")
+
 #: Wie lange auf das Hochfahren gewartet wird. Ein grosses Modell braucht auf
 #: einer aelteren CPU durchaus eine Minute, bis es geladen ist.
 STARTGRENZE_S = 180.0
@@ -48,8 +58,12 @@ def _programmname() -> str:
     return "llama-server.exe" if os.name == "nt" else "llama-server"
 
 
-def finde_server(runtime_dir: Path) -> Path | None:
-    """Sucht die Programmdatei des Servers im Laufzeitordner.
+def fassungen(runtime_dir: Path) -> dict[str, Path]:
+    """Welche Fassungen des Modelldienstes liegen bei?
+
+    Erwartet werden sie unter ``runtime/llama/<fassung>/llama-server``.
+    Aeltere Pakete haben nur eine Datei ohne Unterordner - die zaehlt als
+    ``cpu``, denn genau das war sie.
 
     Gesucht wird nur unterhalb des portablen Ordners - nie im System. Was
     nicht auf dem Datentraeger liegt, ist beim naechsten Rechner nicht da
@@ -57,16 +71,47 @@ def finde_server(runtime_dir: Path) -> Path | None:
     """
     runtime_dir = Path(runtime_dir)
     name = _programmname()
+    gefunden: dict[str, Path] = {}
     for unter in LAUFZEIT_UNTERORDNER:
-        kandidat = (runtime_dir / unter / name) if unter != "." else runtime_dir / name
-        if kandidat.is_file():
-            return kandidat
-    # Manche Pakete legen die Datei in einen Unterordner mit Versionsnamen.
+        basis = (runtime_dir / unter) if unter != "." else runtime_dir
+        for fassung in FASSUNGEN:
+            kandidat = basis / fassung / name
+            if kandidat.is_file():
+                gefunden.setdefault(fassung, kandidat)
+        schlicht = basis / name
+        if schlicht.is_file():
+            gefunden.setdefault("cpu", schlicht)
+    return gefunden
+
+
+def waehle_server(runtime_dir: Path, grafikkarte: bool = False) -> tuple[Path | None, str]:
+    """Waehlt die Fassung, die auf diesem Rechner am schnellsten ist.
+
+    Mit erkannter Grafikkarte zuerst Vulkan, sonst die CPU-Fassung. Ob die
+    Wahl auch traegt, zeigt sich erst beim Start - dafuer gibt es den
+    Rueckfall in ``Llamaserver.starten``.
+    """
+    verfuegbar = fassungen(runtime_dir)
+    reihenfolge = FASSUNGEN if grafikkarte else ("cpu", "vulkan")
+    for fassung in reihenfolge:
+        if fassung in verfuegbar:
+            return verfuegbar[fassung], fassung
+    # Unbekannte Ablage: irgendwo darunter suchen, statt aufzugeben.
+    runtime_dir = Path(runtime_dir)
     if runtime_dir.is_dir():
-        for pfad in sorted(runtime_dir.rglob(name)):
+        for pfad in sorted(runtime_dir.rglob(_programmname())):
             if pfad.is_file():
-                return pfad
-    return None
+                return pfad, "unbekannt"
+    return None, ""
+
+
+def finde_server(runtime_dir: Path) -> Path | None:
+    """Die Programmdatei des Servers - ohne Ruecksicht auf die Fassung.
+
+    Fuer alle Stellen, die nur wissen wollen, **ob** ein Modelldienst
+    beiliegt (Systempruefung, Lagebericht).
+    """
+    return waehle_server(runtime_dir)[0]
 
 
 def _freier_port() -> int:
@@ -91,6 +136,17 @@ class Llamaserver:
     #: um Kerne zu binden), und in den Tests, die den Dienst gegen einen
     #: Stellvertreter pruefen - eine Textdatei kann Windows nicht ausfuehren.
     vorlauf: list[str] = field(default_factory=list)
+    #: Zusaetzliche Schalter fuer Geschwindigkeit. Wird beim Fehlstart
+    #: automatisch abgeschaltet, siehe ``_tempoflags``.
+    tempoflags: bool = True
+    #: Programmdatei, die genommen wird, wenn ``programm`` nicht hochkommt.
+    #: Gebraucht fuer die Grafikfassung: fehlt der Treiber, muss die
+    #: CPU-Fassung uebernehmen - lieber langsam als gar kein Sprachmodell.
+    rueckfall: Path | None = None
+    #: Ob der letzte Start die Tempoflags verwenden konnte, und welche
+    #: Programmdatei wirklich lief. Nur zum Nachlesen.
+    tempoflags_aktiv: bool = field(default=False, repr=False)
+    benutzt: Path | None = field(default=None, repr=False)
     _vorgang: subprocess.Popen | None = field(default=None, repr=False)
     _protokoll: Path | None = field(default=None, repr=False)
 
@@ -103,10 +159,11 @@ class Llamaserver:
         return self._vorgang is not None and self._vorgang.poll() is None
 
     # -- Start ---------------------------------------------------------
-    def _befehl(self) -> list[str]:
+    def _grundbefehl(self, programm: Path | None = None) -> list[str]:
+        """Nur Schalter, die es seit jeher in llama.cpp gibt."""
         befehl = [
             *self.vorlauf,
-            str(self.programm),
+            str(programm or self.programm),
             "-m", str(self.modell),
             "--host", "127.0.0.1",
             "--port", str(self.port),
@@ -116,6 +173,33 @@ class Llamaserver:
             befehl += ["-t", str(self.threads)]
         if self.gpu_layers:
             befehl += ["-ngl", str(self.gpu_layers)]
+        return befehl
+
+    def _tempoflags(self) -> list[str]:
+        """Schalter, die messbar Zeit sparen - aber nicht in jeder Fassung.
+
+        * ``-fa`` (Flash Attention) beschleunigt vor allem die Verarbeitung
+          des Kontextes, also die Zeit bis zum ersten Wort.
+        * ``--cache-type-k/-v q8_0`` halbiert den Speicher des Kontextes.
+          Auf einem knappen Rechner entscheidet das darueber, ob ausgelagert
+          wird - und Auslagern kostet nicht Prozente, sondern das Zehnfache.
+        * ``-tb`` gibt der Kontextverarbeitung alle Kerne.
+
+        Sie stehen bewusst getrennt: llama.cpp aendert seine Schalter
+        zwischen Fassungen. Kennt die vorliegende Programmdatei einen davon
+        nicht, beendet sie sich sofort - dann waere gar kein Sprachmodell da.
+        Deshalb wird beim Fehlstart ohne diese Schalter erneut versucht.
+        """
+        flags = ["-fa", "--cache-type-k", "q8_0", "--cache-type-v", "q8_0"]
+        kerne = self.threads or (os.cpu_count() or 0)
+        if kerne:
+            flags += ["-tb", str(kerne)]
+        return flags
+
+    def _befehl(self, programm: Path | None = None) -> list[str]:
+        befehl = self._grundbefehl(programm)
+        if self.tempoflags:
+            befehl += self._tempoflags()
         return befehl
 
     def starten(self, protokollordner: Path | None = None) -> str:
@@ -148,20 +232,43 @@ class Llamaserver:
             zusatz["start_new_session"] = True
 
         log.info("Starte Modelldienst: %s (Modell %s)", self.programm.name, self.modell.name)
-        self._vorgang = subprocess.Popen(
-            self._befehl(), stdout=ausgabe, stderr=subprocess.STDOUT,
-            stdin=subprocess.DEVNULL, cwd=str(self.programm.parent), **zusatz,
-        )
+        # Zwei Achsen, absteigend nach Geschwindigkeit: erst die gewaehlte
+        # Programmdatei mit den Tempoflags, dann ohne, dann - falls es eine
+        # gibt - die Rueckfalldatei. Jeder Schritt ist langsamer als der
+        # vorige und immer noch unendlich viel besser als kein Modell.
+        programme = [self.programm]
+        if self.rueckfall is not None and Path(self.rueckfall).is_file():
+            programme.append(Path(self.rueckfall))
 
-        if not self._warten():
-            letzte = self.letzte_ausgabe()
-            self.beenden()
-            raise RuntimeError(
-                "Der Modelldienst ist nicht hochgekommen"
-                f"{': ' + letzte if letzte else '.'}"
-            )
-        log.info("Modelldienst bereit auf %s", self.adresse)
-        return self.adresse
+        letzte = ""
+        for programm in programme:
+            for mit_tempo in ([True, False] if self.tempoflags else [False]):
+                self.tempoflags_aktiv = mit_tempo
+                self.benutzt = programm
+                befehl = self._befehl(programm) if mit_tempo else self._grundbefehl(programm)
+                self._vorgang = subprocess.Popen(
+                    befehl, stdout=ausgabe, stderr=subprocess.STDOUT,
+                    stdin=subprocess.DEVNULL, cwd=str(programm.parent), **zusatz,
+                )
+                if self._warten():
+                    log.info("Modelldienst bereit auf %s (%s, Tempoflags: %s)",
+                             self.adresse, programm.parent.name,
+                             "ja" if mit_tempo else "nein")
+                    return self.adresse
+
+                letzte = self.letzte_ausgabe()
+                self.beenden()
+                log.warning("Modelldienst kam nicht hoch (%s, Tempoflags: %s). "
+                            "Letzte Ausgabe: %s", programm.parent.name,
+                            "ja" if mit_tempo else "nein", letzte)
+                self.port = _freier_port()
+
+        self.tempoflags_aktiv = False
+        self.benutzt = None
+        raise RuntimeError(
+            "Der Modelldienst ist nicht hochgekommen"
+            f"{': ' + letzte if letzte else '.'}"
+        )
 
     def _warten(self) -> bool:
         """Wartet, bis der Server antwortet - oder der Vorgang endet."""

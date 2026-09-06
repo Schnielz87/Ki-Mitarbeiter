@@ -24,6 +24,20 @@ from .providers import (
 log = get_logger(__name__)
 
 
+def _cpu_rueckfall(paths, fassung: str):
+    """Die CPU-Fassung als Rueckfall, wenn die Grafikfassung nicht startet.
+
+    Eine Vulkan-Fassung kann auf einem Rechner ohne passenden Treiber
+    scheitern - und dann waere gar kein Sprachmodell da. Lieber langsam als
+    gar nicht.
+    """
+    if fassung != "vulkan":
+        return None
+    from .server import fassungen
+
+    return fassungen(paths.get("runtime")).get("cpu")
+
+
 def _kann_strom(provider: LlmProvider) -> bool:
     """Nimmt der Anbieter eine Rueckmeldung je Textstueck entgegen?
 
@@ -199,15 +213,32 @@ class LlmManager:
         # Uebersetzung auf dem Rechner des Kunden. Fuer llama-cpp-python gibt
         # es keine fertigen Pakete - das waere fuer eine portable Anwendung
         # der falsche Weg.
-        from .server import Llamaserver, finde_server
+        from .server import Llamaserver, waehle_server
 
-        programm = finde_server(paths.get("runtime"))
+        # Mit Grafikkarte die Vulkan-Fassung nehmen - das ist der groesste
+        # Einzelhebel fuer die Wartezeit. Erkannt wird die Karte, nicht
+        # vermutet; ohne Karte bleibt es bei der CPU-Fassung.
+        try:
+            from ..hardware import detect
+            grafik = bool(detect(paths.root).gpu_name)
+        except Exception:                          # pragma: no cover - defensiv
+            grafik = False
+        programm, fassung = waehle_server(paths.get("runtime"), grafik)
         if programm is not None:
+            # Auf der Grafikkarte werden alle Schichten dorthin verlagert;
+            # ein ausdruecklich eingestellter Wert hat Vorrang.
+            schichten = int(config.get("llm.gpu_layers", 0))
+            if not schichten and fassung == "vulkan":
+                schichten = 99
+            if fassung == "vulkan":
+                notices.append("Modelldienst: Vulkan-Fassung (Grafikkarte)")
             server = Llamaserver(
                 programm=programm, modell=model_path,
                 kontext=int(config.get("llm.context_tokens", 8192)),
                 threads=int(config.get("llm.threads", 0)),
-                gpu_layers=int(config.get("llm.gpu_layers", 0)),
+                gpu_layers=schichten,
+                tempoflags=bool(config.get("llm.tempoflags", True)),
+                rueckfall=_cpu_rueckfall(paths, fassung),
             )
             anbieter = MitgelieferterServerProvider(server, protokollordner=paths.get("logs"))
             bereit, hinweis = anbieter.available()

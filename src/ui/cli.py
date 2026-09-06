@@ -541,10 +541,57 @@ def _probe_ausgeben(controller) -> int:
     print(f"\nAntwort nach {ergebnis['dauer_s']} s ({ergebnis['anbieter']}, "
           f"{ergebnis['modell']}):")
     print(f"  {ergebnis['text']}")
+    # Zwei Zahlen, nicht eine: bis zum ersten Wort sieht der Benutzer gar
+    # nichts - das ist die Wartezeit. Danach laeuft die Antwort sichtbar
+    # weiter, und dafuer zaehlt die Schreibgeschwindigkeit.
+    print(f"\nWartezeit bis erstes Wort : {ergebnis.get('erstes_wort_s', 0)} s")
     if ergebnis["token_je_sekunde"]:
-        print(f"\nGeschwindigkeit: etwa {ergebnis['token_je_sekunde']} Token je Sekunde")
+        print(f"Danach etwa {ergebnis['token_je_sekunde']} Token je Sekunde")
     print("\nDas Sprachmodell ist einsatzbereit.")
     return 0
+
+
+def cmd_einstellungen(args) -> int:
+    """Eine Einstellung anzeigen oder setzen - ohne die Datei zu bearbeiten.
+
+    Gebraucht wird das an zwei Stellen: im Bauablauf, der die Wartezeit je
+    Tempostufe misst, und auf einem Rechner ohne Bildschirm.
+    """
+    controller = _controller(args)
+    try:
+        controller.bootstrap(build_embeddings=False)
+        if args.aktion == "zeigen":
+            if args.schluessel:
+                print(f"{args.schluessel} = {controller.config.get(args.schluessel)}")
+                return 0
+            for schluessel in ("llm.tempo", "llm.max_output_tokens", "llm.gpu_layers",
+                               "llm.threads", "llm.context_tokens", "llm.vorladen",
+                               "retrieval.top_k"):
+                print(f"{schluessel:26} = {controller.config.get(schluessel)}")
+            return 0
+
+        if not args.schluessel or args.wert is None:
+            print("Es werden --schluessel und --wert benoetigt.", file=sys.stderr)
+            return 2
+        wert: object = args.wert
+        # Zahlen und Wahrheitswerte muessen als solche gespeichert werden,
+        # sonst faellt die Einstellung beim naechsten Start still zurueck.
+        if str(wert).lower() in ("true", "false"):
+            wert = str(wert).lower() == "true"
+        else:
+            try:
+                wert = int(wert)
+            except ValueError:
+                pass
+        vorher = controller.config.get(args.schluessel)
+        pfad = controller.save_settings({args.schluessel: wert})
+        controller.tempo_anwenden()
+        print(f"{args.schluessel}\n  vorher : {vorher}\n  jetzt  : "
+              f"{controller.config.get(args.schluessel)}")
+        print(f"\nGespeichert in: {pfad}")
+        return 0
+    finally:
+        controller.shutdown()
 
 
 def cmd_modus(args) -> int:
@@ -959,6 +1006,14 @@ def build_parser() -> argparse.ArgumentParser:
     modell.add_argument("--datei", default="",
                         help="vorhandene GGUF-Datei uebernehmen, statt neu zu laden")
     modell.set_defaults(func=cmd_modell)
+
+    einstellungen = neu("einstellungen", "Einstellungen anzeigen oder setzen")
+    einstellungen.add_argument("aktion", nargs="?", default="zeigen",
+                               choices=["zeigen", "setzen"])
+    einstellungen.add_argument("--schluessel", default="",
+                               help="z.B. llm.tempo oder llm.gpu_layers")
+    einstellungen.add_argument("--wert", default=None)
+    einstellungen.set_defaults(func=cmd_einstellungen)
 
     datei = neu("datei", "Ergebnisse als Datei ausgeben (Excel, Word, PDF ...)")
     datei.add_argument("aktion", nargs="?", default="antwort",

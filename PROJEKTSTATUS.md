@@ -18,7 +18,7 @@ Geheimnistresor, Freigabepflicht, Connector-Rahmen, Dateiausgabe in acht
 Formaten, Plugin-System mit eigenem Vorgang je Plugin, mitgeliefertem
 Modelldienst und gefuehrtem Weg zum Sprachmodell, grafische Oberflaeche und
 Kommandozeile -
-abgesichert durch **558 automatische Tests**.
+abgesichert durch **580 automatische Tests**.
 
 **Noch nicht abgenommen** sind die Schritte, die zwingend Windows, eine
 echte grafische Oberflaeche, ein echtes Sprachmodell oder Zugriff auf die
@@ -89,7 +89,7 @@ Er lautet: **fertig zur Abnahme**. Der Weg dorthin steht in
 
 ## 4. Was tatsaechlich geprueft ist
 
-**558 Tests bestanden, 1 uebersprungen** (`python -m pytest tests -q`).
+**580 Tests bestanden, 1 uebersprungen** (`python -m pytest tests -q`).
 Auf einem echten Windows-Rechner sind alle 23 Schritte des Bauablaufs
 bestanden - zuletzt
 https://github.com/Schnielz87/Ki-Mitarbeiter/actions/runs/34037502726

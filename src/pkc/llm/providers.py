@@ -13,6 +13,7 @@ kein Sprachmodell verfuegbar war.
 from __future__ import annotations
 
 import json
+import threading
 import time
 import urllib.error
 import urllib.request
@@ -274,6 +275,7 @@ class OpenAICompatibleProvider:
         teile: list[str] = []
         grund = ""
         abgeschlossen = False
+        erstes = 0.0
         try:
             with urllib.request.urlopen(request, timeout=self.timeout) as response:
                 for rohzeile in response:
@@ -293,6 +295,8 @@ class OpenAICompatibleProvider:
                         grund = grund_neu
                         abgeschlossen = True
                     if stueck:
+                        if not teile:
+                            erstes = time.monotonic() - started
                         teile.append(stueck)
                         on_token(stueck)
         except urllib.error.HTTPError as exc:
@@ -314,6 +318,7 @@ class OpenAICompatibleProvider:
         return LlmResponse(
             text=text, provider=self.name, model=self.model,
             elapsed=time.monotonic() - started,
+            erstes_token_s=round(erstes, 2),
             truncated=grund == "length",
             meta={"streaming": True},
         )
@@ -328,10 +333,11 @@ class OpenAICompatibleProvider:
 class MitgelieferterServerProvider(OpenAICompatibleProvider):
     """Der mitgelieferte llama.cpp-Server - von der Anwendung selbst gestartet.
 
-    Der Dienst wird **nicht** beim Programmstart hochgefahren, sondern bei der
-    ersten Frage. Sonst wuerde jeder Start der Anwendung das Laden eines
-    mehrere Gigabyte grossen Modells abwarten, auch wenn der Benutzer nur
-    kurz im Unternehmenswissen nachsehen will.
+    Der Dienst wird im Hintergrund vorgeladen (siehe ``vorladen``), damit die
+    erste Frage nicht auf das Laden mehrerer Gigabyte wartet. Er blockiert
+    dabei nichts: wer nur kurz im Unternehmenswissen nachsieht, merkt davon
+    nichts, und wer sofort fragt, wartet hoechstens auf den Rest des
+    Ladevorgangs statt auf den ganzen.
     """
 
     def __init__(self, server, protokollordner=None, name: str = "mitgelieferter-server"):
@@ -340,6 +346,8 @@ class MitgelieferterServerProvider(OpenAICompatibleProvider):
         self.server = server
         self.protokollordner = protokollordner
         self.startfehler = ""
+        #: Vorladefaden und erste Frage duerfen nicht beide starten.
+        self._schloss = threading.Lock()
 
     def available(self) -> tuple[bool, str]:
         """Beurteilt die Lage, **ohne** den Dienst zu starten."""
@@ -361,12 +369,39 @@ class MitgelieferterServerProvider(OpenAICompatibleProvider):
     def _sicherstellen(self) -> None:
         if self.server.laeuft:
             return
+        with self._schloss:
+            # Zweite Pruefung im Schloss: der Vorladefaden koennte den Dienst
+            # inzwischen gestartet haben. Zweimal starten waere nicht nur
+            # Verschwendung - es waeren zwei Vorgaenge mit je mehreren
+            # Gigabyte Arbeitsspeicher.
+            if self.server.laeuft:
+                return
+            try:
+                self.base_url = self.server.starten(self.protokollordner).rstrip("/")
+                self.startfehler = ""
+            except Exception as fehler:
+                self.startfehler = str(fehler)
+                raise LlmError(
+                    f"Der Modelldienst konnte nicht gestartet werden: {fehler}") from fehler
+
+    def vorladen(self) -> None:
+        """Faehrt den Dienst hoch, ohne dass jemand darauf wartet.
+
+        Das Laden eines mehrere Gigabyte grossen Modells dauert - je nach
+        Datentraeger bis zu einigen Minuten. Geschieht das erst bei der
+        ersten Frage, steht diese Zeit vollstaendig in der Wartezeit des
+        Benutzers. Vorgeladen faellt sie in die Zeit, in der er ohnehin
+        gerade die Anwendung oeffnet und sich zurechtfindet.
+
+        Fehler bleiben hier stumm: der Vorlauf ist eine Bequemlichkeit. Geht
+        er schief, meldet sich derselbe Fehler bei der ersten Frage - dort
+        gehoert er hin, denn dort wartet jemand darauf.
+        """
         try:
-            self.base_url = self.server.starten(self.protokollordner).rstrip("/")
-            self.startfehler = ""
-        except Exception as fehler:
-            self.startfehler = str(fehler)
-            raise LlmError(f"Der Modelldienst konnte nicht gestartet werden: {fehler}") from fehler
+            self._sicherstellen()
+        except Exception:                          # pragma: no cover - defensiv
+            log.info("Vorladen des Modelldienstes fehlgeschlagen: %s",
+                     self.startfehler)
 
     def generate(self, messages, max_tokens=1024, temperature=0.2, stop=None,
                  on_token: Callable[[str], None] | None = None) -> LlmResponse:

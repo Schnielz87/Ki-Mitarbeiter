@@ -75,19 +75,24 @@ jobs:
             Authorization = "Bearer $env:GH_TOKEN"
             "User-Agent"  = "PORTIVA-Bauablauf"
           }
-          $muster = @("*bin-win-cpu-x64.zip", "*bin-win-avx2-x64.zip",
-                      "*bin-win-cpu*.zip", "*win-x64.zip")
-          $release = $null
-          $paket = $null
-          foreach ($kandidat in $releases) {
-            foreach ($m in $muster) {
-              $treffer = $kandidat.assets | Where-Object { $_.name -like $m } |
-                         Select-Object -First 1
-              if ($treffer) { $release = $kandidat; $paket = $treffer; break }
-            }
-            if ($paket) { break }
+          # Zwei Fassungen, nicht eine. Die CPU-Fassung laeuft ueberall ohne
+          # Treiber - sie ist der Rueckfall. Die Vulkan-Fassung nutzt die
+          # Grafikkarte und ist auf einem Rechner mit GPU um ein Vielfaches
+          # schneller; Vulkan deshalb, weil es mit Karten von NVIDIA, AMD und
+          # Intel gleichermassen laeuft und keine CUDA-Installation braucht.
+          # Welche verwendet wird, entscheidet die Anwendung beim Start.
+          $gesucht = [ordered]@{
+            "cpu"    = @("*bin-win-cpu-x64.zip", "*bin-win-avx2-x64.zip",
+                         "*bin-win-cpu*.zip", "*win-x64.zip")
+            "vulkan" = @("*bin-win-vulkan-x64.zip", "*bin-win-vulkan*.zip")
           }
-          if (-not $paket) {
+          $release = $null
+          foreach ($kandidat in $releases) {
+            if ($kandidat.assets | Where-Object { $_.name -like "*bin-win-cpu-x64.zip" }) {
+              $release = $kandidat; break
+            }
+          }
+          if (-not $release) {
             Write-Host "Durchsuchte Veroeffentlichungen:"
             $releases | Select-Object -First 5 | ForEach-Object {
               Write-Host "  $($_.tag_name): $(($_.assets | ForEach-Object { $_.name }) -join ', ')"
@@ -95,19 +100,42 @@ jobs:
             throw "Keine Veroeffentlichung mit einer Windows-Programmdatei gefunden."
           }
           Write-Host "llama.cpp Fassung: $($release.tag_name)"
-          Write-Host "Paket: $($paket.name) ($([math]::Round($paket.size/1MB,1)) MB)"
-          Invoke-WebRequest -Uri $paket.browser_download_url -OutFile "$env:RUNNER_TEMP\llama.zip"
-          Expand-Archive "$env:RUNNER_TEMP\llama.zip" -DestinationPath "$env:RUNNER_TEMP\llama" -Force
+
+          $geholt = @()
+          foreach ($art in $gesucht.Keys) {
+            $paket = $null
+            foreach ($m in $gesucht[$art]) {
+              $paket = $release.assets | Where-Object { $_.name -like $m } | Select-Object -First 1
+              if ($paket) { break }
+            }
+            if (-not $paket) {
+              if ($art -eq "cpu") { throw "Die CPU-Fassung fehlt in $($release.tag_name)." }
+              Write-Host "::warning::Keine $art-Fassung in $($release.tag_name) - "`
+                         "das Paket enthaelt dann nur die CPU-Fassung."
+              continue
+            }
+            Write-Host "  $art : $($paket.name) ($([math]::Round($paket.size/1MB,1)) MB)"
+            Invoke-WebRequest -Uri $paket.browser_download_url -OutFile "$env:RUNNER_TEMP\$art.zip"
+            Expand-Archive "$env:RUNNER_TEMP\$art.zip" -DestinationPath "$env:RUNNER_TEMP\aus-$art" -Force
+            $server = Get-ChildItem "$env:RUNNER_TEMP\aus-$art" -Recurse -Filter "llama-server.exe" |
+                      Select-Object -First 1
+            if (-not $server) { throw "llama-server.exe fehlt im Paket $($paket.name)." }
+            New-Item -ItemType Directory -Force -Path "runtime\llama\$art" | Out-Null
+            Copy-Item "$($server.Directory.FullName)\*" -Destination "runtime\llama\$art" -Recurse -Force
+            $geholt += $art
+          }
 
           New-Item -ItemType Directory -Force -Path "runtime\llama" | Out-Null
-          $server = Get-ChildItem "$env:RUNNER_TEMP\llama" -Recurse -Filter "llama-server.exe" |
-                    Select-Object -First 1
-          if (-not $server) { throw "llama-server.exe fehlt im heruntergeladenen Paket." }
-          Copy-Item "$($server.Directory.FullName)\*" -Destination "runtime\llama" -Recurse -Force
-          "llama.cpp $($release.tag_name), MIT-Lizenz, bezogen am $(Get-Date -Format 'yyyy-MM-dd')" |
+          @("llama.cpp $($release.tag_name), MIT-Lizenz, bezogen am $(Get-Date -Format 'yyyy-MM-dd')",
+            "Enthaltene Fassungen: $($geholt -join ', ')",
+            "cpu    - laeuft ueberall ohne Treiber (Rueckfall)",
+            "vulkan - nutzt die Grafikkarte (NVIDIA, AMD, Intel), deutlich schneller") |
             Set-Content "runtime\llama\HERKUNFT.txt"
-          Get-ChildItem "runtime\llama" | Select-Object Name, Length |
-            Format-Table | Out-String | Write-Host
+          foreach ($art in $geholt) {
+            Write-Host "runtime\llama\$art :"
+            Get-ChildItem "runtime\llama\$art" | Measure-Object -Property Length -Sum |
+              ForEach-Object { Write-Host "  $($_.Count) Dateien, $([math]::Round($_.Sum/1MB,1)) MB" }
+          }
 
       - name: Portablen Ordner bauen
         run: powershell -NoProfile -ExecutionPolicy Bypass -File build\build_windows.ps1 -OhneTests
@@ -335,6 +363,52 @@ jobs:
           if ($rest) { throw "Der Modelldienst laeuft nach dem Programmende weiter." }
           Write-Host "Kein verwaister Vorgang - in Ordnung."
 
+      - name: Wartezeit messen - je Tempostufe
+        shell: pwsh
+        timeout-minutes: 20
+        run: |
+          # Der Punkt, an dem Behauptungen aufhoeren. Gemessen wird auf
+          # einem echten Rechner mit einem echten Modell, je Stufe: die Zeit
+          # bis zum ersten Wort und die Gesamtzeit einer echten Fachfrage.
+          # Ohne diese Messung waere "schneller" nur eine Absichtserklaerung.
+          Set-Location dist\Portable-Buchhalter
+          $frage = "Welche Pflichtangaben braucht eine Rechnung nach dem UStG?"
+          $zeilen = @()
+
+          foreach ($stufe in @("ausfuehrlich", "ausgewogen", "schnell")) {
+            Write-Host "=== Tempostufe: $stufe ==="
+            .\PORTABLE_BUCHHALTER_KONSOLE.exe --offline einstellungen setzen `
+              --schluessel llm.tempo --wert $stufe | Out-String | Write-Host
+
+            # Erster Lauf: enthaelt das Laden des Modells.
+            $uhr = [Diagnostics.Stopwatch]::StartNew()
+            .\PORTABLE_BUCHHALTER_KONSOLE.exe --offline frage $frage | Out-Null
+            $erster = $uhr.Elapsed.TotalSeconds
+
+            # Die Probe misst getrennt: Wartezeit bis zum ersten Wort und
+            # Schreibgeschwindigkeit danach.
+            $probe = .\PORTABLE_BUCHHALTER_KONSOLE.exe --offline modell pruefen | Out-String
+            Write-Host $probe
+            $erstesWort = if ($probe -match "erstes Wort\s*:\s*([0-9.,]+)") { $matches[1] } else { "?" }
+            $tempo = if ($probe -match "([0-9.,]+)\s*Token je Sekunde") { $matches[1] } else { "?" }
+
+            $zeilen += [pscustomobject]@{
+              stufe = $stufe
+              frage_gesamt_s = [math]::Round($erster, 1)
+              erstes_wort_s = $erstesWort
+              token_je_sekunde = $tempo
+            }
+          }
+
+          Write-Host ""
+          Write-Host "===== WARTEZEIT JE TEMPOSTUFE (Probemodell 0,5B auf CPU) ====="
+          $zeilen | Format-Table | Out-String -Width 200 | Write-Host
+          $zeilen | ConvertTo-Json -Depth 3 | Set-Content "$env:RUNNER_TEMP\wartezeit.json"
+
+          # Die Vorgabe zurueckstellen, damit das Auslieferungspaket sie traegt.
+          .\PORTABLE_BUCHHALTER_KONSOLE.exe --offline einstellungen setzen `
+            --schluessel llm.tempo --wert ausgewogen | Out-Null
+
       - name: Quellenregister gegen die echten Adressen pruefen
         shell: pwsh
         continue-on-error: true
@@ -366,6 +440,7 @@ jobs:
             ${{ runner.temp }}/quellenpruefung.json
             ${{ runner.temp }}/quellenregister_pruefung.json
             ${{ runner.temp }}/modell_pruefsumme.txt
+            ${{ runner.temp }}/wartezeit.json
           retention-days: 30
           if-no-files-found: warn
 

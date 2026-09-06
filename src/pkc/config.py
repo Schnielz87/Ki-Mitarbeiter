@@ -31,7 +31,20 @@ DEFAULTS: dict[str, Any] = {
         "model_path": "auto",
         "model_profile": "auto",      # auto | light | standard | high
         "context_tokens": 8192,
-        "max_output_tokens": 1024,
+        # Antworttempo. Steuert Antwortlaenge, Kontextgroesse, Zahl der
+        # Fundstellen und Verlaufstiefe in einem abgestimmten Satz - diese
+        # vier Werte gegeneinander von Hand einzustellen gelingt niemandem.
+        # Siehe pkc/llm/tempo.py.
+        "tempo": "ausgewogen",         # schnell | ausgewogen | ausfuehrlich
+        # 0 = aus dem Tempo ableiten. Ein ausdruecklicher Wert hat Vorrang.
+        "max_output_tokens": 0,
+        # Den Modelldienst schon beim Programmstart hochfahren, damit die
+        # erste Frage nicht auf das Laden mehrerer Gigabyte wartet.
+        "vorladen": True,
+        # Zusaetzliche Schalter des Modelldienstes fuer Geschwindigkeit.
+        # Kommt der Dienst damit nicht hoch, versucht er es automatisch ohne
+        # sie - abschalten muss man das also nur bei einer Fehlersuche.
+        "tempoflags": True,
         "temperature": 0.2,
         "threads": 0,                  # 0 = automatisch
         "gpu_layers": 0,

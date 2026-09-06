@@ -422,6 +422,37 @@ absatz("Die Anwendung misst das auf Ihrem Rechner selbst: Registerkarte "
        "Sprachmodell, Schaltflaeche \"Modell ausprobieren\". Sie nennt die "
        "gemessene Geschwindigkeit und ordnet sie ein.")
 
+doc.add_heading("Der wirksamste Regler: das Antworttempo", level=3)
+absatz("Unter \"Einstellungen und Status\" steht ganz oben bei "
+       "\"Sprachmodell - Geschwindigkeit\" das Antworttempo. Es stellt vier "
+       "Dinge gleichzeitig ein, die einzeln niemand aufeinander abstimmen "
+       "kann: wie lang die Antwort werden darf, wieviel Fachtext mitgeschickt "
+       "wird, wieviele Fundstellen herangezogen werden und wie weit der "
+       "bisherige Gespraechsverlauf zurueckreicht.")
+tabelle_mit(
+    ["Stufe", "Was sie tut", "Wofuer"],
+    [
+        ["Schnell", "Kurze, belegte Antwort aus wenigen Fundstellen",
+         "Wenn es zuegig gehen soll."],
+        ["Ausgewogen (Vorgabe)", "Vollstaendige Fachantwort",
+         "Der normale Betrieb."],
+        ["Ausfuehrlich", "Mehr Fundstellen, laengere Antwort",
+         "Wenn Tiefe wichtiger ist als Zeit."],
+    ],
+    breiten=[4.0, 6.4, 5.4],
+)
+absatz("Die Umstellung wirkt sofort - Sie muessen die Anwendung nicht neu "
+       "starten. Zwischen \"Schnell\" und \"Ausfuehrlich\" liegt bei der "
+       "reinen Rechenzeit ungefaehr der Faktor drei.")
+
+doc.add_heading("Warum die erste Frage laenger dauert", level=3)
+absatz("Beim Start laedt die Anwendung das Sprachmodell im Hintergrund - "
+       "mehrere Gigabyte von Ihrem Datentraeger. Sie koennen waehrenddessen "
+       "schon arbeiten. Fragen Sie sofort, wartet die erste Frage auf den "
+       "Rest dieses Vorgangs; jede weitere Frage nicht mehr. Wer das nicht "
+       "will, schaltet das Vorladen in den Einstellungen ab - dann faellt "
+       "die Ladezeit vollstaendig in die erste Frage.")
+
 doc.add_heading("Wenn es sehr langsam ist", level=3)
 absatz("Weit unter einem Wort je Sekunde bedeutet fast immer dasselbe: das "
        "Modell passt nicht in den Arbeitsspeicher. Der Rechner lagert dann "
@@ -430,31 +461,29 @@ absatz("Weit unter einem Wort je Sekunde bedeutet fast immer dasselbe: das "
 punkt("Erster und wichtigster Hebel: ein kleineres Modell waehlen. In der "
       "Auswahlliste steht bei jedem Eintrag, ob er auf diesen Rechner "
       "passt - \"ZU GROSS FUER DIESEN RECHNER\" heisst genau das.")
-punkt("Zweiter Hebel: Kontextgroesse verkleinern (Einstellungen und Status). "
+punkt("Zweiter Hebel: Antworttempo auf \"Schnell\" stellen.")
+punkt("Dritter Hebel: Kontextgroesse verkleinern (Einstellungen und Status). "
       "4096 statt 8192 spart Arbeitsspeicher.")
-punkt("Dritter Hebel: eine Grafikkarte nutzen. Damit wird es ein "
+punkt("Vierter Hebel: eine Grafikkarte nutzen. Damit wird es ein "
       "Vielfaches - siehe naechster Abschnitt.")
 
 doc.add_heading("Mit Grafikkarte geht deutlich mehr", level=3)
-absatz("Der mitgelieferte Modelldienst rechnet ausschliesslich auf dem "
-       "Prozessor. Das ist die Fassung, die ueberall laeuft, ohne Treiber "
-       "und ohne Voraussetzungen. Wenn in Ihrem Rechner eine geeignete "
-       "Grafikkarte steckt, koennen Sie stattdessen eine GPU-Fassung von "
-       "llama.cpp verwenden - dann rechnet die Grafikkarte, und die "
-       "Geschwindigkeit steigt erfahrungsgemaess um ein Vielfaches.")
-schritt("Eine GPU-Fassung von llama.cpp besorgen (das Projekt "
-        "ggml-org/llama.cpp bietet fertige Programmdateien fuer CUDA und "
-        "Vulkan an).")
-schritt("Den Inhalt in den Ordner runtime\\llama legen und die vorhandenen "
-        "Dateien ersetzen.")
-schritt("In \"Einstellungen und Status\" den Wert \"Grafikschichten\" von 0 "
-        "auf 99 setzen und speichern.")
-schritt("Registerkarte Sprachmodell, \"Modell ausprobieren\" - die gemessene "
-        "Geschwindigkeit zeigt, ob es gewirkt hat.")
-absatz("Mit der mitgelieferten Fassung bewirkt der Wert \"Grafikschichten\" "
-       "nichts; sie kann keine Grafikkarte ansprechen. Das ist keine "
-       "Einstellung, die man vergisst - es steht auch in der Oberflaeche "
-       "daneben.")
+absatz("Dem Paket liegen ZWEI Fassungen des Modelldienstes bei: eine, die "
+       "auf dem Prozessor rechnet und ueberall ohne Treiber laeuft, und "
+       "eine, die die Grafikkarte nutzt (Vulkan - das funktioniert mit "
+       "Karten von NVIDIA, AMD und Intel gleichermassen). Welche verwendet "
+       "wird, entscheidet die Anwendung beim Start selbst.")
+punkt("Wird eine Grafikkarte erkannt, nimmt sie die Grafikfassung. Sie "
+      "muessen dafuer nichts einstellen und nichts installieren.")
+punkt("Kommt diese nicht hoch - etwa weil ein Treiber fehlt -, faellt sie "
+      "still auf die Prozessorfassung zurueck. Lieber langsam als gar kein "
+      "Sprachmodell.")
+punkt("Ob es gewirkt hat, sehen Sie in der Registerkarte Sprachmodell unter "
+      "\"Modell ausprobieren\": die gemessene Geschwindigkeit ist mit "
+      "Grafikkarte um ein Vielfaches hoeher.")
+absatz("Wer nachhelfen will, setzt in \"Einstellungen und Status\" den Wert "
+       "\"Grafikschichten\" ausdruecklich auf 99. Ohne passende Fassung "
+       "bewirkt der Wert nichts - das steht auch in der Oberflaeche daneben.")
 
 doc.add_heading("Was schon fertig mitgeliefert wird", level=2)
 absatz("Das Programm, das ein Sprachmodell ausfuehrt, liegt bereits im "

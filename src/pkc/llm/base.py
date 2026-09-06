@@ -27,6 +27,10 @@ class LlmResponse:
     prompt_tokens: int = 0
     completion_tokens: int = 0
     elapsed: float = 0.0
+    #: Sekunden bis zum **ersten** Textstueck. Das ist die Zahl, die der
+    #: Benutzer als Wartezeit erlebt: danach laeuft die Antwort sichtbar
+    #: weiter. Ohne schrittweise Ausgabe bleibt sie 0.
+    erstes_token_s: float = 0.0
     truncated: bool = False
     meta: dict[str, Any] = field(default_factory=dict)
 

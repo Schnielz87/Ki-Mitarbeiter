@@ -69,6 +69,46 @@ oeffnet, hat keine Konsole offen und liest das als "geht nicht", nicht als
   stand dort ein Kasten mit drei Klicks und darunter weiter Konsolentext.
   Ein Test vergleicht die genannten Schaltflaechen mit denen im Fenster
 
+### Wartezeit: der zweite Angriff, diesmal an der Wurzel
+
+"Eine Antwort dauert immer noch viel zu lange." Zu Recht - der erste Anlauf
+hat nur das falsch gewaehlte Modell behoben. Also gemessen, woraus die
+Wartezeit tatsaechlich besteht. Ergebnis am echten Aufbau: **2712 Token
+Kontext** gingen bei jeder Frage ins Modell, und **1024 Token** waren als
+Antwort erlaubt. Beides ist eine Einstellung, keine Naturkonstante - und
+beides zusammen erklaert Minuten.
+
+* **Antworttempo** als ein Regler statt vier: Antwortlaenge, Kontextgroesse,
+  Zahl der Fundstellen und Verlaufstiefe abgestimmt in drei Stufen
+  (schnell / ausgewogen / ausfuehrlich). Vorgabe ist "ausgewogen" - 600
+  statt 1024 Ausgabetoken und 1600 statt 3200 Kontexttoken
+* **Der Modelldienst wird beim Start vorgeladen.** Das Laden mehrerer
+  Gigabyte stand bisher voll in der Wartezeit der ersten Frage. Jetzt
+  laeuft es im Hintergrund, waehrend der Benutzer sich zurechtfindet
+* **Die Grafikfassung liegt bei.** Das Paket enthaelt den Modelldienst
+  zweimal: als CPU-Fassung und als Vulkan-Fassung, die die Grafikkarte
+  nutzt (NVIDIA, AMD, Intel). Die Anwendung waehlt beim Start selbst und
+  faellt still auf die CPU zurueck, wenn die Grafikfassung nicht hochkommt
+* **Schnellere Schalter fuer den Dienst**: Flash Attention, ein halbierter
+  Kontextspeicher und alle Kerne fuer die Kontextverarbeitung. Kennt eine
+  Fassung von llama.cpp einen davon nicht, startet die Anwendung
+  automatisch ohne sie - lieber langsamer als gar nicht
+* **Zwei Zahlen statt einer**: die Anwendung misst jetzt getrennt die Zeit
+  bis zum ersten Wort (das ist die erlebte Wartezeit) und die
+  Schreibgeschwindigkeit danach
+* Neuer Befehl `einstellungen setzen`, und der Bauablauf misst damit die
+  Wartezeit je Tempostufe auf einem echten Rechner mit echtem Modell
+
+Zwei Fehler, die dabei auffielen:
+
+* **Das Antworttempo wirkte erst nach einem Neustart.** Kontextgroesse und
+  Fundstellenzahl werden beim Aufbau der Recherche festgelegt; wer
+  umstellte, bemerkte keine Aenderung und haette die Einstellung fuer
+  wirkungslos gehalten. Gefunden, weil ein Test denselben Weg ging wie die
+  Oberflaeche
+* Die gemessene Geschwindigkeit konnte absurde Werte annehmen, wenn die
+  eigene Wanduhr und die Zeitmessung des Anbieters auseinanderliefen
+
 ### Geschwindigkeit: 200 Sekunden je Antwort
 
 Aus dem Betrieb gemeldet: 0,3 Token je Sekunde, rund 200 Sekunden fuer eine

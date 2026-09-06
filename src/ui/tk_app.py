@@ -1076,8 +1076,19 @@ class MainWindow:
         # rechnet auf der CPU; wer eine GPU-Fassung von llama.cpp in
         # runtime\llama legt, kann hier Schichten auf die Grafikkarte
         # verlagern. 0 heisst: alles auf der CPU.
+        from pkc.llm import tempo as _tempo
+
         ttk.Label(left, text="Sprachmodell - Geschwindigkeit",
                   font=("Segoe UI", 10, "bold")).pack(anchor="w", pady=(PAD, 2))
+        # Der wirksamste Regler zuerst: er bestimmt Antwortlaenge,
+        # Kontextgroesse, Zahl der Fundstellen und Verlaufstiefe in einem
+        # abgestimmten Satz. Diese vier Werte gegeneinander von Hand
+        # einzustellen gelingt niemandem.
+        add_choice("Antworttempo", "llm.tempo", _tempo.namen())
+        ttk.Label(left, wraplength=430, justify="left", foreground="#555555",
+                  text=" · ".join(f"{n}: {_tempo.stufe(n)['beschreibung']}"
+                                  for n in _tempo.namen())
+                  ).pack(anchor="w", pady=(0, 4))
         add_choice("Grafikschichten (0 = nur CPU)", "llm.gpu_layers",
                    ["0", "10", "20", "35", "99"])
         add_choice("Rechenkerne (0 = automatisch)", "llm.threads",
@@ -1613,7 +1624,7 @@ class MainWindow:
         # zurueckfallen - die Einstellung waere dann wirkungslos, ohne dass
         # es jemandem auffiele.
         zahlen = {"retrieval.top_k", "llm.gpu_layers", "llm.threads",
-                  "llm.context_tokens"}
+                  "llm.context_tokens", "llm.max_output_tokens"}
         for key, variable in self.setting_vars.items():
             value = variable.get()
             if key in zahlen:
@@ -1622,7 +1633,10 @@ class MainWindow:
         vorher = {s: self.controller.config.get(s) for s in
                   ("llm.gpu_layers", "llm.threads", "llm.context_tokens")}
         path = self.controller.save_settings(changes)
-        self.controller.rag.top_k = int(self.controller.config.get("retrieval.top_k", 8))
+        # Antworttempo und Fundstellenzahl sofort uebernehmen: sie werden
+        # beim Aufbau der Recherche festgelegt und blieben sonst bis zum
+        # naechsten Programmstart wirkungslos.
+        self.controller.tempo_anwenden()
 
         # Die Werte des Modelldienstes werden beim Start des Dienstes
         # uebergeben. Ohne Neuaufbau blieben sie bis zum naechsten

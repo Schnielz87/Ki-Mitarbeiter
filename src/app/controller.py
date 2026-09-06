@@ -29,6 +29,7 @@ from pkc.knowledge.chunker import chunk_document
 from pkc.knowledge.extract import ExtractionError, extract
 from pkc.knowledge.store import KnowledgeStore
 from pkc.licensing import LicenseChecker
+from pkc.llm import tempo
 from pkc.llm.base import ChatMessage
 from pkc.llm.manager import LlmManager, discover_models
 from pkc.logging_setup import get_logger, setup_logging
@@ -216,10 +217,16 @@ class AppController:
 
         # Sprachmodell
         self.llm = LlmManager.from_config(self.config, self.paths, self.vault.get_quiet)
+        # Das Antworttempo bestimmt, wieviel Arbeit eine Antwort kosten darf.
+        # Gemessen an einem echten Aufbau: 2712 Token Kontext und 1024
+        # erlaubte Ausgabetoken sind der Grund, warum eine Antwort auf einem
+        # Buerorechner Minuten dauert - nicht das Modell allein.
+        tempowerte = tempo.stufe(self.config.get("llm.tempo", tempo.VORGABE))
         self.rag = RagEngine(
             self.profile, self.searcher, self.memory, self.llm,
-            ContextBuilder(),
-            top_k=int(self.config.get("retrieval.top_k", 8)),
+            ContextBuilder(max_context_tokens=tempowerte["kontext_tokens"],
+                           max_company_tokens=tempowerte["unternehmen_tokens"]),
+            top_k=int(self.config.get("retrieval.top_k", 0) or tempowerte["top_k"]),
             lexical_candidates=int(self.config.get("retrieval.lexical_candidates", 40)),
             vector_candidates=int(self.config.get("retrieval.vector_candidates", 40)),
         )
@@ -412,6 +419,11 @@ class AppController:
 
         self.audit.record("start", "anwendung", "", status="ok" if report.usable else "fehler",
                           betriebsart=report.mode.value, wurzel=str(self.paths.root))
+
+        # Zuletzt und im Hintergrund: das Modell laden, waehrend der Benutzer
+        # sich im Fenster zurechtfindet. Blockiert den Start nicht und
+        # verhindert, dass die erste Frage das Laden mit abwartet.
+        self.modell_vorladen()
         return report
 
     def start_network_monitor(self) -> None:
@@ -809,6 +821,58 @@ class AppController:
             "bytes": ergebnis.bytes_geladen,
         }
 
+    def modell_vorladen(self) -> bool:
+        """Faehrt den Modelldienst im Hintergrund hoch.
+
+        Der groesste Einzelposten der Wartezeit auf die **erste** Antwort
+        ist nicht das Rechnen, sondern das Laden des Modells: mehrere
+        Gigabyte von der Platte. Geschieht das erst bei der ersten Frage,
+        steht diese Zeit voll in ihrer Wartezeit.
+        """
+        anbieter = getattr(self.llm, "primary", None)
+        vorladen = getattr(anbieter, "vorladen", None)
+        if not callable(vorladen):
+            return False
+        if not self.config.get("llm.vorladen", True):
+            return False
+
+        import threading
+
+        faden = threading.Thread(target=vorladen, name="modell-vorladen", daemon=True)
+        faden.start()
+        self._vorladefaden = faden
+        return True
+
+    def tempo_anwenden(self) -> dict:
+        """Uebernimmt das eingestellte Antworttempo in die laufende Anwendung.
+
+        Kontextgroesse und Zahl der Fundstellen werden beim Aufbau der
+        Recherche festgelegt. Ohne diesen Schritt wirkte eine Umstellung
+        erst nach einem Neustart - der Benutzer haette also umgestellt,
+        keine Aenderung bemerkt und die Einstellung fuer wirkungslos
+        gehalten. Aufgefallen ist das erst, weil ein Test denselben Weg ging
+        wie die Oberflaeche.
+        """
+        werte = tempo.stufe(self.config.get("llm.tempo", tempo.VORGABE))
+        self.rag.builder = ContextBuilder(
+            max_context_tokens=werte["kontext_tokens"],
+            max_company_tokens=werte["unternehmen_tokens"])
+        self.rag.top_k = int(self.config.get("retrieval.top_k", 0) or werte["top_k"])
+        return werte
+
+    def antwortlaenge(self) -> int:
+        """Wieviele Token eine Antwort hoechstens haben darf.
+
+        Ein ausdruecklich gesetzter Wert hat Vorrang; sonst kommt er aus dem
+        Antworttempo. 1024 Token bei vier Token je Sekunde sind vier
+        Minuten - das war die Vorgabe und der groesste Einzelposten.
+        """
+        ausdruecklich = int(self.config.get("llm.max_output_tokens", 0) or 0)
+        if ausdruecklich > 0:
+            return ausdruecklich
+        return int(tempo.stufe(self.config.get("llm.tempo", tempo.VORGABE))
+                   ["max_output_tokens"])
+
     def einrichtungsweg(self, text: str) -> None:
         """Sagt der Anwendung, wie der Benutzer das Modell einrichten kann.
 
@@ -866,20 +930,39 @@ class AppController:
                 [ChatMessage("system", "Antworte knapp auf Deutsch."),
                  ChatMessage("user", frage)],
                 max_tokens=120,
+                # Schrittweise, damit die Zeit bis zum **ersten** Wort
+                # gemessen wird. Das ist die Wartezeit, die der Benutzer
+                # erlebt - danach laeuft die Antwort sichtbar weiter.
+                on_token=lambda _s: None,
             )
         except Exception as fehler:
             return {"ok": False, "grund": str(fehler), "anbieter": self.llm.primary.name}
         dauer = _time.monotonic() - begonnen
+
+        # Der Strom liefert keine Tokenzahl mit; ueber die Zeichen laesst
+        # sich die Groessenordnung aber verlaesslich schaetzen (im Deutschen
+        # rund vier Zeichen je Token).
+        token = antwort.completion_tokens or max(len(antwort.text) // 4, 1)
+        erstes = antwort.erstes_token_s
+        # Gemessen wird die Zeit des Anbieters, nicht die eigene Wanduhr:
+        # sie beginnt mit dem Absenden und endet mit dem letzten Token. Ohne
+        # diesen Bezug kann die Schreibzeit rechnerisch negativ werden - und
+        # die Geschwindigkeit dann absurde Werte annehmen.
+        gesamt = antwort.elapsed or dauer
+        schreibzeit = gesamt - erstes
+        if schreibzeit <= 0.01:
+            schreibzeit = 0.0        # zu kurz zum Messen - lieber nichts sagen
 
         return {
             "ok": bool(antwort.is_generated and antwort.text.strip()),
             "anbieter": antwort.provider,
             "modell": antwort.model,
             "text": antwort.text.strip(),
-            "dauer_s": round(dauer, 1),
-            "token": antwort.completion_tokens,
-            "token_je_sekunde": (round(antwort.completion_tokens / dauer, 1)
-                                 if antwort.completion_tokens and dauer > 0 else 0.0),
+            "dauer_s": round(gesamt, 1),
+            # Die eigentliche Wartezeit: bis hierhin sieht der Benutzer nichts.
+            "erstes_wort_s": round(erstes, 1),
+            "token": token,
+            "token_je_sekunde": (round(token / schreibzeit, 1) if schreibzeit else 0.0),
             "grund": "" if antwort.is_generated else "Es hat kein Sprachmodell geantwortet.",
         }
 
@@ -1000,11 +1083,16 @@ class AppController:
             prefer_online = mode is Mode.ONLINE
 
         self._store_message(uid, "user", question, mode.value)
-        history = self._history(uid)[:-1] if use_history else []
+        # Der Verlauf wandert bei jeder Frage erneut durch das Modell. Sechs
+        # Zuege sind schnell einige tausend Token - also Wartezeit, bevor
+        # das erste Wort erscheint.
+        werte = tempo.stufe(self.config.get("llm.tempo", tempo.VORGABE))
+        history = (self._history(uid, turns=werte["verlauf"] + 1)[:-1]
+                   if use_history else [])
 
         result = self.rag.answer(
             question, history=history, mode=mode.value, knowledge_date=knowledge_date,
-            as_of=as_of, max_tokens=int(self.config.get("llm.max_output_tokens", 1024)),
+            as_of=as_of, max_tokens=self.antwortlaenge(),
             temperature=float(self.config.get("llm.temperature", 0.2)),
             prefer_online=prefer_online and lage.online_moeglich,
             on_token=on_token,
