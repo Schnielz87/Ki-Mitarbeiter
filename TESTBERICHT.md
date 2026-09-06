@@ -4,7 +4,7 @@ Stand: 06.09.2026 · Branch `claude/portable-ki-buchhalter-xr1qlj`
 
 ## Zusammenfassung
 
-**425 automatische Tests bestanden, 1 uebersprungen** (unter Windows einer
+**431 automatische Tests bestanden, 1 uebersprungen** (unter Windows einer
 mehr uebersprungen). Ausfuehrungszeit rund 25 Sekunden. Reproduzierbar mit:
 
 ```
@@ -17,12 +17,12 @@ python -m pytest tests -q
 | `test_controller.py` | 10 bestanden | Anwendungssteuerung von Ende zu Ende |
 | `test_portability.py` | 17 bestanden, 1 uebersprungen |
 | `test_checkpoints.py` | 5 bestanden | Checkpoints nach Masterprompt 44: beide Orte, Wiedereinstiegszeiger, Pruefsummen | Portabilitaet und Robustheit |
-| `test_gui_logic.py` | 26 bestanden | Oberflaechenlogik gegen ein Tkinter-Doppel |
+| `test_gui_logic.py` | 27 bestanden | Oberflaechenlogik gegen ein Tkinter-Doppel |
 | `test_llm_providers.py` | 14 bestanden | Sprachmodellanbindung gegen einen echten lokalen Modelldienst |
 | `test_sicherheit_freigaben.py` | 17 bestanden | Tresor, Freigaben, Protokoll, Connectoren, Pfadgrenzen |
 | `test_fachliche_faelle.py` | 48 bestanden | 22 fachliche Sachverhalte nach Masterprompt 47 |
 | `test_abnahme_kette.py` | 3 bestanden | Die vollstaendige Nutzungskette aus Masterprompt 49 |
-| `test_cli.py` | 16 bestanden | Kommandozeile: alle allgemeinen Schalter an allen Unterbefehlen |
+| `test_cli.py` | 20 bestanden | Kommandozeile: alle allgemeinen Schalter an allen Unterbefehlen |
 | `test_start.py` | 14 bestanden | Startfehler bleiben nicht stumm, ohne den Lauf anzuhalten |
 | `test_lizenzierung.py` | 22 bestanden | Lizenzierung und Kopierschutz, alle sieben Faelle aus § 96 |
 | `test_kundentrennung.py` | 15 bestanden | Kundentrennung, Datenexport, Loeschung, Sicherungsziel |
@@ -36,7 +36,7 @@ python -m pytest tests -q
 | `test_antwortdarstellung.py` | 19 bestanden | Antwort und Rohtreffer getrennt, keine technischen Angaben |
 | `test_antwortqualitaet.py` | 14 bestanden | Die zehn Pruefaufgaben aus E6.25, Regressionsschutz, Fachfrage ohne Firmendaten |
 | `test_artefakte.py` | 20 bestanden | Acht Ausgabeformate, gegengeprueft mit fremden Lesebibliotheken |
-| `test_plugins.py` | 22 bestanden | Paket, Signatur, Berechtigungen, Kundentrennung |
+| `test_plugins.py` | 23 bestanden | Paket, Signatur, Berechtigungen, Kundentrennung |
 | `test_anleitung.py` | 4 bestanden | Die Anleitung nennt nur Befehle, die es wirklich gibt |
 
 Uebersprungen werden Tests, die das jeweilige Betriebssystem nicht

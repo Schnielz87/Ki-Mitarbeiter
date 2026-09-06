@@ -16,7 +16,7 @@ waehlbarer Betriebsart, persistentes Unternehmensgedaechtnis, lokale
 Fachwissensbasis mit Quellenbelegen, Wissensupdate mit Ruecknahme,
 Geheimnistresor, Freigabepflicht, Connector-Rahmen, Dateiausgabe in acht
 Formaten, Plugin-System, grafische Oberflaeche und Kommandozeile -
-abgesichert durch **425 automatische Tests**.
+abgesichert durch **431 automatische Tests**.
 
 **Noch nicht abgenommen** sind die Schritte, die zwingend Windows, eine
 echte grafische Oberflaeche, ein echtes Sprachmodell oder Zugriff auf die
@@ -86,7 +86,7 @@ Er lautet: **fertig zur Abnahme**. Der Weg dorthin steht in
 
 ## 4. Was tatsaechlich geprueft ist
 
-**425 Tests bestanden, 1 uebersprungen** (`python -m pytest tests -q`).
+**431 Tests bestanden, 1 uebersprungen** (`python -m pytest tests -q`).
 Auf einem echten Windows-Rechner sind alle 13 Schritte des Bauablaufs
 bestanden - zuletzt
 https://github.com/Schnielz87/Ki-Mitarbeiter/actions/runs/33973618581
