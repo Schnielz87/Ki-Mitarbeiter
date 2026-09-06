@@ -521,8 +521,9 @@ def cmd_modell(args) -> int:
             # Lauf enthaelt das Laden des Modells, der zweite ist der Alltag.
             print("Messe an einer echten Fachfrage (zwei Durchgaenge) ...\n")
             ergebnis = controller.modell_messen(args.frage or "")
-            print(f"Frage : {ergebnis['frage']}")
-            print(f"Tempo : {ergebnis['tempo']}")
+            for nummer, gestellt in enumerate(ergebnis["fragen"], start=1):
+                print(f"Frage {nummer}: {gestellt}")
+            print(f"Tempo  : {ergebnis['tempo']}")
             if ergebnis.get("bereit_nach_s"):
                 print(f"Warten auf die Bereitschaft der Anwendung: "
                       f"{ergebnis['bereit_nach_s']} s "
@@ -534,7 +535,7 @@ def cmd_modell(args) -> int:
                     print(f"{lauf['nummer']:<11} {'-':>9} {'-':>9}   {lauf.get('grund', '')}")
                     continue
                 bemerkung = ("erste Frage, Anwendung bereit" if lauf["nummer"] == 1
-                             else "im laufenden Betrieb")
+                             else "andere Frage, im laufenden Betrieb")
                 print(f"{lauf['nummer']:<11} {lauf['erstes_wort_s']:>8.1f}s "
                       f"{lauf['gesamt_s']:>8.1f}s   {bemerkung}")
             if not ergebnis["ok"]:

@@ -920,22 +920,31 @@ class AppController:
             log.info("Vorwaermen uebersprungen: %s", fehler)
             return False
 
+    #: Zwei **verschiedene** Fachfragen fuer die Messung. Zweimal dieselbe zu
+    #: stellen waere die bequeme, aber unehrliche Messung: der Modelldienst
+    #: haette dann den gesamten Prompt gemerkt und antwortete in einer
+    #: Zehntelsekunde. So arbeitet niemand - im Betrieb ist jede Frage neu,
+    #: und dann ist nur der unveraenderliche Kopf gemerkt, nicht die
+    #: Fundstellen. Genau dieser Fall wird hier gemessen.
+    MESSFRAGEN = (
+        "Welche Pflichtangaben braucht eine Rechnung nach dem Umsatzsteuergesetz?",
+        "Wann darf ich eine Anzahlungsrechnung als Vorsteuer abziehen?",
+    )
+
     def modell_messen(self, frage: str = "", durchgaenge: int = 2) -> dict:
-        """Misst die Wartezeit an einer echten Fachfrage - mehrfach.
+        """Misst die Wartezeit an echten Fachfragen - mit verschiedenen Fragen.
 
-        Zwei Durchgaenge, weil sie verschiedene Dinge messen. Der erste
-        enthaelt das Laden des Modells und die vollstaendige Verarbeitung des
-        Prompts. Beim zweiten steht der Dienst schon, und der unveraenderte
-        Kopf des Prompts ist ihm bekannt - er muss nur noch verarbeiten, was
-        sich geaendert hat.
+        Zwei Durchgaenge, die verschiedene Dinge messen:
 
-        Der Unterschied zwischen beiden ist die Zahl, die zaehlt: so schnell
-        ist die Anwendung im laufenden Betrieb.
+        * Der erste ist die **erste Frage** nach dem Start. Die Anwendung ist
+          bereit - Modell geladen, Kopf des Prompts vorgewaermt.
+        * Der zweite ist eine **andere** Frage im laufenden Betrieb. Nur so
+          misst er, was der Alltag ist. Zweimal dieselbe Frage zu stellen
+          waere geschoenzt: der Dienst haette den ganzen Prompt gemerkt.
         """
         import time as _time
 
-        frage = frage or ("Welche Pflichtangaben braucht eine Rechnung nach "
-                          "dem Umsatzsteuergesetz?")
+        fragen = [frage] if frage else list(self.MESSFRAGEN)
 
         # Erst abwarten, bis die Anwendung bereit ist. Sonst misst der erste
         # Durchgang das Laden des Modells mit - und das erlebt so niemand:
@@ -945,6 +954,9 @@ class AppController:
 
         laeufe: list[dict] = []
         for nummer in range(1, max(int(durchgaenge), 1) + 1):
+            # Reihum durch die Fragen - jede Frage nur einmal, solange es
+            # verschiedene gibt.
+            frage = fragen[(nummer - 1) % len(fragen)]
             erstes: list[float] = []
             begonnen = _time.monotonic()
 
@@ -962,6 +974,7 @@ class AppController:
             vom_modell = bool(antwort.model_answered)
             laeufe.append({
                 "nummer": nummer,
+                "frage": frage,
                 "ok": vom_modell,
                 "erstes_wort_s": round(erstes[0] if erstes else 0.0, 1),
                 "gesamt_s": round(gesamt, 1),
@@ -973,7 +986,7 @@ class AppController:
         gute = [l for l in laeufe if l.get("ok")]
         return {
             "ok": bool(gute),
-            "frage": frage,
+            "fragen": fragen,
             "tempo": str(self.config.get("llm.tempo", tempo.VORGABE)),
             "bereit_nach_s": bereit_nach,
             "laeufe": laeufe,

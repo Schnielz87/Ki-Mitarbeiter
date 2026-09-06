@@ -4,7 +4,7 @@ Stand: 06.09.2026 · Branch `claude/portable-ki-buchhalter-xr1qlj`
 
 ## Zusammenfassung
 
-**594 automatische Tests bestanden, 1 uebersprungen** (unter Windows einer
+**596 automatische Tests bestanden, 1 uebersprungen** (unter Windows einer
 mehr uebersprungen). Ausfuehrungszeit rund 25 Sekunden. Reproduzierbar mit:
 
 ```
@@ -288,6 +288,7 @@ aufgefuehrt, weil ein Testbericht ohne Fundstellen wenig wert ist.
 | „Lokales Modell: OK" trotz fehlendem Modell | Der Notbetrieb meldete sich als verfuegbar | Systempruefung meldet HINWEIS und beschreibt den Notbetrieb |
 | HTML-Titel wurde falsch erkannt | `<title>` liegt in `<head>`, das uebersprungen wurde | Titel wird vor der Bereichspruefung ausgewertet |
 | Deutsche Abkuerzungen zerteilten Saetze | „GmbH & Co. KG" wurde als Satzende gelesen | Abkuerzungsliste in der Satztrennung |
+| Die eigene Wartezeitmessung war geschoent | Der zweite Durchgang stellte dieselbe Frage wie der erste. Der Modelldienst hatte den gesamten Prompt gemerkt und antwortete in 0,1 Sekunden - eine Zahl, die im Betrieb niemand erlebt, denn dort ist jede Frage neu. Sie stand kurz davor, als Alltagszahl berichtet zu werden | Die Messung stellt jetzt zwei **verschiedene** Fachfragen. Damit ist nur der unveraenderliche Kopf gemerkt - genau wie im Betrieb. Ein Test faellt, sobald wieder zweimal dieselbe Frage gestellt wird |
 | Beenden waehrend des Vorladens konnte einen Dienst zuruecklassen | Der Vorladefaden faehrt den Modelldienst hoch. Wurde die Anwendung in diesem Moment geschlossen, kam er erst danach fertig hoch - und niemand schaltete ihn je wieder ab. Genau der verwaiste Vorgang, den Abschnitt 5 ausschliesst | Der Faden prueft vor jedem Schritt, ob die Anwendung noch laeuft; das Beenden wartet auf ihn. Aufgefallen, weil ein bestehender Test danach unstet wurde - der Hinweis war echt, nicht der Test schuld. Gegenprobe gemacht |
 | Das Antwortschema wurde auch an Begruessungen geschickt | Rund 330 Token Fachschema gingen bei jeder Nachricht ins Modell - und wurden im selben Prompt wieder ausser Kraft gesetzt ("verwende kein Fachschema"). Das Modell musste sie verarbeiten, um sie zu verwerfen | Das Schema ist ausgelagert und geht nur an fachliche Fragen. Ein Test vergleicht den Prompt einer Begruessung mit dem einer Fachfrage; ein zweiter prueft, dass im ausgelagerten Schema kein Abschnitt fehlt. Gegenprobe gemacht |
 | Der Systemtext war doppelt so lang wie noetig | Rund 1030 Token, die bei JEDER Frage vollstaendig durch das Modell muessen | Auf gut 500 Token gekuerzt, ohne eine einzige Regel zu streichen. Ein Test prueft alle acht unumstoesslichen Regeln einzeln und schlaegt an, wenn der Text wieder waechst. Gegenprobe gemacht |

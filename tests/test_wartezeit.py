@@ -845,3 +845,59 @@ def test_abwarten_ohne_vorladen_kostet_keine_zeit(portable_root):
         assert controller.modell_abwarten() == 0.0
     finally:
         controller.shutdown()
+
+
+def test_messung_stellt_zwei_verschiedene_fragen(portable_root):
+    """Zweimal dieselbe Frage waere die geschoente Messung.
+
+    Der Modelldienst merkt sich den verarbeiteten Prompt. Bei einer
+    Wiederholung ist er vollstaendig gemerkt und die Antwort kommt in einer
+    Zehntelsekunde - so arbeitet aber niemand. Im Betrieb ist jede Frage
+    neu, und dann ist nur der unveraenderliche Kopf gemerkt.
+
+    Aufgefallen im Bauablauf: der zweite Durchgang meldete 0,1 Sekunden,
+    der erste 39. Beide stellten dieselbe Frage. Die 0,1 waeren als
+    Alltagszahl eine Behauptung gewesen, die im Betrieb niemand erlebt.
+    """
+    controller = make_controller(portable_root)
+    gestellt: list[str] = []
+
+    class Merkend:
+        name = "m"
+        model = "x"
+
+        def available(self):
+            return True, ""
+
+        def generate(self, messages, max_tokens=1024, temperature=0.2, stop=None,
+                     on_token=None):
+            gestellt.append(messages[-1].content)
+            if on_token:
+                on_token("**ERGEBNIS**\nBelegt in [1].")
+            return LlmResponse(text="**ERGEBNIS**\nBelegt in [1].", provider="m",
+                               model="x", completion_tokens=8)
+
+    controller.llm = LlmManager(Merkend())
+    controller.rag.llm = controller.llm
+    controller.bootstrap(build_embeddings=True)
+    try:
+        ergebnis = controller.modell_messen()
+    finally:
+        controller.shutdown()
+
+    fachfragen = [f for f in gestellt if f in controller.MESSFRAGEN]
+    assert len(set(fachfragen)) == 2, (
+        f"die Messung stellte {len(set(fachfragen))} verschiedene Fragen - "
+        "bei einer waere das Ergebnis geschoent")
+    assert ergebnis["laeufe"][0]["frage"] != ergebnis["laeufe"][1]["frage"]
+
+
+def test_eigene_frage_wird_uebernommen(portable_root):
+    """Wer selbst eine Frage vorgibt, bekommt sie - auch zweimal."""
+    controller = make_controller(portable_root)
+    controller.bootstrap(build_embeddings=False)
+    try:
+        ergebnis = controller.modell_messen("Wie buche ich Skonto?")
+        assert ergebnis["fragen"] == ["Wie buche ich Skonto?"]
+    finally:
+        controller.shutdown()

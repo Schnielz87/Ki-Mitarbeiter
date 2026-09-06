@@ -69,6 +69,17 @@ oeffnet, hat keine Konsole offen und liest das als "geht nicht", nicht als
   stand dort ein Kasten mit drei Klicks und darunter weiter Konsolentext.
   Ein Test vergleicht die genannten Schaltflaechen mit denen im Fenster
 
+### Die eigene Messung war geschoent - korrigiert
+
+Der zweite Durchgang stellte dieselbe Frage wie der erste. Der Modelldienst
+hatte damit den **gesamten** Prompt gemerkt und antwortete in 0,1 Sekunden.
+Diese Zahl erlebt im Betrieb niemand: dort ist jede Frage neu, und dann ist
+nur der unveraenderliche Kopf gemerkt, nicht die Fundstellen.
+
+Sie stand kurz davor, als Alltagszahl berichtet zu werden. Die Messung
+stellt jetzt zwei verschiedene Fachfragen; ein Test faellt, sobald wieder
+zweimal dieselbe gestellt wird.
+
 ### Die Messung misst jetzt, was ein Mensch erlebt
 
 `modell messen` wartet vor dem ersten Durchgang ab, bis die Anwendung
