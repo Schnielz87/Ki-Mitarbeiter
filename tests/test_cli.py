@@ -150,3 +150,56 @@ def test_quellen_pruefen_ruft_offline_nichts_ab(portable_root, capsys, monkeypat
     code = main(["--root", str(portable_root.root), "--offline", "quellen", "pruefen"])
     assert code == 2
     assert "OFFLINE" in capsys.readouterr().out
+
+
+# ======================================================================
+# Die Unterbefehle mit einer Kennung
+#
+# Anlass: eine Umbenennung im Plugin-Befehl hat versehentlich auch den
+# Kundenbefehl getroffen - `kunde anlegen` griff danach auf ein Feld zu,
+# das es dort gar nicht gibt. Alle Tests blieben gruen, weil kein Test
+# diesen Weg lief. Der Fehler faellt erst auf, wenn man den Befehl
+# tatsaechlich ausfuehrt. Also wird er jetzt ausgefuehrt.
+# ======================================================================
+
+def test_kunde_anlegen_liste_und_loeschen(portable_root, capsys):
+    from ui.cli import main
+
+    wurzel = str(portable_root.root)
+    assert main(["--root", wurzel, "--offline", "kunde", "anlegen", "musterfirma",
+                 "--name", "Muster GmbH"]) == 0
+    assert "musterfirma" in capsys.readouterr().out
+
+    assert main(["--root", wurzel, "--offline", "kunde", "liste"]) == 0
+    assert "musterfirma" in capsys.readouterr().out
+
+    # Der gerade geoeffnete Bereich laesst sich bewusst nicht loeschen -
+    # deshalb hier ohne --kunde-bereich.
+    assert main(["--root", wurzel, "--offline", "kunde", "loeschen", "musterfirma",
+                 "--bestaetigen", "musterfirma"]) == 0
+    ausgabe = capsys.readouterr().out
+    assert "geloescht" in ausgabe.lower()
+
+
+def test_plugin_liste_laeuft_ohne_installiertes_plugin(portable_root, capsys):
+    from ui.cli import main
+
+    assert main(["--root", str(portable_root.root), "--offline", "plugin", "liste"]) == 0
+    assert "kein Plugin installiert" in capsys.readouterr().out
+
+
+def test_datei_formate_nennt_die_acht_formate(portable_root, capsys):
+    from ui.cli import main
+
+    assert main(["--root", str(portable_root.root), "--offline", "datei", "formate"]) == 0
+    ausgabe = capsys.readouterr().out
+    for format in ("xlsx", "docx", "pptx", "pdf", "csv", "txt", "md", "json"):
+        assert format in ausgabe
+
+
+def test_datei_ohne_antwort_meldet_das_verstaendlich(portable_root, capsys):
+    from ui.cli import main
+
+    code = main(["--root", str(portable_root.root), "--offline", "datei", "antwort"])
+    assert code == 1
+    assert "noch keine Antwort" in capsys.readouterr().err

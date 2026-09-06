@@ -589,7 +589,7 @@ def cmd_kunde(args) -> int:
                       f"{eintrag['verzeichnis']}")
             return 0
         if args.aktion == "anlegen":
-            ergebnis = controller.create_customer(args.paket, args.name)
+            ergebnis = controller.create_customer(args.kennung, args.name)
             print(f"Kundenbereich angelegt: {ergebnis['kennung']}")
             print(f"  {ergebnis['verzeichnis']}")
             print("\nMit --kunde-bereich " + ergebnis["kennung"] + " arbeiten.")
@@ -602,7 +602,7 @@ def cmd_kunde(args) -> int:
             return 0
         if args.aktion == "loeschen":
             ergebnis = controller.delete_customer(
-                args.paket, confirm=args.bestaetigen,
+                args.kennung, confirm=args.bestaetigen,
                 export_first=not args.ohne_export,
             )
             print(f"Kundenbereich geloescht: {ergebnis['kennung']} "
