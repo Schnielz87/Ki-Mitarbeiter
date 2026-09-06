@@ -103,7 +103,7 @@ jobs:
           $server = Get-ChildItem "$env:RUNNER_TEMP\llama" -Recurse -Filter "llama-server.exe" |
                     Select-Object -First 1
           if (-not $server) { throw "llama-server.exe fehlt im heruntergeladenen Paket." }
-          Copy-Item $server.Directory.FullName\* -Destination "runtime\llama" -Recurse -Force
+          Copy-Item "$($server.Directory.FullName)\*" -Destination "runtime\llama" -Recurse -Force
           "llama.cpp $($release.tag_name), MIT-Lizenz, bezogen am $(Get-Date -Format 'yyyy-MM-dd')" |
             Set-Content "runtime\llama\HERKUNFT.txt"
           Get-ChildItem "runtime\llama" | Select-Object Name, Length |
