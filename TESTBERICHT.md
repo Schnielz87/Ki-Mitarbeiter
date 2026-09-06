@@ -311,6 +311,28 @@ aufgefuehrt, weil ein Testbericht ohne Fundstellen wenig wert ist.
 
 ---
 
+## Wartezeit - gemessen, nicht behauptet
+
+Auf dem Windows-Baurechner mit `modell messen` (Probemodell 0,5B, nur CPU,
+zwei geteilte Kerne, zwei **verschiedene** Fachfragen), Ablauf 34064400295:
+
+| Stufe | erste Frage | im laufenden Betrieb |
+|---|---|---|
+| schnell | 25,0 s | 26,0 s |
+| ausgewogen | 42,4 s | 44,8 s |
+| ausfuehrlich | 43,1 s | 45,3 s |
+
+Der Dienst meldete dabei `cpu (rechnet auf: Prozessor, Zusatzschalter
+aktiv)` - die Beschleunigungsschalter greifen also.
+
+Diese Zahlen sind die **Untergrenze**, nicht der Normalfall: zwei geteilte
+Kerne, keine Grafikkarte. Auf einem Buerorechner mit mehr Kernen und der
+mitgelieferten Vulkan-Fassung ist mehr zu erwarten - **belegt ist das
+nicht**, der Baurechner hat keine Grafikkarte. Die Messung auf einem echten
+Buerorechner steht aus (`WEITERARBEIT.md`, Abschnitt 3a).
+
+---
+
 ## Was **nicht** getestet ist
 
 Ehrlich und vollstaendig:

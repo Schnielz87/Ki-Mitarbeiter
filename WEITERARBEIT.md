@@ -86,6 +86,38 @@ eigenen Vorgang ohne Zugriff auf Datenbank, Tresor und Objekte der
 Anwendung. Offen bleibt die Beschraenkung durch das Betriebssystem - ein
 eigenes Benutzerkonto oder ein Job-Objekt.
 
+### 3a. Wartezeit weiter senken
+
+Gemessen auf dem Windows-Baurechner (zwei schwache Kerne, Probemodell 0,5B,
+nur CPU, zwei **verschiedene** Fachfragen), Ablauf 34064400295:
+
+| Stufe | bis zum ersten Wort |
+|---|---|
+| schnell | 25 bis 26 s |
+| ausgewogen | 42 bis 45 s |
+| ausfuehrlich | 43 bis 45 s |
+
+Das ist die **Untergrenze**, nicht der Normalfall: der Baurechner hat zwei
+geteilte Kerne und keine Grafikkarte. Was bereits getan ist, steht im
+Aenderungsverlauf unter "Wartezeit".
+
+**Hier ansetzen - in dieser Reihenfolge:**
+
+1. **Auf einem Buerorechner nachmessen.** `modell messen` nennt Wartezeit,
+   Tempostufe und die laufende Fassung des Dienstes. Erst diese Zahl sagt,
+   wo es sich noch lohnt.
+2. **Pruefen, ob der vorgewaermte Kopf wirklich wiederverwendet wird.**
+   Rechnerisch passt beides: 900 Token mit gemerktem Kopf bei 35 Token je
+   Sekunde, oder 1960 Token ohne bei 75. Ein Beleg fehlt. Das Protokoll des
+   Modelldienstes (`logs/llama-server.log`) nennt "prompt eval" mit
+   Tokenzahl - dort steht die Antwort.
+3. **Den Kontext weiter kuerzen**, falls Punkt 2 zeigt, dass er der Posten
+   ist: `schnell` schickt 900 Token Fundstellen. Weniger heisst weniger
+   Beleg - das ist eine fachliche Abwaegung, keine reine Technikfrage.
+4. **Grafikkarte.** Die Vulkan-Fassung liegt bei und wird automatisch
+   gewaehlt. Auf einem Rechner mit Karte ist das der groesste Hebel; belegt
+   ist es noch nicht, weil der Baurechner keine hat.
+
 ### 4. Quellenregister validieren
 
 Der erste Online-Lauf hat stattgefunden, und er hat Luecken gezeigt. Der
