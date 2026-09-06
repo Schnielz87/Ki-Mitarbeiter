@@ -1,6 +1,6 @@
 # Lizenzregister
 
-Stand: 2026-09-05 · erzeugt aus der tatsaechlich vorhandenen Installation
+Stand: 2026-09-06 · erzeugt aus der tatsaechlich vorhandenen Installation
 
 Masterprompt 63 verlangt die Unterscheidung zwischen **Nutzung im eigenen
 Projekt** und **Weitergabe an Kunden**. Eine Komponente darf nicht deshalb
@@ -19,9 +19,9 @@ in ein kommerzielles Produkt, weil sie kostenlos herunterladbar ist.
 | Tcl/Tk (Tkinter) | nicht verfuegbar | Tcl Core Team | Tcl/Tk License (BSD-artig) | ja | ja | ja |
 | cryptography | 41.0.7 | PyCA | Apache-2.0 ODER BSD-3-Clause | ja | ja | optional |
 | pypdf | 6.17.0 | pypdf-Projekt | BSD-3-Clause | ja | ja | optional |
-| openpyxl | nicht installiert | openpyxl-Projekt | MIT | ja | ja | optional |
+| openpyxl | 3.1.5 | openpyxl-Projekt | MIT | ja | ja | optional |
 | PyInstaller | nicht installiert | PyInstaller Development Team | GPL-2.0-or-later MIT Bootloader-Ausnahme | ja | mit Auflagen | optional |
-| llama.cpp / llama-cpp-python | nicht installiert | Georgi Gerganov und Mitwirkende | MIT | ja | ja | optional |
+| llama.cpp (llama-server) | nicht ermittelt | Georgi Gerganov und Mitwirkende | MIT | ja | ja | ja |
 | Qwen2.5-Instruct (GGUF) | nicht ermittelt | Alibaba Cloud / Qwen-Team | Apache-2.0 | ja | zu pruefen | optional |
 | Mistral-Nemo-Instruct (GGUF) | nicht ermittelt | Mistral AI / NVIDIA | Apache-2.0 | ja | zu pruefen | optional |
 | Gesetze im Internet | nicht ermittelt | Bundesministerium der Justiz / juris | Amtliches Werk, § 5 UrhG (gemeinfrei) | ja | mit Auflagen | optional |
@@ -93,14 +93,14 @@ Optional. Alternative ohne dieses Paket: CSV-Export.
 
 WICHTIG: Die Bootloader-Ausnahme erlaubt die Weitergabe der erzeugten Programme unter eigener Lizenz. Die Ausnahme gilt nur, solange der Bootloader unveraendert bleibt. Wird er geaendert, greift die GPL. Vor dem Vertrieb pruefen.
 
-### llama.cpp / llama-cpp-python
+### llama.cpp (llama-server)
 
 * Zweck: Ausfuehrung des lokalen Sprachmodells
 * Art: laufzeit
 * Quelle: https://github.com/ggml-org/llama.cpp
 * Geprueft am: 2026-09-05
 
-Optional. Wird mitgeliefert, gehoert der MIT-Hinweis ins Produkt.
+WIRD MITGELIEFERT: die Windows-Fassung enthaelt die fertige Programmdatei unter runtime/llama. Damit ist der MIT-Hinweis beizulegen; er liegt als runtime/llama/HERKUNFT.txt bei und nennt die verwendete Fassung. Fuer llama-cpp-python gibt es keine fertigen Pakete - es wird nicht verwendet.
 
 ### Qwen2.5-Instruct (GGUF)
 

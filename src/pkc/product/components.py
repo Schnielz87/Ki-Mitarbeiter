@@ -108,12 +108,16 @@ COMPONENTS: list[Component] = [
               "greift die GPL. Vor dem Vertrieb pruefen.",
     ),
     Component(
-        name="llama.cpp / llama-cpp-python", kind="laufzeit",
+        name="llama.cpp (llama-server)", kind="laufzeit",
         purpose="Ausfuehrung des lokalen Sprachmodells",
         licence="MIT", vendor="Georgi Gerganov und Mitwirkende",
-        commercial_use="ja", redistribution="ja", required=False,
+        commercial_use="ja", redistribution="ja", required=True,
         source="https://github.com/ggml-org/llama.cpp",
-        notes="Optional. Wird mitgeliefert, gehoert der MIT-Hinweis ins Produkt.",
+        notes="WIRD MITGELIEFERT: die Windows-Fassung enthaelt die fertige "
+              "Programmdatei unter runtime/llama. Damit ist der MIT-Hinweis "
+              "beizulegen; er liegt als runtime/llama/HERKUNFT.txt bei und "
+              "nennt die verwendete Fassung. Fuer llama-cpp-python gibt es "
+              "keine fertigen Pakete - es wird nicht verwendet.",
     ),
     Component(
         name="Qwen2.5-Instruct (GGUF)", kind="modell",
@@ -172,7 +176,6 @@ _PACKAGES = {
     "pypdf": "pypdf",
     "openpyxl": "openpyxl",
     "PyInstaller": "PyInstaller",
-    "llama.cpp / llama-cpp-python": "llama_cpp",
 }
 
 

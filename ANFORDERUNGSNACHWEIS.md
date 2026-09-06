@@ -44,7 +44,7 @@ Stand siehe `PROJEKTSTATUS.md`. Statusbegriffe nach Masterprompt 52:
 | 29 | Lokale Wissensdatenbank | GETESTET | `resources/`, `knowledge.db` | Systempruefung |
 | 30 | RAG mit Quellenvorrang | GETESTET | `pkc.rag` | `test_fachliche_faelle.py` |
 | 31 | Update-System | GETESTET | `pkc.updater` | 9 Tests inkl. Ruecknahme |
-| 32 | Lokales Sprachmodell | IMPLEMENTIERT | `pkc.llm` | **kein echtes Modell ausgefuehrt** |
+| 32 | Lokales Sprachmodell | GETESTET | `pkc.llm`, mitgelieferter llama.cpp-Dienst | `test_modelldienst.py`; echtes Modell im Windows-Ablauf |
 | 33 | Optionales Online-Modell | GETESTET | `LlmManager` | `test_llm_providers.py` |
 | 34 | Hardware-Erkennung | GETESTET | `pkc.hardware` | `tools/modell_einrichten.py` |
 | 35 | Grafische Oberflaeche | IMPLEMENTIERT | `ui.tk_app` | Struktur getestet, **Fenster nie geoeffnet** |
@@ -169,11 +169,11 @@ Stand siehe `PROJEKTSTATUS.md`. Statusbegriffe nach Masterprompt 52:
 | E2.17 | Verhalten im Offlinemodus | GETESTET | pausiert, kein Abruf | `test_wissenszeitplan.py` |
 | E2.18 | Ausstehende Updates erkennen | GETESTET | `UpdateLage.UEBERFAELLIG` | `test_wissenszeitplan.py` |
 | E2.19 | Keine falsche Aktualitaetsbehauptung | GETESTET | Wissensstand in jeder Antwort | `test_antwortqualitaet.py` |
-| E2.20 | Quellenspezifische Intervalle | **OFFEN** | Register kennt kein Intervallfeld | einheitlich woechentlich |
+| E2.20 | Quellenspezifische Intervalle | GETESTET | drei Ebenen: Quelle, Quellenart, Vorgabe | `test_wissenszeitplan.py` (7 Tests) |
 | E2.21 | Update-Status in der Oberflaeche | GETESTET | Statusfeld mit Faelligkeit | `test_gui_logic.py` |
 | E2.22 | Testfaelle Betriebsmodi | GETESTET | alle fuenf | `test_betriebsmodi.py` |
 | E2.23 | Testfaelle Synchronisierung | GETESTET | TEST 6 bis 11 | `test_wissenszeitplan.py` |
-| E2.24 | Definition of Done | ERFUELLT | bis auf E2.20 | siehe Zeile E2.20 |
+| E2.24 | Definition of Done | ERFUELLT | alle Abschnitte umgesetzt | `test_betriebsmodi.py`, `test_wissenszeitplan.py` |
 
 ### E3 - Fachfragen ohne Unternehmensdaten
 
@@ -209,7 +209,7 @@ Stand siehe `PROJEKTSTATUS.md`. Statusbegriffe nach Masterprompt 52:
 | 105 | Offline- und Online-Plugins | GETESTET | Modus sperrt auch berechtigte Plugins | `test_netzzugriff_scheitert_im_offlinebetrieb` |
 | 106 | Berechtigungssystem | GETESTET | zwoelf Rechte, einzeln erteilt | `test_plugins.py` |
 | 107 | Lese- und Schreibrechte getrennt | GETESTET | Lesen erlaubt heisst nicht schreiben | `test_lesen_erlaubt_heisst_nicht_schreiben_erlaubt` |
-| 108 | Isolation / Sandboxing | **OFFEN** | vermittelte Schnittstelle, kein Sandkasten | `PLUGIN_KONZEPT.md` 9.1 - ausdruecklich nicht behauptet |
+| 108 | Isolation / Sandboxing | TEILWEISE | eigener Vorgang je Plugin, kein Objekt der Anwendung drueben | `test_plugin_laeuft_in_einem_eigenen_vorgang`; Beschraenkung durch das Betriebssystem offen |
 | 109 | Kryptografische Signaturen | TEILWEISE | Pruefung gebaut und getestet | Herausgeberschluessel nicht hinterlegt |
 | 110 | Kompatibilitaet | GETESTET | Fassung der Schnittstelle | `test_falsche_schnittstellenfassung...` |
 | 111 | Abhaengigkeiten | TEILWEISE | Voraussetzung wird geprueft | keine Fassungsaufloesung |
@@ -242,8 +242,8 @@ Stand siehe `PROJEKTSTATUS.md`. Statusbegriffe nach Masterprompt 52:
 | E6.10 | Rueckfragen | GETESTET | Anweisung im Kontext | `test_antwortqualitaet.py` |
 | E6.11 | Kein Quellenzwang bei Smalltalk | GETESTET | keine Recherche, kein Quellenteil | `test_antwortqualitaet.py` |
 | E6.12 | Modellrouting nach Betriebsart | GETESTET | OFFLINE lokal, ONLINE bevorzugt online | `test_modellrouting_folgt_der_betriebsart` |
-| E6.13 | Fehlendes Modell ist kein Endzustand | TEILWEISE | Status, Einrichtungsweg, keine Scheinantwort | **kein Modell ausgefuehrt** (§ 32) |
-| E6.14 | Modell-Einrichtung in der Anwendung | GETESTET | Befehl `modell`, `pkc.llm.bezug` | `test_antwortdarstellung.py::test_modell_status_meldet_fehlendes_modell` |
+| E6.13 | Fehlendes Modell ist kein Endzustand | GETESTET | Modelldienst wird mitgeliefert und selbst gestartet; `modell einrichten` | `test_modelldienst.py`, `test_modell_einrichten.py`; mit echtem Modell im Windows-Ablauf |
+| E6.14 | Modell-Einrichtung in der Anwendung | GETESTET | `modell einrichten` mit Katalog, Pruefsumme und Probe | `test_modell_einrichten.py` (17 Tests) |
 | E6.15 | Fallback sieht nicht aus wie eine Antwort | GETESTET | kurzer, ehrlicher Status | `test_antwortdarstellung.py` |
 | E6.16 | Quellen in der fertigen Antwort | GETESTET | Verweise `[n]`, Quellenteil | `test_antwortqualitaet.py` |
 | E6.17 | Quellenqualitaet | GETESTET | Warnung bei nur Sekundaerquellen | `test_antwortqualitaet.py` |
@@ -257,7 +257,7 @@ Stand siehe `PROJEKTSTATUS.md`. Statusbegriffe nach Masterprompt 52:
 | E6.25 | Zehn Testfaelle | GETESTET | alle zehn | `test_antwortqualitaet.py` |
 | E6.26 | Regressionsschutz | GETESTET | Unterhaltungen, Quellen, Audit | `test_antwortqualitaet.py` |
 | E6.27 | Gap-Analyse vor Aenderung | ERFUELLT | Bestand geprueft, nichts neu gebaut | `PROJEKTSTATUS.md` |
-| E6.28 | Definition of Done | TEILWEISE | offen bleibt E6.13 | echtes Modell fehlt |
+| E6.28 | Definition of Done | TEILWEISE | Modelldienst und Weg zum Modell stehen | die fachliche Guete eines echten Modells bleibt Sache der Abnahme |
 
 ---
 
@@ -273,11 +273,10 @@ Stand siehe `PROJEKTSTATUS.md`. Statusbegriffe nach Masterprompt 52:
 6. **Code-Signing (§ 92)** - benoetigt ein Zertifikat.
 7. **Weitergabe des Sprachmodells (§ 63)** - Empfehlung: vom Kunden beziehen
    lassen.
-8. **Plugin-Isolation (E5.108)** - ein Plugin laeuft im selben Prozess. Vor
-   einer Freigabe fuer Plugins Dritter ist eine Trennung auf Prozessebene
-   erforderlich; siehe `PLUGIN_KONZEPT.md` 9.1.
-9. **Quellenspezifische Updateintervalle (E2.20)** - das Quellenregister
-   kennt noch kein Intervallfeld; aktualisiert wird einheitlich.
+8. **Beschraenkung der Plugins durch das Betriebssystem (E5.108)** - die
+   Trennung auf Vorgangsebene steht; ein eigenes Benutzerkonto oder ein
+   Job-Objekt fehlt. Fuer Plugins fremder Herkunft erforderlich, siehe
+   `PLUGIN_KONZEPT.md` 9.1.
 
 ---
 

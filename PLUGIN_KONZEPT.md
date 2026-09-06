@@ -120,6 +120,17 @@ plugin entfernen <kennung> [--daten-loeschen]
   Plugin-Ordner; die Daten bleiben beim Entfernen erhalten, sofern nicht
   ausdruecklich anderes verlangt wird (E5.113).
 
+## 6a. Der Vorgang je Plugin
+
+Beim Aktivieren startet die Anwendung fuer das Plugin einen eigenen
+Vorgang. Sein Arbeitsverzeichnis ist der Pluginordner, seine Umgebung
+traegt ``KIM_PLUGIN`` mit der Kennung - so ist im Taskmanager und im
+Protokoll erkennbar, wozu er gehoert.
+
+Beendet wird er, wenn das Plugin deaktiviert oder entfernt wird und beim
+Beenden der Anwendung. Stuerzt er ab, meldet die Anwendung das beim
+naechsten Aufruf des Plugins; sie selbst laeuft weiter.
+
 ## 7. Protokoll (E5.118)
 
 Installieren, Aktivieren, Deaktivieren, Entfernen, Laden, Ladefehler,
@@ -138,22 +149,39 @@ Systempruefung angezeigt. Die Anwendung laeuft weiter.
 
 ### 9.1 Trennung auf Prozessebene (E5.108)
 
-**Nicht umgesetzt.** Ein Plugin ist Python-Code und laeuft im selben Prozess
-mit den Rechten der Anwendung. Die Berechtigungspruefung ist eine
-**vermittelte Schnittstelle**, keine Sandkastenumgebung des Betriebssystems:
-wer eigenen Code ausfuehren darf, kann sie technisch umgehen.
+**Umgesetzt** - mit einer klar benannten Grenze.
 
-Das wird hier ausdruecklich gesagt und nicht anders behauptet. Der Schutz
-besteht aus drei Teilen, die zusammen wirken:
+Jedes Plugin laeuft in einem **eigenen Vorgang**. Die Anwendung startet ihn
+und redet mit ihm ueber Standardein- und -ausgabe, je Nachricht eine Zeile
+JSON. In der gepackten Fassung ruft sich das Programm dafuer selbst mit dem
+Schalter ``--plugin-worker`` auf; ein python.exe daneben gibt es dort nicht.
+
+Der Plugin-Vorgang hat **keine Datenbankverbindung, keinen Tresor und kein
+Objekt der Anwendung**. Er kann nur fragen; entschieden wird im
+Hauptvorgang. Die Berechtigungspruefung ist damit nicht mehr eine Absprache
+unter Gleichen, sondern die einzige Tuer zu den Daten.
+
+Angemeldete Faehigkeiten werden als Stellvertreter gefuehrt: der Aufruf
+eines Werkzeugs reist hinueber, ein Ausgabeformat wird drueben erzeugt und
+kommt als Bytes zurueck.
+
+**Was das nicht leistet:** der Vorgang laeuft mit denselben Benutzerrechten
+wie die Anwendung. Er koennte Dateien oeffnen, die dem angemeldeten
+Benutzer gehoeren, oder selbst eine Verbindung aufbauen. Eine Beschraenkung
+durch das Betriebssystem - eigenes Benutzerkonto, Job-Objekt unter Windows,
+seccomp unter Linux - ist **nicht** eingerichtet. Wer Plugins voellig
+fremder Herkunft zulassen will, braucht diesen Schritt zusaetzlich.
+
+Deshalb gelten die drei uebrigen Vorkehrungen unveraendert weiter:
 
 1. nur signierte Pakete gelten als vertrauenswuerdig,
 2. jede Berechtigung wird einzeln erteilt und protokolliert,
 3. der Benutzer sieht vor der Installation, was verlangt wird.
 
-Eine echte Trennung braucht einen eigenen Prozess mit eingeschraenkten
-Rechten und eine Uebergabe ueber eine Leitung statt ueber Objekte. Das ist
-der naechste Ausbauschritt und vor einer Freigabe fuer Plugins Dritter
-erforderlich.
+Geprueft wird die Trennung mit einem absichtlich neugierigen Testplugin:
+andere Vorgangskennung, keine Objekte der Anwendung sichtbar, ohne Recht
+kein Wert ueber die Leitung, vom Pluginordner aus keine Datenbank
+erreichbar, und ein abstuerzender Vorgang reisst die Anwendung nicht mit.
 
 ### 9.2 Pruefschluessel des Herausgebers (E5.109)
 
@@ -193,6 +221,17 @@ gibt es noch nicht.
 
 Nach E5.122 darf der Status COMMERCIAL READY fuer Plugins Dritter nicht
 vergeben werden, solange Sandboxing, Signaturpruefung mit hinterlegtem
-Schluessel und der Katalogprozess nicht stehen. Nach dem hier
-beschriebenen Stand ist das **nicht** der Fall. Fuer eigene, mit dem
-Produkt ausgelieferte Plugins ist der Stand tragfaehig.
+Schluessel und der Katalogprozess nicht stehen.
+
+Stand jetzt:
+
+| Voraussetzung | Lage |
+|---|---|
+| Trennung der Vorgaenge | **steht** (9.1) |
+| Beschraenkung durch das Betriebssystem | offen (9.1) |
+| Signaturpruefung | gebaut und geprueft; **Herausgeberschluessel fehlt** (9.2) |
+| Katalogprozess | offen (9.3) |
+
+Fuer eigene, mit dem Produkt ausgelieferte Plugins ist der Stand tragfaehig.
+Fuer Plugins voellig fremder Herkunft ist er es nicht - dafuer fehlen die
+beiden offenen Punkte.
