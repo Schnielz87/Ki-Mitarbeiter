@@ -474,7 +474,10 @@ class AppController:
             default=0,
         ) or 0)
         return {
-            "produkt": str(self.config.get("app.name", "Portabler Buchhalter")),
+            # Marke und Profil wie im Fenstertitel (E1.11): die
+            # Versionsauskunft soll dasselbe Produkt nennen wie die
+            # Oberflaeche, nicht einen zweiten Namen.
+            "produkt": self.brand.titel(self.profile_display_name),
             "softwareversion": str(self.config.get("product.version", "0.1.0")),
             "produktstufe": str(self.config.get("product.stage", "pilot")),
             "fachmodul": f"{self.profile.name} {profil_version}",
