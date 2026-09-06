@@ -1,0 +1,13 @@
+{
+  "id": "html_export",
+  "name": "HTML-Ausgabe",
+  "version": "1.0",
+  "api": 1,
+  "kategorie": "FILE_HANDLER",
+  "einstieg": "plugin:anmelden",
+  "beschreibung": "Ergaenzt das Ausgabeformat HTML - eine Seite, die sich in jedem Browser oeffnen laesst.",
+  "autor": "PORTIVA (Beispiel)",
+  "lizenz": "gleiche Bedingungen wie die Anwendung",
+  "berechtigungen": [],
+  "benoetigt_netz": false
+}

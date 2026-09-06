@@ -36,6 +36,7 @@ from pkc.memory import CaptureCandidate, MemoryCapture, MemoryStore
 from pkc.memory.schema_keys import CATEGORIES, WELL_KNOWN_KEYS
 from pkc.netstate import Betriebsart, Mode, NetworkMonitor, NetStatus
 from pkc.paths import Paths, get_paths, sanitise_customer_id
+from pkc.plugins import PluginFehler, Pluginverwaltung
 from pkc.profile import EmployeeProfile, load_profile
 from pkc.rag import AnswerResult, ContextBuilder, RagEngine
 from pkc.retrieval.embeddings import build_embedder
@@ -201,6 +202,13 @@ class AppController:
         self.artefakte = Artefaktwerk(
             self.paths, audit=self.audit, profil=self.profile_display_name,
             marke=self.brand.name,
+        )
+
+        # Plugins (Erweiterung E5). Geladen wird erst beim Start, damit ein
+        # fehlerhaftes Plugin die Anwendung nicht am Hochfahren hindert.
+        self.plugins = Pluginverwaltung(
+            self.paths, config=self.config, audit=self.audit, memory=self.memory,
+            knowledge=self.knowledge, artefakte=self.artefakte,
         )
 
         # Tresor
@@ -377,6 +385,20 @@ class AppController:
             (f"{'vorhanden' if self.vault.exists else 'noch nicht angelegt'} · {crypto_detail}")
             if crypto_ok else f"eingeschraenkt: {crypto_detail}",
         )
+
+        # Plugins (Erweiterung E5). Ein fehlerhaftes Plugin schaltet sich
+        # selbst ab und meldet den Grund - der Start geht weiter.
+        plugins = self.plugins.laden(netz_erlaubt=self.lage.online_moeglich)
+        fehlerhaft = [p for p in plugins if p.fehler]
+        if plugins:
+            report.add(
+                "Plugins", not fehlerhaft,
+                f"{len(plugins) - len(fehlerhaft)} aktiv, "
+                f"{len(self.plugins.werkzeuge())} zusaetzliche Faehigkeiten"
+                + (f", {len(fehlerhaft)} abgeschaltet: {fehlerhaft[0].fehler}"
+                   if fehlerhaft else ""),
+                critical=False,
+            )
 
         status = self.network.check()
         report.mode = self.mode          # die Wahl des Benutzers

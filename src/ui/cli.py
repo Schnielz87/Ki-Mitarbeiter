@@ -14,6 +14,7 @@ from pathlib import Path
 
 from app.controller import AppController, LicenseRequired
 from pkc.artefakte import ArtefaktFehler
+from pkc.plugins import SCHWERWIEGEND, PluginFehler
 from pkc.audit import ApprovalState
 from pkc.config import Config
 from pkc.netstate import Mode
@@ -270,6 +271,110 @@ def cmd_datei(args) -> int:
         controller.shutdown()
 
 
+def cmd_plugin(args) -> int:
+    """Plugins ansehen, pruefen, installieren, aktivieren, entfernen (E5).
+
+    Die Reihenfolge ist die aus Abschnitt 123: pruefen, Berechtigungen zeigen,
+    bestaetigen, installieren, aktivieren. Ohne Bestaetigung wird nichts
+    installiert - ein Plugin laeuft mit den Rechten der Anwendung.
+    """
+    controller = _controller(args)
+    try:
+        controller.bootstrap()
+        verwaltung = controller.plugins
+
+        if args.aktion == "liste":
+            staende = verwaltung.liste()
+            if not staende:
+                print("Es ist kein Plugin installiert.")
+                print(f"Ablage fuer Plugins: {verwaltung.ordner}")
+                return 0
+            for stand in staende:
+                marke = "aktiv " if stand.aktiv else "ruht  "
+                vertrauen = ("signiert" if stand.signatur_gueltig else
+                             "signiert, nicht pruefbar" if stand.signiert else
+                             "NICHT signiert")
+                print(f"{marke} {stand.manifest.id:20s} {stand.manifest.version:8s} "
+                      f"{stand.manifest.kategorie:12s} {vertrauen}")
+                if stand.erteilte_rechte:
+                    print(f"       Rechte: {', '.join(stand.erteilte_rechte)}")
+                if stand.fehler:
+                    print(f"       Abgeschaltet: {stand.fehler}")
+            werkzeuge = verwaltung.werkzeuge()
+            if werkzeuge:
+                print("\nZusaetzliche Faehigkeiten:")
+                for werkzeug in werkzeuge:
+                    print(f"  {werkzeug.name:24s} {werkzeug.beschreibung} "
+                          f"(aus {werkzeug.plugin})")
+            return 0
+
+        if args.aktion in ("pruefen", "installieren"):
+            if not args.paket:
+                print("Bitte den Pfad zum Paket angeben.", file=sys.stderr)
+                return 2
+            pruefung = verwaltung.pruefen(Path(args.paket))
+            manifest = pruefung.manifest
+            print(f"{manifest.name} {manifest.version} ({manifest.id})")
+            print(f"  Kategorie   : {manifest.kategorie}")
+            print(f"  Herausgeber : {manifest.autor or 'nicht angegeben'}")
+            print(f"  Beschreibung: {manifest.beschreibung}")
+            print(f"  Signatur    : "
+                  + ("gueltig" if pruefung.signatur_gueltig else
+                     "vorhanden, nicht pruefbar" if pruefung.signiert else "keine"))
+            print("  Verlangte Berechtigungen:")
+            if not manifest.berechtigungen:
+                print("    (keine)")
+            for zeile in verwaltung.rechtebeschreibung(manifest.berechtigungen):
+                schwer = " [wiegt schwer]" if zeile.split(":")[0] in SCHWERWIEGEND else ""
+                print(f"    {zeile}{schwer}")
+            for hinweis in pruefung.hinweise:
+                print(f"  Hinweis: {hinweis}")
+
+            if args.aktion == "pruefen":
+                print("\nInstalliert wurde nichts. Mit "
+                      "'plugin installieren <paket> --bestaetigen' fortfahren.")
+                return 0
+
+            if not args.bestaetigen:
+                print("\nAbgebrochen: die Installation braucht --bestaetigen.",
+                      file=sys.stderr)
+                return 1
+            stand = verwaltung.installieren(Path(args.paket), bestaetigt=True)
+            print(f"\nInstalliert: {stand.manifest.id} {stand.manifest.version}")
+            if args.aktivieren:
+                verwaltung.aktivieren(stand.manifest.id)
+                print("Aktiviert. Beim naechsten Start steht die neue Faehigkeit bereit.")
+            else:
+                print("Noch nicht aktiv. Aktivieren mit: "
+                      f"plugin aktivieren {stand.manifest.id}")
+            return 0
+
+        if args.aktion in ("aktivieren", "deaktivieren", "entfernen"):
+            if not args.paket:
+                print("Bitte die Plugin-Kennung angeben.", file=sys.stderr)
+                return 2
+            if args.aktion == "aktivieren":
+                verwaltung.aktivieren(args.paket)
+                print(f"{args.paket} ist aktiv.")
+            elif args.aktion == "deaktivieren":
+                verwaltung.deaktivieren(args.paket)
+                print(f"{args.paket} ruht.")
+            else:
+                verwaltung.entfernen(args.paket, daten_behalten=not args.daten_loeschen)
+                print(f"{args.paket} wurde entfernt."
+                      + ("" if args.daten_loeschen else
+                         " Die Daten des Plugins bleiben erhalten."))
+            return 0
+
+        print(f"Unbekannte Aktion: {args.aktion}", file=sys.stderr)
+        return 2
+    except PluginFehler as fehler:
+        print(str(fehler), file=sys.stderr)
+        return 1
+    finally:
+        controller.shutdown()
+
+
 def cmd_modell(args) -> int:
     """Sprachmodell einrichten und pruefen (Abschnitt 14).
 
@@ -481,7 +586,7 @@ def cmd_kunde(args) -> int:
                       f"{eintrag['verzeichnis']}")
             return 0
         if args.aktion == "anlegen":
-            ergebnis = controller.create_customer(args.kennung, args.name)
+            ergebnis = controller.create_customer(args.paket, args.name)
             print(f"Kundenbereich angelegt: {ergebnis['kennung']}")
             print(f"  {ergebnis['verzeichnis']}")
             print("\nMit --kunde-bereich " + ergebnis["kennung"] + " arbeiten.")
@@ -494,7 +599,7 @@ def cmd_kunde(args) -> int:
             return 0
         if args.aktion == "loeschen":
             ergebnis = controller.delete_customer(
-                args.kennung, confirm=args.bestaetigen,
+                args.paket, confirm=args.bestaetigen,
                 export_first=not args.ohne_export,
             )
             print(f"Kundenbereich geloescht: {ergebnis['kennung']} "
@@ -773,6 +878,20 @@ def build_parser() -> argparse.ArgumentParser:
     datei.add_argument("--ueberschreiben", action="store_true",
                        help="vorhandene Datei ersetzen statt neue Fassung anlegen")
     datei.set_defaults(func=cmd_datei)
+
+    plugin = neu("plugin", "Plugins ansehen, installieren, aktivieren")
+    plugin.add_argument("aktion", nargs="?", default="liste",
+                        choices=["liste", "pruefen", "installieren", "aktivieren",
+                                 "deaktivieren", "entfernen"])
+    plugin.add_argument("paket", nargs="?", default="",
+                        help="Pfad zum Paket (.kimplug) bzw. Kennung")
+    plugin.add_argument("--bestaetigen", action="store_true",
+                        help="die verlangten Berechtigungen erteilen")
+    plugin.add_argument("--aktivieren", action="store_true",
+                        help="nach dem Installieren gleich aktivieren")
+    plugin.add_argument("--daten-loeschen", dest="daten_loeschen", action="store_true",
+                        help="beim Entfernen auch die Daten des Plugins loeschen")
+    plugin.set_defaults(func=cmd_plugin)
 
     modus = neu("modus", "Betriebsmodus anzeigen oder wechseln")
     modus.add_argument("neuer_modus", nargs="?", default="",

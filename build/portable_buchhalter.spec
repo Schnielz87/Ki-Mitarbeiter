@@ -44,6 +44,9 @@ hidden_imports = [
     # Registrierung geladen, PyInstaller sieht diesen Weg nicht von selbst.
     "pkc.artefakte", "pkc.artefakte.modell", "pkc.artefakte.ooxml",
     "pkc.artefakte.pdf", "pkc.artefakte.schreiber", "pkc.artefakte.werk",
+    # Plugin-System (Erweiterung E5)
+    "pkc.plugins", "pkc.plugins.modell", "pkc.plugins.paket",
+    "pkc.plugins.kontext", "pkc.plugins.verwaltung",
     "pkc.connectors", "pkc.connectors.base", "pkc.connectors.files",
     "pkc.connectors.rest", "pkc.connectors.erp_stubs", "pkc.connectors.registry",
     # Standardbibliothek, die PyInstaller nicht immer selbst findet

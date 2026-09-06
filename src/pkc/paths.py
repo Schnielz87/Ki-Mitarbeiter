@@ -57,6 +57,11 @@ LAYOUT: dict[str, str] = {
     "updates": "updates",
     "backups": "backups",
     "data": "data",
+    # Installierte Plugins (Erweiterung E5). Der Code liegt neben den Daten
+    # der Installation, nicht im Programmordner: dieser kann schreibgeschuetzt
+    # sein, und bei getrennter Datenablage sollen die Plugins den Daten
+    # folgen. Aktiviert und mit Daten versehen wird je Kundenbereich.
+    "plugins": "plugins",
     "profiles": "src/profiles",
     "checkpoints": "checkpoints",
     "tools": "tools",
@@ -104,6 +109,7 @@ RUNTIME_DIRS = (
     "backups",
     "data",
     "checkpoints",
+    "plugins",
 )
 
 

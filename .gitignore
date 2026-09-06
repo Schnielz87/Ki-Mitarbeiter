@@ -26,6 +26,11 @@ __pycache__/
 /build/pyinstaller/
 /dist/
 
+# Installierte Plugins und erzeugte Dateien - Betriebsstand, kein Quellcode
+/plugins/
+/workspace/
+*.kimplug
+
 # Kundendaten und Lizenzen - gehoeren niemals ins Repository
 /customers/
 /license/
