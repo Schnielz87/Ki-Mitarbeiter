@@ -367,47 +367,58 @@ jobs:
         shell: pwsh
         timeout-minutes: 20
         run: |
-          # Der Punkt, an dem Behauptungen aufhoeren. Gemessen wird auf
-          # einem echten Rechner mit einem echten Modell, je Stufe: die Zeit
-          # bis zum ersten Wort und die Gesamtzeit einer echten Fachfrage.
-          # Ohne diese Messung waere "schneller" nur eine Absichtserklaerung.
+          # Der Punkt, an dem Behauptungen aufhoeren. Gemessen wird auf einem
+          # echten Rechner mit einem echten Modell.
+          #
+          # "modell messen" stellt dieselbe Fachfrage zweimal im SELBEN
+          # Vorgang. Das ist wichtig: der erste Durchgang enthaelt das Laden
+          # des Modells und den vollstaendigen Prompt, beim zweiten steht der
+          # Dienst schon und kennt den unveraenderten Kopf. Der zweite
+          # Durchgang ist der Alltag - genau ihn erlebt der Benutzer, der die
+          # Anwendung offen hat.
+          #
+          # Der erste Entwurf mass stattdessen die Laufzeit des ganzen
+          # Programmaufrufs. Das ergab 70 bis 105 Sekunden und war
+          # unbrauchbar: jeder Aufruf startet den Modelldienst neu.
           Set-Location dist\Portable-Buchhalter
-          $frage = "Welche Pflichtangaben braucht eine Rechnung nach dem UStG?"
           $zeilen = @()
-
           foreach ($stufe in @("ausfuehrlich", "ausgewogen", "schnell")) {
             Write-Host "=== Tempostufe: $stufe ==="
             .\PORTABLE_BUCHHALTER_KONSOLE.exe --offline einstellungen setzen `
-              --schluessel llm.tempo --wert $stufe | Out-String | Write-Host
+              --schluessel llm.tempo --wert $stufe | Out-Null
 
-            # Erster Lauf: enthaelt das Laden des Modells.
-            $uhr = [Diagnostics.Stopwatch]::StartNew()
-            .\PORTABLE_BUCHHALTER_KONSOLE.exe --offline frage $frage | Out-Null
-            $erster = $uhr.Elapsed.TotalSeconds
+            $ausgabe = .\PORTABLE_BUCHHALTER_KONSOLE.exe --offline modell messen | Out-String
+            Write-Host $ausgabe
+            if ($LASTEXITCODE -ne 0) { throw "Die Messung fuer '$stufe' schlug fehl." }
 
-            # Die Probe misst getrennt: Wartezeit bis zum ersten Wort und
-            # Schreibgeschwindigkeit danach.
-            $probe = .\PORTABLE_BUCHHALTER_KONSOLE.exe --offline modell pruefen | Out-String
-            Write-Host $probe
-            $erstesWort = if ($probe -match "erstes Wort\s*:\s*([0-9.,]+)") { $matches[1] } else { "?" }
-            $tempo = if ($probe -match "([0-9.,]+)\s*Token je Sekunde") { $matches[1] } else { "?" }
-
+            $betrieb = if ($ausgabe -match "Im laufenden Betrieb:\s*([0-9.,]+)\s*s bis zum ersten Wort,\s*([0-9.,]+)\s*s") {
+              @($matches[1], $matches[2])
+            } else { @("?", "?") }
             $zeilen += [pscustomobject]@{
               stufe = $stufe
-              frage_gesamt_s = [math]::Round($erster, 1)
-              erstes_wort_s = $erstesWort
-              token_je_sekunde = $tempo
+              erstes_wort_s = $betrieb[0]
+              gesamt_s = $betrieb[1]
             }
           }
 
           Write-Host ""
-          Write-Host "===== WARTEZEIT JE TEMPOSTUFE (Probemodell 0,5B auf CPU) ====="
+          Write-Host "===== WARTEZEIT IM LAUFENDEN BETRIEB (Probemodell 0,5B, nur CPU) ====="
           $zeilen | Format-Table | Out-String -Width 200 | Write-Host
           $zeilen | ConvertTo-Json -Depth 3 | Set-Content "$env:RUNNER_TEMP\wartezeit.json"
 
           # Die Vorgabe zurueckstellen, damit das Auslieferungspaket sie traegt.
           .\PORTABLE_BUCHHALTER_KONSOLE.exe --offline einstellungen setzen `
             --schluessel llm.tempo --wert ausgewogen | Out-Null
+
+          # Und die Groesse der beiden Modelldienst-Fassungen berichten: das
+          # Paket ist dadurch deutlich groesser geworden, das gehoert benannt.
+          foreach ($art in @("cpu", "vulkan")) {
+            $ordner = "runtime\llama\$art"
+            if (Test-Path $ordner) {
+              Get-ChildItem $ordner -Recurse | Measure-Object -Property Length -Sum |
+                ForEach-Object { Write-Host "$ordner : $([math]::Round($_.Sum/1MB,1)) MB" }
+            }
+          }
 
       - name: Quellenregister gegen die echten Adressen pruefen
         shell: pwsh

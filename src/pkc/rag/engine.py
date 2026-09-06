@@ -128,12 +128,20 @@ class RagEngine:
             header += ["", "## GRENZEN DIESER ROLLE", ""]
             header += [f"* {limit}" for limit in self.profile.limits]
 
+        # Das Antwortschema nur dort, wo es gilt. Bei einer Begruessung wurde
+        # es bisher mitgeschickt und in derselben Nachricht wieder ausser
+        # Kraft gesetzt ("verwende kein Fachschema") - rund 330 Token, die
+        # das Modell verarbeiten musste, um sie zu verwerfen. Auf einem
+        # Buerorechner ist das Wartezeit fuer nichts.
+        typ = einstufung.typ if einstufung else Fragetyp.FACHLICH
+        if self.profile.fachschema and typ in (Fragetyp.FACHLICH, Fragetyp.KOMPLEX):
+            header += ["", "---", "", self.profile.fachschema]
+
         # Antworttiefe an die Art der Frage anpassen. Eine Begruessung mit dem
         # vollstaendigen Fachschema zu beantworten waere ebenso falsch wie ein
         # verwickelter Sachverhalt in zwei Saetzen.
         header += ["", "## ANTWORTTIEFE FUER DIESE NACHRICHT", ""]
-        header += _tiefenanweisung(einstufung.typ if einstufung else Fragetyp.FACHLICH,
-                                   self.profile)
+        header += _tiefenanweisung(typ, self.profile)
         messages = [ChatMessage("system", "\n".join(header))]
         messages.append(ChatMessage("system", bundle.as_system_block()))
         messages.extend(history)

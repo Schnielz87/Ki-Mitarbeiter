@@ -4,7 +4,7 @@ Stand: 06.09.2026 · Branch `claude/portable-ki-buchhalter-xr1qlj`
 
 ## Zusammenfassung
 
-**584 automatische Tests bestanden, 1 uebersprungen** (unter Windows einer
+**589 automatische Tests bestanden, 1 uebersprungen** (unter Windows einer
 mehr uebersprungen). Ausfuehrungszeit rund 25 Sekunden. Reproduzierbar mit:
 
 ```
@@ -288,6 +288,9 @@ aufgefuehrt, weil ein Testbericht ohne Fundstellen wenig wert ist.
 | „Lokales Modell: OK" trotz fehlendem Modell | Der Notbetrieb meldete sich als verfuegbar | Systempruefung meldet HINWEIS und beschreibt den Notbetrieb |
 | HTML-Titel wurde falsch erkannt | `<title>` liegt in `<head>`, das uebersprungen wurde | Titel wird vor der Bereichspruefung ausgewertet |
 | Deutsche Abkuerzungen zerteilten Saetze | „GmbH & Co. KG" wurde als Satzende gelesen | Abkuerzungsliste in der Satztrennung |
+| Das Antwortschema wurde auch an Begruessungen geschickt | Rund 330 Token Fachschema gingen bei jeder Nachricht ins Modell - und wurden im selben Prompt wieder ausser Kraft gesetzt ("verwende kein Fachschema"). Das Modell musste sie verarbeiten, um sie zu verwerfen | Das Schema ist ausgelagert und geht nur an fachliche Fragen. Ein Test vergleicht den Prompt einer Begruessung mit dem einer Fachfrage; ein zweiter prueft, dass im ausgelagerten Schema kein Abschnitt fehlt. Gegenprobe gemacht |
+| Der Systemtext war doppelt so lang wie noetig | Rund 1030 Token, die bei JEDER Frage vollstaendig durch das Modell muessen | Auf gut 500 Token gekuerzt, ohne eine einzige Regel zu streichen. Ein Test prueft alle acht unumstoesslichen Regeln einzeln und schlaegt an, wenn der Text wieder waechst. Gegenprobe gemacht |
+| Die Wartezeitmessung im Bauablauf mass das Falsche | Sie nahm die Laufzeit des ganzen Programmaufrufs. Jeder Aufruf startet den Modelldienst neu - das ergab 70 bis 105 Sekunden und sagte nichts ueber den laufenden Betrieb aus | Neuer Befehl `modell messen`: dieselbe Frage zweimal im selben Vorgang, beide Zeiten getrennt ausgewiesen. Der zweite Durchgang ist der Alltag |
 | Vorladen und erste Frage liefen in einen Wettlauf | Der Vorladefaden startet den Dienst; waehrenddessen lebt bereits ein Vorgang, der noch nicht antwortet. Wer in diesem Moment fragte, zog mit der alten Adresse los - Port 0 - und lief in "WinError 10049". Nach aussen sah das aus wie "kein Sprachmodell eingerichtet", obwohl eines dalag | Die Pruefung liegt jetzt vollstaendig im Schloss und verlangt einen **erreichbaren** Dienst, nicht nur einen lebenden; die Adresse wird nie zwischengespeichert. Aufgefallen im Bauablauf, nicht im Test - der Fall braucht zwei Faeden. Zwei neue Tests bilden ihn nach, Gegenprobe gemacht |
 | Ein Schalter fuer Geschwindigkeit legte den Modelldienst lahm | "-fa" verlangt in der vorliegenden llama.cpp-Fassung einen Wert. Der blosse Schalter fuehrte zu einer Hilfeseite und einem sofort beendeten Vorgang | Statt eines festen Schaltersatzes eine Liste, absteigend nach Wirkung: "-fa on", dann "-fa", dann ohne. Der Rueckfall hatte bereits funktioniert und die Ursache im Protokoll benannt - er hat den Bau davor bewahrt, ganz ohne Sprachmodell dazustehen |
 | Der Prompt war doppelt so gross wie noetig, die Antwort doppelt so lang | Gemessen an einem echten Aufbau: 2712 Token Kontext bei jeder Frage und 1024 erlaubte Ausgabetoken. Auf einem Buerorechner sind das Minuten - der Grossteil davon, bevor ueberhaupt das erste Wort erscheint | Antworttempo in drei abgestimmten Stufen; Vorgabe 600 statt 1024 Ausgabetoken und 1600 statt 3200 Kontexttoken. Der Bauablauf misst die Wartezeit je Stufe auf einem echten Rechner mit echtem Modell |

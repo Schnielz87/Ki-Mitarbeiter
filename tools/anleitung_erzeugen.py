@@ -421,6 +421,15 @@ tabelle_mit(
 absatz("Die Anwendung misst das auf Ihrem Rechner selbst: Registerkarte "
        "Sprachmodell, Schaltflaeche \"Modell ausprobieren\". Sie nennt die "
        "gemessene Geschwindigkeit und ordnet sie ein.")
+absatz("Wichtig ist dabei nicht die Gesamtzeit, sondern die Zeit bis zum "
+       "ERSTEN Wort. Danach laeuft die Antwort sichtbar weiter - man liest "
+       "mit, statt zu warten. Genau so verhalten sich auch die grossen "
+       "Onlinedienste.")
+absatz("Wer es genau wissen will, misst in der Konsole mit "
+       "\"modell messen\": dort wird dieselbe Fachfrage zweimal im selben "
+       "Vorgang gestellt. Der erste Durchgang enthaelt das Laden des "
+       "Modells, der zweite ist der Alltag - genau ihn erleben Sie, solange "
+       "die Anwendung geoeffnet bleibt.")
 
 doc.add_heading("Der wirksamste Regler: das Antworttempo", level=3)
 absatz("Unter \"Einstellungen und Status\" steht ganz oben bei "

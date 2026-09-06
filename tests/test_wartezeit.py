@@ -18,6 +18,7 @@ Frage des Zeitpunkts. Alle drei werden hier festgehalten.
 
 from __future__ import annotations
 
+import json
 import threading
 import time
 
@@ -587,3 +588,126 @@ def test_lebender_aber_noch_nicht_bereiter_dienst_gilt_nicht_als_fertig(tmp_path
 
     assert server.starts == 1, "ein stummer Vorgang muss neu gestartet werden"
     assert anbieter.base_url == "http://127.0.0.1:7777"
+
+
+# -- Der Prompt selbst ---------------------------------------------------
+
+def test_begruessung_bekommt_kein_fachschema(portable_root):
+    """Es wurde mitgeschickt und im selben Prompt wieder ausser Kraft gesetzt.
+
+    Rund 330 Token, die das Modell verarbeiten musste, um sie zu verwerfen -
+    auf einem Buerorechner ist das Wartezeit fuer nichts.
+    """
+    controller = make_controller(portable_root)
+    controller.bootstrap(build_embeddings=True)
+    gemessen: dict = {}
+
+    class Messend:
+        name = "m"
+        model = "x"
+
+        def available(self):
+            return True, ""
+
+        def generate(self, messages, max_tokens=1024, temperature=0.2, stop=None,
+                     on_token=None):
+            gemessen["kopf"] = messages[0].content
+            return LlmResponse(text="Hallo.", provider="m", model="x")
+
+    controller.llm = LlmManager(Messend())
+    controller.rag.llm = controller.llm
+    try:
+        controller.ask("Hallo, wie geht es dir?")
+        gruss = gemessen["kopf"]
+        controller.ask("Welche Pflichtangaben braucht eine Rechnung nach dem UStG?")
+        fach = gemessen["kopf"]
+    finally:
+        controller.shutdown()
+
+    assert "BUCHUNGSVORSCHLAG" in fach, "die Fachfrage braucht das Schema"
+    assert "BUCHUNGSVORSCHLAG" not in gruss, (
+        "eine Begruessung braucht kein Antwortschema")
+    assert len(gruss) < len(fach), "der Kopf muss dabei tatsaechlich kuerzer werden"
+
+
+def test_der_kern_des_systemtextes_verliert_keine_regel():
+    """Kuerzen ja - Regeln streichen nein.
+
+    Der Systemtext wurde von rund 1030 auf gut 500 Token gekuerzt, weil er
+    bei JEDER Frage vollstaendig durch das Modell muss. Jede der acht
+    unumstoesslichen Regeln muss dabei erhalten bleiben.
+    """
+    from pathlib import Path as _Pfad
+
+    kern = (_Pfad(__file__).resolve().parents[1] / "src" / "profiles" / "buchhalter"
+            / "prompts" / "system.md").read_text(encoding="utf-8")
+
+    for stichwort in ("Nichts erfinden", "Fundstellen zuerst", "Quellenhierarchie",
+                      "Zeitbezug", "Unternehmenskontext", "Keine Scheinhandlungen",
+                      "Keine verbindliche Ausfuehrung", "Sprache"):
+        assert stichwort in kern, f"Regel '{stichwort}' fehlt im Systemtext"
+    assert "Nicht ausreichend sicher" in kern
+    assert "ersetzt **nicht**" in kern, "die Abgrenzung zum Steuerberater muss stehen"
+    # Und er darf nicht wieder wachsen, ohne dass es jemandem auffaellt.
+    assert len(kern) < 2600, f"der Systemtext ist auf {len(kern)} Zeichen gewachsen"
+
+
+def test_das_fachschema_ist_vollstaendig():
+    """Ausgelagert heisst nicht gekuerzt - alle Abschnitte muessen bleiben."""
+    from pathlib import Path as _Pfad
+
+    wurzel = _Pfad(__file__).resolve().parents[1] / "src" / "profiles" / "buchhalter"
+    schema = (wurzel / "prompts" / "fachschema.md").read_text(encoding="utf-8")
+    vorgesehen = json.loads((wurzel / "profile.json").read_text(encoding="utf-8"))
+
+    for abschnitt in vorgesehen["answer_sections"]:
+        assert abschnitt in schema, f"Abschnitt {abschnitt} fehlt im Fachschema"
+
+
+def test_messung_nennt_beide_durchgaenge(portable_root):
+    """Der zweite Durchgang ist der Alltag - er muss getrennt ausgewiesen sein."""
+    controller = make_controller(portable_root)
+    controller.bootstrap(build_embeddings=True)
+
+    class Stroemend:
+        name = "s"
+        model = "x"
+
+        def available(self):
+            return True, ""
+
+        def generate(self, messages, max_tokens=1024, temperature=0.2, stop=None,
+                     on_token=None):
+            if on_token:
+                on_token("**ERGEBNIS**\n")
+                on_token("Die Pflichtangaben stehen in [1].")
+            return LlmResponse(text="**ERGEBNIS**\nDie Pflichtangaben stehen in [1].",
+                               provider="s", model="x", completion_tokens=12)
+
+    controller.llm = LlmManager(Stroemend())
+    controller.rag.llm = controller.llm
+    try:
+        ergebnis = controller.modell_messen()
+        assert ergebnis["ok"]
+        assert len(ergebnis["laeufe"]) == 2
+        assert all(l["ok"] for l in ergebnis["laeufe"])
+        assert ergebnis["im_betrieb_gesamt_s"] == ergebnis["laeufe"][-1]["gesamt_s"]
+        assert ergebnis["tempo"] in tempo.namen()
+    finally:
+        controller.shutdown()
+
+
+def test_messung_ohne_modell_behauptet_nichts(portable_root):
+    from pkc.llm.providers import RetrievalOnlyProvider
+
+    controller = make_controller(portable_root)
+    controller.llm = LlmManager(RetrievalOnlyProvider("kein Modell"))
+    controller.rag.llm = controller.llm
+    controller.bootstrap(build_embeddings=True)
+    try:
+        ergebnis = controller.modell_messen()
+        assert not ergebnis["ok"]
+        assert all("kein Sprachmodell" in l["grund"] for l in ergebnis["laeufe"])
+        assert ergebnis["im_betrieb_gesamt_s"] == 0.0
+    finally:
+        controller.shutdown()

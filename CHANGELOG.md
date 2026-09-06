@@ -69,6 +69,29 @@ oeffnet, hat keine Konsole offen und liest das als "geht nicht", nicht als
   stand dort ein Kasten mit drei Klicks und darunter weiter Konsolentext.
   Ein Test vergleicht die genannten Schaltflaechen mit denen im Fenster
 
+### Der Prompt selbst - der groesste verbliebene Posten
+
+Die Messung im Bauablauf hat gezeigt, wo die Zeit wirklich hingeht: die
+Anwendung selbst braucht 0,17 Sekunden, die Modellprobe eine Sekunde - eine
+Fachfrage aber 70 bis 105. Der Unterschied ist der Prompt.
+
+* **Der Systemtext ist von rund 1030 auf gut 500 Token gekuerzt** - jede der
+  acht unumstoesslichen Regeln bleibt, nur kuerzer gesagt. Er geht bei
+  **jeder** Frage vollstaendig durch das Modell; ein Test schlaegt an, wenn
+  eine Regel verschwindet oder der Text wieder waechst
+* **Das Antwortschema geht nur noch an Fachfragen.** Bei einer Begruessung
+  wurde es mitgeschickt und in derselben Nachricht wieder ausser Kraft
+  gesetzt ("verwende kein Fachschema") - rund 330 Token, die das Modell
+  verarbeiten musste, um sie zu verwerfen
+* Damit sinkt der feste Teil des Prompts von 1257 auf 1062 Token bei
+  Fachfragen und auf 690 bei kurzen Anfragen
+* **Neu: `modell messen`.** Stellt dieselbe Fachfrage zweimal im selben
+  Vorgang und weist beide Zeiten getrennt aus. Der zweite Durchgang ist der
+  Alltag: Dienst laeuft, Kopf des Prompts ist bekannt
+* Die Messung im Bauablauf mass vorher die Laufzeit des ganzen
+  Programmaufrufs - jeder Aufruf startet den Modelldienst neu, das ergab
+  unbrauchbare 70 bis 105 Sekunden. Jetzt misst sie mit `modell messen`
+
 ### Wartezeit: der zweite Angriff, diesmal an der Wurzel
 
 "Eine Antwort dauert immer noch viel zu lange." Zu Recht - der erste Anlauf

@@ -186,6 +186,21 @@ auf Ihrem Rechner selbst (`modell pruefen`):
 | `high` (14B) | 1 bis 2 Token je Sekunde |
 | Modell zu gross fuer den Arbeitsspeicher | unter 1 - unbrauchbar |
 
+### Selbst nachmessen
+
+```
+PORTABLE_BUCHHALTER_KONSOLE.exe modell messen
+```
+
+Stellt dieselbe Fachfrage **zweimal im selben Vorgang** und zeigt beide
+Zeiten. Der erste Durchgang enthaelt das Laden des Modells und den
+vollstaendigen Prompt; beim zweiten steht der Dienst schon und kennt den
+unveraenderten Kopf. **Der zweite Durchgang ist der Alltag** - genau ihn
+erleben Sie, solange die Anwendung offen bleibt.
+
+Massgeblich ist dabei die Zeit **bis zum ersten Wort**. Danach laeuft die
+Antwort sichtbar weiter; man liest mit, statt zu warten.
+
 ### Unter einem Token je Sekunde
 
 Dann passt das Modell nicht in den Arbeitsspeicher. Der Rechner lagert auf
@@ -200,19 +215,20 @@ Prozente, sondern das Zehnfache.
 
 ### Mit Grafikkarte
 
-Der mitgelieferte Modelldienst rechnet nur auf der CPU; das ist die Fassung,
-die ueberall ohne Treiber laeuft. Mit einer geeigneten Grafikkarte geht ein
-Vielfaches:
+Dem Paket liegen **zwei** Fassungen des Modelldienstes bei:
 
-1. Eine GPU-Fassung von llama.cpp besorgen (CUDA oder Vulkan, aus dem
-   Projekt `ggml-org/llama.cpp`).
-2. Ihren Inhalt nach `runtime\llama` legen und die vorhandenen Dateien
-   ersetzen.
-3. In *Einstellungen und Status* **Grafikschichten** von 0 auf 99 setzen.
-4. `modell pruefen` - die gemessene Geschwindigkeit zeigt, ob es gewirkt hat.
+| Ordner | Wofuer |
+|---|---|
+| `runtime\llama\cpu` | laeuft ueberall ohne Treiber - der Rueckfall |
+| `runtime\llama\vulkan` | nutzt die Grafikkarte (NVIDIA, AMD, Intel) |
 
-Mit der mitgelieferten CPU-Fassung bewirkt der Wert nichts; sie kann keine
-Grafikkarte ansprechen.
+Die Anwendung waehlt beim Start selbst: wird eine Grafikkarte erkannt, nimmt
+sie die Vulkan-Fassung und verlagert alle Schichten dorthin. Kommt die nicht
+hoch - etwa weil ein Treiber fehlt -, faellt sie still auf die CPU-Fassung
+zurueck. Lieber langsam als gar kein Sprachmodell.
+
+Sie muessen dafuer nichts einstellen. Ob es gewirkt hat, zeigt
+`modell messen`.
 
 ---
 

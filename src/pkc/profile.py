@@ -27,6 +27,11 @@ class EmployeeProfile:
     version: str
     directory: Path
     system_prompt: str
+    #: Das Antwortschema fuer Fachfragen. Getrennt vom Kern, weil es bei
+    #: Begruessungen und einfachen Rueckfragen nichts beitraegt - dort wurde
+    #: es bisher mitgeschickt und im selben Prompt wieder ausser Kraft
+    #: gesetzt. Das kostete rund 330 Token Wartezeit fuer nichts.
+    fachschema: str = ""
     capabilities: list[str] = field(default_factory=list)
     limits: list[str] = field(default_factory=list)
     requires_approval: list[str] = field(default_factory=list)
@@ -78,6 +83,11 @@ def load_profile(profiles_dir: Path, profile_id: str) -> EmployeeProfile:
     if len(system_prompt) < 200:
         raise ProfileError(f"Masterprompt {prompt_file} ist auffaellig kurz - bitte pruefen.")
 
+    schema_ref = data.get("fachschema", "prompts/fachschema.md")
+    schema_datei = directory / schema_ref
+    fachschema = (schema_datei.read_text(encoding="utf-8").strip()
+                  if schema_datei.is_file() else "")
+
     return EmployeeProfile(
         profile_id=data.get("profile_id", profile_id),
         name=data.get("name", profile_id),
@@ -85,6 +95,7 @@ def load_profile(profiles_dir: Path, profile_id: str) -> EmployeeProfile:
         version=data.get("version", "0"),
         directory=directory,
         system_prompt=system_prompt,
+        fachschema=fachschema,
         capabilities=list(data.get("capabilities", [])),
         limits=list(data.get("limits", [])),
         requires_approval=list(data.get("requires_approval", [])),

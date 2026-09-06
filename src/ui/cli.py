@@ -516,6 +516,29 @@ def cmd_modell(args) -> int:
         if args.aktion == "pruefen":
             return _probe_ausgeben(controller)
 
+        if args.aktion == "messen":
+            # Die ehrliche Zahl: eine echte Fachfrage, zweimal. Der erste
+            # Lauf enthaelt das Laden des Modells, der zweite ist der Alltag.
+            print("Messe an einer echten Fachfrage (zwei Durchgaenge) ...\n")
+            ergebnis = controller.modell_messen(args.frage or "")
+            print(f"Frage : {ergebnis['frage']}")
+            print(f"Tempo : {ergebnis['tempo']}\n")
+            print(f"{'Durchgang':11} {'1. Wort':>9} {'gesamt':>9}   Bemerkung")
+            for lauf in ergebnis["laeufe"]:
+                if not lauf.get("ok"):
+                    print(f"{lauf['nummer']:<11} {'-':>9} {'-':>9}   {lauf.get('grund', '')}")
+                    continue
+                bemerkung = ("mit Laden des Modells" if lauf["nummer"] == 1
+                             else "im laufenden Betrieb")
+                print(f"{lauf['nummer']:<11} {lauf['erstes_wort_s']:>8.1f}s "
+                      f"{lauf['gesamt_s']:>8.1f}s   {bemerkung}")
+            if not ergebnis["ok"]:
+                print("\nEs hat kein Sprachmodell geantwortet.", file=sys.stderr)
+                return 1
+            print(f"\nIm laufenden Betrieb: {ergebnis['im_betrieb_erstes_wort_s']} s "
+                  f"bis zum ersten Wort, {ergebnis['im_betrieb_gesamt_s']} s bis zum Ende.")
+            return 0
+
         print(f"Unbekannte Aktion: {args.aktion}", file=sys.stderr)
         return 2
     finally:
@@ -992,7 +1015,7 @@ def build_parser() -> argparse.ArgumentParser:
     modell = neu("modell", "Sprachmodell einrichten und pruefen")
     modell.add_argument("aktion", nargs="?", default="status",
                         choices=["status", "empfehlen", "einrichten", "uebernehmen",
-                                 "laden", "pruefen"])
+                                 "laden", "pruefen", "messen"])
     modell.add_argument("--profil", default="",
                         help="probe, light, standard oder high")
     modell.add_argument("--modell-id", dest="modell_id", default="",
@@ -1005,6 +1028,8 @@ def build_parser() -> argparse.ArgumentParser:
     modell.add_argument("--name", default="", help="Dateiname im Modellordner")
     modell.add_argument("--datei", default="",
                         help="vorhandene GGUF-Datei uebernehmen, statt neu zu laden")
+    modell.add_argument("--frage", default="",
+                        help="eigene Frage fuer 'modell messen'")
     modell.set_defaults(func=cmd_modell)
 
     einstellungen = neu("einstellungen", "Einstellungen anzeigen oder setzen")

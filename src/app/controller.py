@@ -843,6 +843,60 @@ class AppController:
         self._vorladefaden = faden
         return True
 
+    def modell_messen(self, frage: str = "", durchgaenge: int = 2) -> dict:
+        """Misst die Wartezeit an einer echten Fachfrage - mehrfach.
+
+        Zwei Durchgaenge, weil sie verschiedene Dinge messen. Der erste
+        enthaelt das Laden des Modells und die vollstaendige Verarbeitung des
+        Prompts. Beim zweiten steht der Dienst schon, und der unveraenderte
+        Kopf des Prompts ist ihm bekannt - er muss nur noch verarbeiten, was
+        sich geaendert hat.
+
+        Der Unterschied zwischen beiden ist die Zahl, die zaehlt: so schnell
+        ist die Anwendung im laufenden Betrieb.
+        """
+        import time as _time
+
+        frage = frage or ("Welche Pflichtangaben braucht eine Rechnung nach "
+                          "dem Umsatzsteuergesetz?")
+        laeufe: list[dict] = []
+        for nummer in range(1, max(int(durchgaenge), 1) + 1):
+            erstes: list[float] = []
+            begonnen = _time.monotonic()
+
+            def zeichen(_stueck: str, _start=begonnen, _ziel=erstes) -> None:
+                if not _ziel:
+                    _ziel.append(_time.monotonic() - _start)
+
+            try:
+                ergebnis = self.ask(frage, on_token=zeichen, use_history=False)
+            except Exception as fehler:
+                laeufe.append({"nummer": nummer, "ok": False, "grund": str(fehler)})
+                continue
+            gesamt = _time.monotonic() - begonnen
+            antwort = ergebnis.answer
+            vom_modell = bool(antwort.model_answered)
+            laeufe.append({
+                "nummer": nummer,
+                "ok": vom_modell,
+                "erstes_wort_s": round(erstes[0] if erstes else 0.0, 1),
+                "gesamt_s": round(gesamt, 1),
+                "zeichen": len(antwort.text),
+                "grund": "" if vom_modell else
+                         "Es hat kein Sprachmodell geantwortet.",
+            })
+
+        gute = [l for l in laeufe if l.get("ok")]
+        return {
+            "ok": bool(gute),
+            "frage": frage,
+            "tempo": str(self.config.get("llm.tempo", tempo.VORGABE)),
+            "laeufe": laeufe,
+            # Der zweite Lauf ist der Alltag: Dienst laeuft, Kopf ist bekannt.
+            "im_betrieb_erstes_wort_s": gute[-1]["erstes_wort_s"] if gute else 0.0,
+            "im_betrieb_gesamt_s": gute[-1]["gesamt_s"] if gute else 0.0,
+        }
+
     def tempo_anwenden(self) -> dict:
         """Uebernimmt das eingestellte Antworttempo in die laufende Anwendung.
 
