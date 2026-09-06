@@ -11,8 +11,8 @@ Datentraeger.
 | Branch | `claude/portable-ki-buchhalter-xr1qlj` |
 | Letzter Commit | siehe `git log -1` |
 | Gepusht | ja |
-| Tests | **484 gruen, 1 uebersprungen** (`python -m pytest tests -q`) |
-| Windows | alle 13 Schritte bestanden, Ablauf https://github.com/Schnielz87/Ki-Mitarbeiter/actions/runs/33973618581 |
+| Tests | **495 gruen, 1 uebersprungen** (`python -m pytest tests -q`) |
+| Windows | alle Schritte bestanden, Ablauf https://github.com/Schnielz87/Ki-Mitarbeiter/actions/runs/34034625286 |
 | Tasks 01 bis 18 | abgeschlossen (Masterprompt 48) |
 | Tasks 19 bis 25 | abgeschlossen (Erweiterung, Masterprompt 58 bis 97) |
 | Tasks 26 bis 31 | E1 bis E6 (Masterprompt Teil 4); E5 teilweise |
@@ -88,8 +88,23 @@ eigenes Benutzerkonto oder ein Job-Objekt.
 
 ### 4. Quellenregister validieren
 
-Der erste Online-Lauf zeigt, welche URLs noch stimmen. Korrekturen erfolgen
-in `config/source_registry.json` **ohne** Programmaenderung.
+Der erste Online-Lauf hat stattgefunden, und er hat Luecken gezeigt. Der
+Bauablauf prueft das Register seitdem mit
+
+```
+python tools/quellen_pruefen.py --ziel ergebnis.json
+```
+
+Das Werkzeug benutzt **den HTTP-Zugriff der Anwendung selbst** - dasselbe
+Nutzerkennzeichen, denselben Zertifikatsspeicher, dieselbe Beachtung von
+robots.txt. Ein Abruf mit einem fremden Werkzeug wuerde etwas anderes
+messen als der Betrieb; der erste Lauf tat genau das (PowerShell, HEAD
+statt GET) und lieferte deshalb Zahlen, die nichts ueber die Anwendung
+aussagen.
+
+Der naechste Lauf liefert die belastbare Liste. Korrekturen erfolgen dann in
+`config/source_registry.json` **ohne** Programmaenderung; eine Adresse, die
+sich nicht klaeren laesst, wird abgeschaltet statt stehengelassen.
 
 ## Wo der Stand nachzulesen ist
 

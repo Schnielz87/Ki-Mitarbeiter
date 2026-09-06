@@ -50,10 +50,19 @@ Doppelklick laufen soll, ist das kein Weg.
 
 | Profil | Modell | Bedarf | Einschaetzung |
 |---|---|---|---|
-| `probe` | 0,5B, etwa 0,4 GB | ab 2 GB RAM | Nur zum Ausprobieren. Fuer Fachfragen **nicht** geeignet. |
-| `light` | 3B, etwa 2 GB | ab 6 GB RAM | Fuer aeltere Buerorechner. Lizenz beachten - nicht Apache-2.0. |
-| `standard` | 7B, etwa 4,7 GB | ab 12 GB RAM | **Empfehlung.** Brauchbare deutsche Sprachqualitaet. |
-| `high` | 14B, etwa 9 GB | ab 24 GB RAM | Beste Qualitaet dieser Auswahl. Auf reiner CPU langsam. |
+| `probe` | 0,5B, 0,49 GB | ab 2 GB RAM | Nur zum Ausprobieren. Fuer Fachfragen **nicht** geeignet. |
+| `light` | 3B, 2,10 GB | ab 6 GB RAM | Fuer aeltere Buerorechner. Lizenz beachten - nicht Apache-2.0. |
+| `standard` | 7B, 4,68 GB (2 Teildateien) | ab 12 GB RAM | **Empfehlung.** Brauchbare deutsche Sprachqualitaet. |
+| `high` | 14B, 8,99 GB (3 Teildateien) | ab 24 GB RAM | Beste Qualitaet dieser Auswahl. Auf reiner CPU langsam. |
+
+Die Groessen sind keine Schaetzung: sie stammen aus dem Windows-Bauablauf,
+der jede Adresse abgerufen hat.
+
+**Teildateien.** Die beiden grossen Modelle liegen beim Anbieter in mehreren
+Dateien vor (`...-00001-of-00002.gguf` und so weiter). Die Anwendung laedt
+alle Teile und legt sie zusammen in `models\` ab; geoeffnet wird der erste
+Teil, den Rest findet llama.cpp selbst. Die Teile duerfen weder umbenannt
+noch getrennt werden.
 
 Ein anderes Profil waehlen:
 
@@ -75,7 +84,13 @@ AWQ) funktionieren mit llama.cpp nicht.
 * **Sie behauptet keine gepruefte Quelle.** Steht bei einer Bezugsquelle
   "nicht geprueft", dann wurde ihre Adresse in diesem Programmstand nicht
   abgerufen - und die geladene Datei wird nicht gegen eine hinterlegte
-  Pruefsumme geprueft. Das steht dann auch dabei.
+  Pruefsumme geprueft. Das steht dann auch dabei. Umgekehrt nennt eine
+  gepruefte Quelle den Bauablauf, in dem sie abgerufen wurde - man kann also
+  nachsehen, statt es glauben zu muessen.
+* **Sie prueft die Pruefsumme nur, wo es eine gibt.** Zur Zeit ist das das
+  Probemodell. Bei den Modellen in Teildateien bildet der Bauablauf keine
+  Gesamtpruefsumme; dort steht deshalb ausdruecklich, dass beim Laden nicht
+  auf Unversehrtheit geprueft wird.
 * **Sie faengt zu wenig Platz vorher ab**, statt mittendrin abzubrechen.
 
 ---

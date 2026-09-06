@@ -300,39 +300,17 @@ jobs:
         continue-on-error: true
         run: |
           # In der Entwicklungsumgebung sind die amtlichen Server gesperrt;
-          # hier nicht. Geprueft wird jede hinterlegte Dokumentadresse.
+          # hier nicht. Geprueft wird mit dem HTTP-Zugriff der Anwendung
+          # selbst - nicht mit einem fremden Werkzeug. Sonst wuerde der
+          # Bauablauf etwas bestaetigen, das die Anwendung so gar nicht tut
+          # (eigenes Nutzerkennzeichen, eigener Zertifikatsspeicher,
+          # robots.txt, Wiederholungen, GET statt HEAD).
           # Einzelne Ausfaelle sind normal (Umbauten, Sperren gegen
           # automatische Abrufe) und duerfen den Bau nicht anhalten - das
           # Ergebnis wird berichtet, nicht behauptet.
-          $register = Get-Content "config\source_registry.json" -Raw | ConvertFrom-Json
-          $heute = Get-Date -Format "yyyy-MM-dd"
-          $zeilen = @()
-          foreach ($quelle in $register.sources) {
-            foreach ($dokument in $quelle.documents) {
-              $eintrag = [ordered]@{
-                quelle = $quelle.source_id; dokument = $dokument.doc_uid
-                url = $dokument.url; geprueft_am = $heute
-              }
-              try {
-                $antwort = Invoke-WebRequest -Uri $dokument.url -Method Head `
-                           -MaximumRedirection 5 -TimeoutSec 45 `
-                           -UserAgent "PORTIVA-Quellenpruefung"
-                $eintrag.status = [int]$antwort.StatusCode
-                $eintrag.erreichbar = $true
-              } catch {
-                $eintrag.status = [int]($_.Exception.Response.StatusCode.value__ ?? 0)
-                $eintrag.erreichbar = $false
-                $eintrag.fehler = $_.Exception.Message
-              }
-              $zeilen += [pscustomobject]$eintrag
-            }
-          }
-          $zeilen | Format-Table quelle, dokument, status, erreichbar |
-            Out-String -Width 200 | Write-Host
-          $ok = ($zeilen | Where-Object { $_.erreichbar }).Count
-          Write-Host "ERREICHBAR: $ok von $($zeilen.Count)"
-          $zeilen | ConvertTo-Json -Depth 4 |
-            Set-Content "$env:RUNNER_TEMP\quellenregister_pruefung.json"
+          python tools\quellen_pruefen.py `
+            --register config\source_registry.json `
+            --ziel "$env:RUNNER_TEMP\quellenregister_pruefung.json"
 
       - name: Sprachmodell - beziehen, starten, antworten lassen
         shell: pwsh
@@ -460,7 +438,7 @@ jobs:
             Write-Host "----- Quellenregister: nicht erreichbare Adressen -----"
             (Get-Content $register -Raw | ConvertFrom-Json) |
               Where-Object { -not $_.erreichbar } |
-              Format-Table quelle, dokument, status | Out-String -Width 200 | Write-Host
+              Format-Table quelle, dokument, status, fehler | Out-String -Width 200 | Write-Host
           }
 
       - name: Ergebnis bereitstellen

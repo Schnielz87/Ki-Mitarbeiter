@@ -91,6 +91,51 @@ def test_katalog_kennzeichnet_ungepruefte_quellen(anwendung):
     assert "2026-09-06" in gross.pruefstand and "Pruefsumme" in gross.pruefstand
 
 
+def test_pruefstand_nennt_den_beleg(tmp_path):
+    """Eine Pruefung ohne Fundstelle ist eine Behauptung (Abschnitt 42).
+
+    Wer im Katalog liest, eine Adresse sei geprueft, muss nachsehen koennen,
+    *wo*. Deshalb traegt der Pruefstand den Lauf, aus dem die Angabe stammt.
+    """
+    katalog = dict(KATALOG)
+    katalog["modelle"] = [dict(eintrag) for eintrag in KATALOG["modelle"]]
+    katalog["modelle"][1]["pruefung"] = {
+        "erreichbar": True, "geprueft_am": "2026-09-06", "sha256": "a" * 64,
+        "beleg": "https://example.invalid/lauf/42",
+    }
+    (tmp_path / "model_catalog.json").write_text(json.dumps(katalog), encoding="utf-8")
+    quelle = katalogmodul.laden(tmp_path).nach_id("gross-geprueft")
+
+    assert quelle.beleg == "https://example.invalid/lauf/42"
+    assert "https://example.invalid/lauf/42" in quelle.pruefstand
+    assert quelle.as_dict()["beleg"] == "https://example.invalid/lauf/42"
+
+
+def test_mitgelieferter_katalog_ist_geprueft():
+    """Der ausgelieferte Katalog darf keine ungepruefte Quelle enthalten.
+
+    Die Angaben stammen aus dem Windows-Bauablauf, der jede Adresse
+    tatsaechlich abgerufen hat. Faellt eine Quelle spaeter aus dem Katalog
+    oder wird eine neue von Hand ergaenzt, ohne sie pruefen zu lassen,
+    schlaegt dieser Test an - und nicht erst der Benutzer.
+    """
+    from pathlib import Path as _Pfad
+
+    katalog = katalogmodul.laden(_Pfad(__file__).resolve().parents[1] / "config")
+    assert len(katalog) >= 4, "der mitgelieferte Katalog ist unvollstaendig"
+    for quelle in katalog:
+        assert quelle.geprueft, f"{quelle.id} ist nicht geprueft"
+        assert quelle.beleg.startswith("https://"), f"{quelle.id} nennt keinen Beleg"
+        for adresse in quelle.adressen:
+            assert adresse.startswith("https://"), f"{quelle.id}: {adresse}"
+    # Ein geteiltes Modell wird ueber seinen ersten Teil geladen - der
+    # Dateiname muss also zu diesem Teil passen, sonst sucht llama.cpp
+    # die Fortsetzungen am falschen Ort.
+    for quelle in katalog:
+        if quelle.geteilt:
+            assert quelle.datei == quelle.teile[0].rsplit("/", 1)[-1], quelle.id
+
+
 def test_katalog_findet_ueber_kennung_und_profil(anwendung):
     katalog = anwendung.modell_katalog()
     assert katalog.waehlen("probe-klein").id == "probe-klein"
@@ -157,6 +202,59 @@ def test_ohne_bestaetigung_wird_nichts_geladen(anwendung, monkeypatch):
     assert "bestaetigen" in text.lower()
     assert "0.4" in text and "Apache-2.0" in text, "Groesse und Lizenz muessen dastehen"
     assert "nicht geprueft" in text, "der Pruefstand der Quelle gehoert dazu"
+
+
+# -- Der Befehl selbst ---------------------------------------------------
+
+def _modell_befehl(wurzel, *zusatz) -> tuple[int, str]:
+    """Ruft den Befehl so auf, wie ihn ein Benutzer aufruft."""
+    from ui.cli import build_parser, cmd_modell
+
+    args = build_parser().parse_args(["modell", *zusatz, "--root", str(wurzel),
+                                      "--offline", "--quiet"])
+    return cmd_modell(args), ""
+
+
+def test_befehl_empfehlen_laeuft_mit_dem_echten_katalog(portable_root, capsys):
+    """Genau dieser Befehl steht in der Anleitung - er muss also laufen.
+
+    Er lief einmal nicht: die Empfehlung stuerzte ab, weil sie den Katalog
+    anders las, als er gebaut war. Aufgefallen ist das erst beim Ausprobieren.
+    Seitdem wird er hier mit dem *ausgelieferten* Katalog aufgerufen, nicht
+    mit einem Testkatalog - ein Fehler in der ausgelieferten Datei faellt
+    sonst niemandem auf.
+    """
+    import shutil
+
+    ziel = portable_root.get("config")
+    ziel.mkdir(parents=True, exist_ok=True)
+    echter = Path(__file__).resolve().parents[1] / "config" / "model_catalog.json"
+    shutil.copy(echter, ziel / "model_catalog.json")
+
+    code, _ = _modell_befehl(portable_root.root, "empfehlen")
+    text = capsys.readouterr().out
+    assert code == 0
+    assert "Hinterlegte Bezugsquellen:" in text
+    assert "Empfohlen:" in text
+    # Ein geteiltes Modell muss als solches angekuendigt werden - sonst
+    # haelt der Benutzer die zweite Datei fuer einen Fehler.
+    assert "Teildateien" in text
+    assert "nicht geprueft" not in text, (
+        "der ausgelieferte Katalog ist geprueft - dann darf hier nichts anderes stehen")
+
+
+def test_befehl_status_sagt_ohne_modell_was_fehlt(portable_root, capsys):
+    """Ohne Modell ist der Befehl am wichtigsten - dann darf er nicht abbrechen.
+
+    Er endet mit Rueckgabewert 2: nicht als Fehler, sondern als Aussage, die
+    sich in einem Skript auswerten laesst ("es fehlt noch etwas").
+    """
+    code, _ = _modell_befehl(portable_root.root, "status")
+    text = capsys.readouterr().out
+    assert code == 2, "ein unvollstaendiger Zustand ist weder Erfolg noch Absturz"
+    assert "Bereit           : nein" in text
+    assert "Es fehlt:" in text and "modell einrichten" in text
+    assert "(keine Modelldatei)" in text
 
 
 def test_unbekannte_auswahl_nennt_die_moeglichkeiten(anwendung):

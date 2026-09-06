@@ -1,5 +1,5 @@
 {
-  "hinweis": "Bezugsquellen fuer lokale Sprachmodelle. Die Angaben unter 'pruefung' werden vom Windows-Bauablauf gesetzt - dort wird jede Adresse tatsaechlich abgerufen. Ein Eintrag ohne bestaetigte Pruefung wird von der Anwendung als ungeprueft gekennzeichnet.",
+  "hinweis": "Bezugsquellen fuer lokale Sprachmodelle. Die Angaben unter 'pruefung' stammen aus dem Windows-Bauablauf, der jede Adresse tatsaechlich abruft; 'beleg' nennt den Lauf. Ein Eintrag ohne bestaetigte Pruefung wird von der Anwendung als ungeprueft gekennzeichnet.",
   "stand": "2026-09-06",
   "modelle": [
     {
@@ -10,11 +10,17 @@
       "herkunft": "Hugging Face, Repository Qwen/Qwen2.5-0.5B-Instruct-GGUF",
       "url": "https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/main/qwen2.5-0.5b-instruct-q4_k_m.gguf",
       "datei": "qwen2.5-0.5b-instruct-q4_k_m.gguf",
-      "groesse_gb": 0.4,
+      "groesse_gb": 0.49,
       "min_ram_gb": 2,
       "hinweis": "Nur zum Ausprobieren und fuer den Bauablauf. Die fachliche Qualitaet reicht fuer Buchhaltungsfragen NICHT aus - Antworten sind hier nicht belastbar.",
       "produktiv": false,
-      "pruefung": {}
+      "pruefung": {
+        "erreichbar": true,
+        "geprueft_am": "2026-09-06",
+        "groesse_bytes": 491400032,
+        "beleg": "https://github.com/Schnielz87/Ki-Mitarbeiter/actions/runs/34034625286",
+        "sha256": "74a4da8c9fdbcd15bd1f6d01d621410d31c6fc00986f5eb687824e7b93d7a9db"
+      }
     },
     {
       "id": "qwen2.5-3b",
@@ -24,11 +30,16 @@
       "herkunft": "Hugging Face, Repository Qwen/Qwen2.5-3B-Instruct-GGUF",
       "url": "https://huggingface.co/Qwen/Qwen2.5-3B-Instruct-GGUF/resolve/main/qwen2.5-3b-instruct-q4_k_m.gguf",
       "datei": "qwen2.5-3b-instruct-q4_k_m.gguf",
-      "groesse_gb": 2.0,
+      "groesse_gb": 2.1,
       "min_ram_gb": 6,
       "hinweis": "Fuer aeltere Buerorechner. Die Lizenz dieses Modells ist NICHT Apache-2.0 - fuer den betrieblichen Einsatz bitte pruefen oder ein anderes Profil waehlen.",
       "produktiv": true,
-      "pruefung": {}
+      "pruefung": {
+        "erreichbar": true,
+        "geprueft_am": "2026-09-06",
+        "groesse_bytes": 2104932768,
+        "beleg": "https://github.com/Schnielz87/Ki-Mitarbeiter/actions/runs/34034625286"
+      }
     },
     {
       "id": "qwen2.5-7b",
@@ -37,12 +48,21 @@
       "lizenz": "Apache-2.0",
       "herkunft": "Hugging Face, Repository Qwen/Qwen2.5-7B-Instruct-GGUF",
       "url": "https://huggingface.co/Qwen/Qwen2.5-7B-Instruct-GGUF/resolve/main/qwen2.5-7b-instruct-q4_k_m.gguf",
-      "datei": "qwen2.5-7b-instruct-q4_k_m.gguf",
-      "groesse_gb": 4.7,
+      "datei": "qwen2.5-7b-instruct-q4_k_m-00001-of-00002.gguf",
+      "groesse_gb": 4.68,
       "min_ram_gb": 12,
       "hinweis": "Empfohlener Standard: brauchbare deutsche Sprachqualitaet bei vertretbarem Speicherbedarf.",
       "produktiv": true,
-      "pruefung": {}
+      "pruefung": {
+        "erreichbar": true,
+        "geprueft_am": "2026-09-06",
+        "groesse_bytes": 4683073632,
+        "beleg": "https://github.com/Schnielz87/Ki-Mitarbeiter/actions/runs/34034625286"
+      },
+      "teile": [
+        "https://huggingface.co/Qwen/Qwen2.5-7B-Instruct-GGUF/resolve/main/qwen2.5-7b-instruct-q4_k_m-00001-of-00002.gguf",
+        "https://huggingface.co/Qwen/Qwen2.5-7B-Instruct-GGUF/resolve/main/qwen2.5-7b-instruct-q4_k_m-00002-of-00002.gguf"
+      ]
     },
     {
       "id": "qwen2.5-14b",
@@ -51,12 +71,22 @@
       "lizenz": "Apache-2.0",
       "herkunft": "Hugging Face, Repository Qwen/Qwen2.5-14B-Instruct-GGUF",
       "url": "https://huggingface.co/Qwen/Qwen2.5-14B-Instruct-GGUF/resolve/main/qwen2.5-14b-instruct-q4_k_m.gguf",
-      "datei": "qwen2.5-14b-instruct-q4_k_m.gguf",
-      "groesse_gb": 9.0,
+      "datei": "qwen2.5-14b-instruct-q4_k_m-00001-of-00003.gguf",
+      "groesse_gb": 8.99,
       "min_ram_gb": 24,
       "hinweis": "Beste Fachqualitaet dieser Auswahl. Auf reiner CPU deutlich langsamer - eine Antwort kann Minuten dauern.",
       "produktiv": true,
-      "pruefung": {}
+      "pruefung": {
+        "erreichbar": true,
+        "geprueft_am": "2026-09-06",
+        "groesse_bytes": 8988110496,
+        "beleg": "https://github.com/Schnielz87/Ki-Mitarbeiter/actions/runs/34034625286"
+      },
+      "teile": [
+        "https://huggingface.co/Qwen/Qwen2.5-14B-Instruct-GGUF/resolve/main/qwen2.5-14b-instruct-q4_k_m-00001-of-00003.gguf",
+        "https://huggingface.co/Qwen/Qwen2.5-14B-Instruct-GGUF/resolve/main/qwen2.5-14b-instruct-q4_k_m-00002-of-00003.gguf",
+        "https://huggingface.co/Qwen/Qwen2.5-14B-Instruct-GGUF/resolve/main/qwen2.5-14b-instruct-q4_k_m-00003-of-00003.gguf"
+      ]
     }
   ],
   "dienst": {

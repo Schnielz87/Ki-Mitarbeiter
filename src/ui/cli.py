@@ -427,6 +427,11 @@ def cmd_modell(args) -> int:
                 print(f"{marke} {eintrag['id']:16s} {eintrag['name']}")
                 print(f"     etwa {eintrag['groesse_gb']} GB · mindestens "
                       f"{eintrag['min_ram_gb']} GB RAM · Lizenz {eintrag['lizenz']}")
+                if eintrag.get("geteilt"):
+                    # Wer eine Datei erwartet und drei bekommt, haelt den
+                    # Vorgang fuer kaputt. Also vorher sagen.
+                    print(f"     wird in {len(eintrag['teile'])} Teildateien "
+                          "geladen - alle gehoeren zusammen in models\\")
                 print(f"     Bezugsquelle: {eintrag['pruefstand']}")
                 if not eintrag["produktiv"]:
                     print("     NUR ZUM AUSPROBIEREN - fuer Fachfragen nicht geeignet")

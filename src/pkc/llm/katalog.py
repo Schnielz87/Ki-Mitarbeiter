@@ -60,6 +60,11 @@ class Modellquelle:
         return str(self.pruefung.get("sha256", "") or "")
 
     @property
+    def beleg(self) -> str:
+        """Wo die Pruefung nachzulesen ist - ein Lauf, keine Behauptung."""
+        return str(self.pruefung.get("beleg", "") or "")
+
+    @property
     def geteilt(self) -> bool:
         return len(self.teile) > 1
 
@@ -78,6 +83,8 @@ class Modellquelle:
         else:
             teile.append("ohne Pruefsumme - die Datei wird beim Laden nicht auf "
                          "Unversehrtheit geprueft")
+        if self.beleg:
+            teile.append(f"nachzulesen im Bauablauf: {self.beleg}")
         return ", ".join(teile)
 
     def as_dict(self) -> dict:
@@ -88,7 +95,8 @@ class Modellquelle:
             "min_ram_gb": self.min_ram_gb, "hinweis": self.hinweis,
             "produktiv": self.produktiv, "geprueft": self.geprueft,
             "teile": list(self.teile), "geteilt": self.geteilt,
-            "sha256": self.sha256, "pruefstand": self.pruefstand,
+            "sha256": self.sha256, "beleg": self.beleg,
+            "pruefstand": self.pruefstand,
         }
 
 
