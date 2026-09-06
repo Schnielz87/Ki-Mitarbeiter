@@ -22,6 +22,7 @@ from tkinter import filedialog, messagebox, scrolledtext, ttk
 
 from app.controller import AppController, AskOutcome, StartupReport
 from pkc.branding import load_brand, profilname
+from pkc.logging_setup import get_logger
 from pkc.netstate import Mode
 from ui.antwort import teilen
 from ui.markdown import zerlegen
@@ -35,6 +36,11 @@ FONT_TITLE = ("Segoe UI", 14, "bold")
 
 #: Stelle im Chat, ab der die gerade laufende Antwort steht (Abschnitt 21).
 MARKE_STROM = "laufende_antwort"
+
+# Die Ausweichzweige beim Branding und beim Update-Status schreiben ins
+# Protokoll. Ohne dieses Protokoll waere dort ein NameError entstanden -
+# ausgerechnet an den Stellen, die einen Fehler abfangen sollen.
+log = get_logger(__name__)
 
 
 class Abgebrochen(Exception):

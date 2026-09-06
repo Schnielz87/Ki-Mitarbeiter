@@ -36,7 +36,7 @@ from pkc.memory import CaptureCandidate, MemoryCapture, MemoryStore
 from pkc.memory.schema_keys import CATEGORIES, WELL_KNOWN_KEYS
 from pkc.netstate import Betriebsart, Mode, NetworkMonitor, NetStatus
 from pkc.paths import Paths, get_paths, sanitise_customer_id
-from pkc.plugins import PluginFehler, Pluginverwaltung
+from pkc.plugins import Pluginverwaltung
 from pkc.profile import EmployeeProfile, load_profile
 from pkc.rag import AnswerResult, ContextBuilder, RagEngine
 from pkc.retrieval.embeddings import build_embedder

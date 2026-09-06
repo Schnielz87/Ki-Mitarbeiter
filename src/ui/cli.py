@@ -321,7 +321,7 @@ def cmd_plugin(args) -> int:
             print(f"  Kategorie   : {manifest.kategorie}")
             print(f"  Herausgeber : {manifest.autor or 'nicht angegeben'}")
             print(f"  Beschreibung: {manifest.beschreibung}")
-            print(f"  Signatur    : "
+            print("  Signatur    : "
                   + ("gueltig" if pruefung.signatur_gueltig else
                      "vorhanden, nicht pruefbar" if pruefung.signiert else "keine"))
             print("  Verlangte Berechtigungen:")

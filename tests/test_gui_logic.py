@@ -341,3 +341,24 @@ def test_ohne_strom_erscheint_die_antwort_trotzdem(gui):
     window._antwort_anzeigen("Antwort am Stueck.")
     assert "Antwort am Stueck." in window.chat.buffer
     assert "PORTIVA - Buchhalter" in window.chat.buffer
+
+
+def test_unlesbares_logo_stuerzt_nicht_ab(gui, monkeypatch, tmp_path):
+    """Der Ausweichzweig muss halten - er ist der Sinn der Sache.
+
+    Anlass: die Ausweichzweige beim Logo, beim Fenstersymbol und beim
+    Update-Status schrieben ins Protokoll, ohne dass dieses Protokoll in
+    der Datei bekannt war. Statt den Fehler abzufangen, haetten sie einen
+    NameError ausgeloest - ausgerechnet dort, wo nichts passieren soll.
+    """
+    _, _, _, tk_app = gui
+
+    class Explodiert:
+        def __init__(self, *args, **kwargs):
+            raise OSError("Datei unlesbar")
+
+    class BrandDoppel:
+        logo_pfad = tmp_path / "logo.png"
+
+    monkeypatch.setattr(tk_app.tk, "PhotoImage", Explodiert)
+    assert tk_app._logo_bild(BrandDoppel()) is None
