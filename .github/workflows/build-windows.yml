@@ -163,6 +163,52 @@ jobs:
             subst X: /D
           }
 
+      - name: Dateien erzeugen - Excel, Word, PowerPoint, PDF (Erweiterung E4)
+        shell: pwsh
+        run: |
+          Set-Location dist\Portable-Buchhalter
+          .\PORTABLE_BUCHHALTER_KONSOLE.exe --offline frage "Wie lange muss ich Rechnungen aufbewahren?" | Out-Null
+          foreach ($format in @("xlsx", "docx", "pptx", "pdf", "csv")) {
+            $zeilen = .\PORTABLE_BUCHHALTER_KONSOLE.exe --offline datei antwort --format $format --name Windowsprobe
+            if ($LASTEXITCODE -ne 0) { throw "Die $format-Datei wurde nicht erzeugt (Code $LASTEXITCODE)." }
+            Write-Host ($zeilen -join "`n")
+          }
+          $ordner = "workspace\artefakte"
+          Get-ChildItem $ordner | Format-Table Name, Length | Out-String | Write-Host
+          foreach ($endung in @("xlsx", "docx", "pptx", "pdf", "csv")) {
+            $datei = Join-Path $ordner "Windowsprobe.$endung"
+            if (-not (Test-Path $datei)) { throw "Es fehlt: $datei" }
+            if ((Get-Item $datei).Length -lt 200) { throw "$datei ist verdaechtig klein." }
+          }
+          # Zweites Speichern darf die erste Fassung nicht ueberschreiben.
+          .\PORTABLE_BUCHHALTER_KONSOLE.exe --offline datei antwort --format pdf --name Windowsprobe | Out-Null
+          if (-not (Test-Path (Join-Path $ordner "Windowsprobe_v2.pdf"))) {
+            throw "Beim zweiten Speichern entstand keine neue Fassung."
+          }
+
+      - name: Plugin installieren und aktivieren (Erweiterung E5)
+        shell: pwsh
+        run: |
+          python tools\plugin_packen.py examples\plugin_html --ziel "$env:RUNNER_TEMP\html_export"
+          Set-Location dist\Portable-Buchhalter
+          $paket = "$env:RUNNER_TEMP\html_export.kimplug"
+
+          # Ohne Bestaetigung darf nichts installiert werden.
+          .\PORTABLE_BUCHHALTER_KONSOLE.exe --offline plugin installieren $paket | Out-String | Write-Host
+          if ($LASTEXITCODE -eq 0) { throw "Das Plugin wurde ohne Bestaetigung installiert." }
+
+          .\PORTABLE_BUCHHALTER_KONSOLE.exe --offline plugin installieren $paket --bestaetigen --aktivieren
+          if ($LASTEXITCODE -ne 0) { throw "Die Installation schlug fehl (Code $LASTEXITCODE)." }
+
+          $formate = .\PORTABLE_BUCHHALTER_KONSOLE.exe --offline datei formate | Out-String
+          Write-Host $formate
+          if ($formate -notmatch "html") { throw "Das Plugin hat sein Format nicht angemeldet." }
+
+          .\PORTABLE_BUCHHALTER_KONSOLE.exe --offline datei antwort --format html --name Pluginprobe
+          if (-not (Test-Path "workspace\artefakte\Pluginprobe.html")) {
+            throw "Die HTML-Datei aus dem Plugin wurde nicht erzeugt."
+          }
+
       - name: Ergebnis bereitstellen
         uses: actions/upload-artifact@v4
         with:
