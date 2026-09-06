@@ -23,6 +23,7 @@ from ..memory.store import MemoryEntry, MemoryStore
 from ..profile import EmployeeProfile
 from ..retrieval.search import Hit, HybridSearcher
 from .context import ContextBuilder, ContextBundle, SourceReference, cited_numbers
+from .fragetyp import Einstufung, Fragetyp, einstufen
 
 log = get_logger(__name__)
 
@@ -38,6 +39,12 @@ class AnswerResult:
     knowledge_date: str | None = None
     warnings: list[str] = field(default_factory=list)
     elapsed: float = 0.0
+    #: Wie die Frage eingestuft wurde - steuert Recherche und Antworttiefe.
+    einstufung: Einstufung | None = None
+
+    @property
+    def fragetyp(self) -> Fragetyp:
+        return self.einstufung.typ if self.einstufung else Fragetyp.FACHLICH
 
     @property
     def model_answered(self) -> bool:
@@ -94,6 +101,7 @@ class RagEngine:
         history: Sequence[ChatMessage] = (),
         mode: str = "OFFLINE",
         knowledge_date: str | None = None,
+        einstufung: Einstufung | None = None,
     ) -> list[ChatMessage]:
         header = [
             self.profile.system_prompt,
@@ -111,6 +119,13 @@ class RagEngine:
         if self.profile.limits:
             header += ["", "## GRENZEN DIESER ROLLE", ""]
             header += [f"* {limit}" for limit in self.profile.limits]
+
+        # Antworttiefe an die Art der Frage anpassen. Eine Begruessung mit dem
+        # vollstaendigen Fachschema zu beantworten waere ebenso falsch wie ein
+        # verwickelter Sachverhalt in zwei Saetzen.
+        header += ["", "## ANTWORTTIEFE FUER DIESE NACHRICHT", ""]
+        header += _tiefenanweisung(einstufung.typ if einstufung else Fragetyp.FACHLICH,
+                                   self.profile)
         messages = [ChatMessage("system", "\n".join(header))]
         messages.append(ChatMessage("system", bundle.as_system_block()))
         messages.extend(history)
@@ -129,9 +144,18 @@ class RagEngine:
         temperature: float = 0.2,
         prefer_online: bool = False,
     ) -> AnswerResult:
-        hits, entries = self.retrieve(question, as_of=as_of)
+        # Erst einstufen, dann entscheiden, ob ueberhaupt recherchiert wird.
+        # Auf "Kannst Du mir helfen?" gehoeren keine acht Fundstellen aus dem
+        # Umsatzsteuerrecht - das sieht aus, als haette die Frage damit zu tun.
+        einstufung = einstufen(question, hat_verlauf=bool(history))
+
+        if einstufung.braucht_recherche:
+            hits, entries = self.retrieve(question, as_of=as_of)
+        else:
+            hits, entries = [], self.memory.list(limit=40) if self.memory else []
         bundle = self.builder.build(hits, entries)
-        messages = self.build_messages(question, bundle, history, mode, knowledge_date)
+        messages = self.build_messages(question, bundle, history, mode,
+                                       knowledge_date, einstufung)
 
         response = self.llm.generate(
             messages, max_tokens=max_tokens, temperature=temperature,
@@ -169,7 +193,7 @@ class RagEngine:
         return AnswerResult(
             text=text, references=bundle.references, used_references=used,
             context=bundle, llm=response, mode=mode, knowledge_date=knowledge_date,
-            warnings=warnings, elapsed=response.elapsed,
+            warnings=warnings, elapsed=response.elapsed, einstufung=einstufung,
         )
 
     # -- Nachbereitung -------------------------------------------------
@@ -231,3 +255,49 @@ def _strip_numbers(text: str, numbers: Sequence[int]) -> str:
     for number in numbers:
         text = re.sub(rf"\s*\[{number}\]", "", text)
     return text
+
+
+def _tiefenanweisung(typ: Fragetyp, profile) -> list[str]:
+    """Sagt dem Modell, wie ausfuehrlich zu antworten ist.
+
+    Der Auftrag (Abschnitt 9) verlangt ausdruecklich, nicht jede Nachricht
+    mit derselben starren langen Vorlage zu beantworten.
+    """
+    if typ is Fragetyp.SMALLTALK:
+        return [
+            "Dies ist **keine** Fachfrage, sondern Konversation.",
+            "",
+            "* Antworte kurz, natuerlich und freundlich, in zwei bis fuenf Saetzen.",
+            "* Verwende **kein** Fachschema und keine Abschnittsueberschriften.",
+            "* Nenne **keine** Quellen - es wurde bewusst nicht recherchiert.",
+            "* Wird nach deinen Faehigkeiten gefragt, nenne konkrete Beispiele "
+            "aus deinem Fachgebiet und weise darauf hin, dass du bei fehlenden "
+            "Angaben nachfragst.",
+        ]
+    if typ is Fragetyp.EINFACH:
+        return [
+            "Eine einfache Frage.",
+            "",
+            "* Antworte knapp und direkt, ohne Fachschema.",
+            "* Nenne eine Fundstelle nur, wenn sie die Antwort wirklich traegt.",
+        ]
+    if typ is Fragetyp.FACHLICH:
+        return [
+            "Eine fachliche Frage ohne geschilderten Einzelfall.",
+            "",
+            "* Antworte zusammenhaengend und verstaendlich, in Absaetzen.",
+            "* Belege tragende Aussagen mit [1], [2] usw.",
+            "* Verwende nur die Abschnitte, die wirklich etwas beitragen - "
+            "nicht das vollstaendige Schema.",
+            "* Nenne offene Punkte nur, wenn es wirklich welche gibt.",
+        ]
+    abschnitte = ", ".join(getattr(profile, "answer_sections", []) or [])
+    return [
+        "Ein geschilderter Einzelfall - hier ist die vollstaendige fachliche "
+        "Wuerdigung angebracht.",
+        "",
+        f"* Verwende das Fachschema: {abschnitte}",
+        "* Lass Abschnitte weg, zu denen du nichts Belastbares sagen kannst.",
+        "* Belege tragende Aussagen mit [1], [2] usw.",
+        "* Fehlen entscheidende Angaben, frage gezielt nach, statt zu raten.",
+    ]
