@@ -4,140 +4,131 @@ Ohne lokales Sprachmodell recherchiert der Buchhalter zwar in seinen Quellen
 und zeigt die Fundstellen an, **formuliert aber keine Fachantwort**. Er sagt
 das dann auch deutlich. Diese Anleitung schliesst die Luecke.
 
-Einmaliger Aufwand: etwa 15 Minuten plus Downloadzeit.
+Einmaliger Aufwand: ein Befehl plus Downloadzeit. Die Modelldatei ist je
+nach Auswahl 0,4 bis 9 GB gross.
 
-## Schritt 1: Passendes Modell ermitteln
+---
+
+## Der kurze Weg
 
 ```
-PORTABLE_BUCHHALTER.exe                       (oder: python portable_buchhalter.py)
-python tools\modell_einrichten.py empfehlen
+PORTABLE_BUCHHALTER_KONSOLE.exe modell empfehlen
+PORTABLE_BUCHHALTER_KONSOLE.exe modell einrichten --bestaetigen
 ```
 
-Die Ausgabe nennt Prozessor, Arbeitsspeicher, Grafikkarte und freien Platz
-und empfiehlt ein Profil:
+Der erste Befehl sieht sich den Rechner an und zeigt die hinterlegten
+Bezugsquellen mit Groesse, Lizenz und Pruefstand. Der zweite laedt das zur
+Hardware passende Modell, prueft die Pruefsumme, bindet es ein und stellt
+ihm zum Schluss eine kleine Frage. Erst wenn die beantwortet ist, meldet er
+**"Das Sprachmodell ist einsatzbereit."**
 
-| Profil | Modellklasse | Bedarf | Einschaetzung |
+Danach beantwortet der Buchhalter Fachfragen mit einer formulierten Antwort
+statt mit dem Hinweis, dass kein Modell da ist.
+
+---
+
+## Was dabei schon fertig ist
+
+**Der Modelldienst liegt bei.** Unter `runtime\llama` liegt `llama-server`
+aus dem Projekt llama.cpp (MIT-Lizenz, Herkunft in
+`runtime\llama\HERKUNFT.txt`). Sie muessen nichts installieren, nichts
+uebersetzen und keinen Compiler einrichten.
+
+Die Anwendung startet den Dienst selbst - und zwar erst bei der ersten
+Frage, damit der Programmstart nicht jedes Mal auf das Laden eines mehrere
+Gigabyte grossen Modells wartet. Er hoert nur auf dem eigenen Rechner
+(127.0.0.1), oeffnet kein zweites Fenster und wird beim Beenden der
+Anwendung mit heruntergefahren.
+
+**Warum nicht llama-cpp-python?** Dafuer gibt es keine fertigen Pakete. Es
+muesste auf Ihrem Rechner uebersetzt werden. Fuer eine Anwendung, die per
+Doppelklick laufen soll, ist das kein Weg.
+
+---
+
+## Die Auswahl
+
+| Profil | Modell | Bedarf | Einschaetzung |
 |---|---|---|---|
-| LIGHT | 3B, Q4_K_M, etwa 2 GB | ab 6 GB RAM | Laeuft ueberall. Fachqualitaet begrenzt - Antworten besonders sorgfaeltig pruefen. |
-| STANDARD | 7-8B, Q4_K_M, etwa 5 GB | ab 12 GB RAM | **Empfehlung.** Gute deutsche Sprachqualitaet bei vertretbarem Bedarf. |
-| HIGH QUALITY | 12-14B, Q5_K_M, etwa 9 GB | ab 24 GB RAM | Beste Qualitaet. Auf reiner CPU spuerbar langsamer. |
+| `probe` | 0,5B, etwa 0,4 GB | ab 2 GB RAM | Nur zum Ausprobieren. Fuer Fachfragen **nicht** geeignet. |
+| `light` | 3B, etwa 2 GB | ab 6 GB RAM | Fuer aeltere Buerorechner. Lizenz beachten - nicht Apache-2.0. |
+| `standard` | 7B, etwa 4,7 GB | ab 12 GB RAM | **Empfehlung.** Brauchbare deutsche Sprachqualitaet. |
+| `high` | 14B, etwa 9 GB | ab 24 GB RAM | Beste Qualitaet dieser Auswahl. Auf reiner CPU langsam. |
 
-Empfohlene Modelle (alle mit freier Lizenz, Apache 2.0):
-
-* **LIGHT**: Qwen2.5-3B-Instruct, Quantisierung Q4_K_M
-* **STANDARD**: Qwen2.5-7B-Instruct, Quantisierung Q4_K_M
-* **HIGH QUALITY**: Mistral-Nemo-Instruct-2407 (Q5_K_M) oder
-  Qwen2.5-14B-Instruct (Q4_K_M)
-
-Wichtig ist das Dateiformat **GGUF**. Andere Formate (safetensors, GPTQ, AWQ)
-funktionieren mit llama.cpp nicht.
-
-## Schritt 2: Modell beschaffen
-
-Die GGUF-Datei nach `models\` legen. Zwei Wege:
-
-**Von Hand:** Datei herunterladen (ueblicherweise von Hugging Face) und in
-den Ordner `models\` kopieren. Fertig.
-
-**Mit dem Werkzeug:**
+Ein anderes Profil waehlen:
 
 ```
-python tools\modell_einrichten.py laden <URL> --sha256 <pruefsumme>
+PORTABLE_BUCHHALTER_KONSOLE.exe modell einrichten --profil light --bestaetigen
 ```
 
-Die Pruefsumme ist optional, aber empfohlen: ohne sie ist die Datei nicht
-gegen Manipulation geprueft. Das Werkzeug bricht bei falscher Pruefsumme ab
-und verwirft die Datei.
+Wichtig ist das Dateiformat **GGUF**. Andere Formate (safetensors, GPTQ,
+AWQ) funktionieren mit llama.cpp nicht.
 
-Bitte die Lizenz des jeweiligen Modells beachten. Fuer den geschaeftlichen
-Einsatz sind Apache-2.0-Modelle unproblematisch.
+---
 
-## Schritt 3: Ausfuehrungsweg waehlen
+## Was die Anwendung dabei nicht tut
 
-Zwei Wege - der zweite ist fuer den portablen Betrieb meist der bessere.
+* **Sie laedt nichts ohne Ihre Bestaetigung.** Ohne `--bestaetigen` nennt
+  sie nur Groesse, Lizenz und Pruefstand der Quelle und hoert auf.
+* **Sie laedt nichts im Betriebsmodus OFFLINE.** Dafuer erst auf HYBRID
+  oder ONLINE umschalten.
+* **Sie behauptet keine gepruefte Quelle.** Steht bei einer Bezugsquelle
+  "nicht geprueft", dann wurde ihre Adresse in diesem Programmstand nicht
+  abgerufen - und die geladene Datei wird nicht gegen eine hinterlegte
+  Pruefsumme geprueft. Das steht dann auch dabei.
+* **Sie faengt zu wenig Platz vorher ab**, statt mittendrin abzubrechen.
 
-### Weg A: im selben Prozess (`llama-cpp-python`)
+---
 
-```
-python -m pip install llama-cpp-python
-```
+## Eigene Bezugsquelle
 
-Vorteil: nichts weiter zu starten.
-Nachteil: das Paket muss auf manchen Rechnern kompiliert werden, was einen
-C-Compiler verlangt. Deshalb ist es **keine** Pflichtabhaengigkeit.
-
-### Weg B: llama-server aus llama.cpp (empfohlen)
-
-1. Die vorkompilierten Windows-Dateien von llama.cpp herunterladen und nach
-   `runtime\llama\` entpacken.
-2. Server starten:
+Wer ein anderes Modell verwenden will - etwa ein firmeninternes oder ein
+Modell mit anderer Lizenz:
 
 ```
-runtime\llama\llama-server.exe -m models\<modell>.gguf -c 8192 --port 8080
+PORTABLE_BUCHHALTER_KONSOLE.exe modell laden --url <Adresse> [--pruefsumme <sha256>]
 ```
 
-3. In `config\settings.json` eintragen:
+Oder ganz ohne Befehl: die GGUF-Datei einfach nach `models\` kopieren. Die
+Anwendung findet sie beim naechsten Start.
 
-```json
-{ "llm": { "server_url": "http://127.0.0.1:8080", "server_model": "local" } }
-```
+Die hinterlegten Bezugsquellen stehen in `config\model_catalog.json` und
+lassen sich dort ergaenzen, ohne die Anwendung neu zu bauen.
 
-Vorteile: keine Kompilierung, klare Trennung, das Modell bleibt zwischen den
-Starts geladen, GPU-Unterstuetzung ueber die Startparameter von llama.cpp.
-Der Server laeuft ausschliesslich auf `127.0.0.1` - es ist **kein** Server im
-Sinne des Masterprompts, sondern ein lokaler Hilfsprozess ohne Netzzugang.
+---
 
-## Schritt 4: Wirklich pruefen
+## Nachsehen, ob es laeuft
 
 ```
-python tools\modell_einrichten.py pruefen
+PORTABLE_BUCHHALTER_KONSOLE.exe modell status
+PORTABLE_BUCHHALTER_KONSOLE.exe modell pruefen
 ```
 
-oder fuer Weg B:
+`status` sagt, was da ist und was fehlt. `pruefen` stellt dem Modell eine
+Frage und nennt Antwortzeit und Geschwindigkeit in Token je Sekunde.
 
-```
-python tools\modell_einrichten.py pruefen --server http://127.0.0.1:8080
-```
+---
 
-Das Werkzeug stellt eine echte Testfrage und zeigt Antwort, Dauer und
-Geschwindigkeit. Erst wenn hier eine sinnvolle Antwort steht, ist das Modell
-eingerichtet.
+## Wenn es klemmt
 
-Anschliessend:
+| Meldung | Bedeutung | Was zu tun ist |
+|---|---|---|
+| "Es fehlt: die Modelldatei" | Es liegt kein GGUF-Modell in `models\` | `modell einrichten --bestaetigen` |
+| "Es fehlt: der Modelldienst (runtime/llama)" | Der Ordner `runtime\llama` fehlt im Paket | Das vollstaendige Windows-Paket verwenden; der Dienst liegt dort bei |
+| "Der Modelldienst ist nicht hochgekommen" | Der Dienst konnte das Modell nicht laden | Die Meldung nennt die letzte Ausgabe des Dienstes. Meist zu wenig Arbeitsspeicher - ein kleineres Profil waehlen. Ausfuehrlich in `logs\llama-server.log` |
+| Die erste Antwort dauert sehr lange | Das Modell wird geladen | Einmalig. Die folgenden Antworten kommen deutlich schneller |
+| Antworten sind fachlich duenn | Das Modell ist zu klein | `probe` ist ausdruecklich nicht fuer Fachfragen gedacht. `standard` verwenden |
 
-```
-PORTABLE_BUCHHALTER_KONSOLE.exe check
-```
+---
 
-Die Zeile „Lokales Modell" muss **OK** zeigen, nicht **HINWEIS**.
+## Zur Einordnung
 
-## Einstellungen
+Die Kette - Dienst starten, warten bis er bereit ist, fragen, schrittweise
+ausgeben, abbrechen, beenden - ist automatisch geprueft. Mit einem echten
+GGUF-Modell laeuft sie im Windows-Bauablauf.
 
-In `config\settings.json` unter `llm`:
-
-| Schluessel | Bedeutung |
-|---|---|
-| `model_path` | `"auto"` waehlt die groesste GGUF-Datei in `models\`, sonst ein konkreter Pfad |
-| `context_tokens` | Kontextfenster, Vorgabe 8192 |
-| `max_output_tokens` | Laenge der Antwort, Vorgabe 1024 |
-| `temperature` | Vorgabe 0.2 - fuer Fachfragen bewusst niedrig |
-| `threads` | 0 bedeutet automatisch |
-| `gpu_layers` | 0 bedeutet reine CPU; hoeher setzen, wenn eine Grafikkarte vorhanden ist |
-| `server_url` | gesetzt = Weg B wird verwendet |
-
-## Wenn es nicht klappt
-
-| Beobachtung | Ursache und Abhilfe |
-|---|---|
-| „kein GGUF-Modell in ..." | Datei liegt nicht in `models\` oder hat nicht die Endung `.gguf` |
-| „llama-cpp-python ist nicht installiert" | Weg B verwenden - er braucht kein Python-Paket |
-| „Modelldienst nicht erreichbar" | `llama-server.exe` laeuft nicht oder nutzt einen anderen Port |
-| Antworten sehr langsam | kleineres Profil waehlen oder `gpu_layers` erhoehen |
-| Antworten sprachlich schwach | groesseres Modell verwenden; 3B-Modelle sind fuer Fachtexte grenzwertig |
-| Speicher voll | staerker quantisierte Fassung nehmen (Q4 statt Q5) |
-
-## Modell wechseln
-
-Alte Datei aus `models\` entfernen, neue hineinlegen, `check` ausfuehren.
-Das Modell ist austauschbar; Wissensbasis und Unternehmensgedaechtnis bleiben
-davon unberuehrt.
+Die **fachliche Guete** der Antworten haengt vom gewaehlten Modell ab und
+ist damit nicht Sache des Programms. Sie gehoert in die Abnahme
+(`docs/ABNAHME.md`, Punkte C und D). Auch mit gutem Modell gilt
+unveraendert: jede Antwort ist fachliche Zuarbeit und braucht die Pruefung
+durch einen verantwortlichen Menschen.

@@ -168,6 +168,7 @@ doc.add_page_break()
 doc.add_heading("Inhalt", level=1)
 for nummer, kapitel in enumerate([
     "In fuenf Minuten startklar",
+    "Das Sprachmodell einrichten - damit die KI antwortet",
     "Der Startbildschirm - was er Ihnen sagt",
     "Der Bildschirm: fuenf Registerkarten",
     "Fachfragen ohne Unternehmensdaten - geht sofort",
@@ -289,7 +290,89 @@ absatz("Ob der Datentraeger als D:, E: oder F: erscheint, spielt keine Rolle. "
        "nichts auf dem jeweiligen Rechner.")
 
 # ================================================================ 2
-doc.add_heading("2.  Der Startbildschirm - was er Ihnen sagt", level=1)
+doc.add_heading("2.  Das Sprachmodell einrichten - damit die KI antwortet", level=1)
+
+absatz("Dieses Kapitel ist das wichtigste der ganzen Anleitung. Ohne "
+       "Sprachmodell recherchiert der Buchhalter zwar in seinen Quellen und "
+       "zeigt Ihnen die Fundstellen - er formuliert aber keine Antwort. Er "
+       "sagt das dann auch offen.")
+
+kasten(
+    "Zwei Befehle, dann laeuft es",
+    "PORTABLE_BUCHHALTER_KONSOLE.exe modell empfehlen\n"
+    "PORTABLE_BUCHHALTER_KONSOLE.exe modell einrichten --bestaetigen\n\n"
+    "Der erste Befehl sieht sich Ihren Rechner an und zeigt die "
+    "Bezugsquellen mit Groesse und Lizenz. Der zweite laedt das passende "
+    "Modell, prueft es und stellt ihm eine kleine Frage. Erst wenn die "
+    "beantwortet ist, meldet er \"Das Sprachmodell ist einsatzbereit.\"",
+)
+
+doc.add_heading("Was schon fertig mitgeliefert wird", level=2)
+absatz("Das Programm, das ein Sprachmodell ausfuehrt, liegt bereits im "
+       "Ordner runtime\\llama. Sie muessen nichts installieren und nichts "
+       "einrichten. Die Anwendung startet es selbst - und zwar erst bei "
+       "Ihrer ersten Frage, damit der Programmstart nicht jedes Mal auf das "
+       "Laden eines mehrere Gigabyte grossen Modells wartet.")
+punkt("Es laeuft nur auf Ihrem Rechner und ist von aussen nicht erreichbar.")
+punkt("Es oeffnet kein zusaetzliches Fenster.")
+punkt("Beim Schliessen der Anwendung wird es mit beendet.")
+
+absatz()
+doc.add_heading("Welches Modell?", level=2)
+tabelle_mit(
+    ["Auswahl", "Groesse", "Braucht", "Wofuer"],
+    [
+        ["probe", "0,4 GB", "2 GB RAM",
+         "Nur zum Ausprobieren. Fuer Buchhaltungsfragen NICHT geeignet."],
+        ["light", "2 GB", "6 GB RAM",
+         "Aeltere Buerorechner. Lizenz beachten - nicht Apache-2.0."],
+        ["standard", "4,7 GB", "12 GB RAM",
+         "Empfehlung fuer den normalen Betrieb."],
+        ["high", "9 GB", "24 GB RAM",
+         "Beste Qualitaet. Auf einem Rechner ohne Grafikkarte langsam."],
+    ],
+    breiten=[2.6, 2.2, 2.6, 7.6],
+)
+absatz("Ein anderes als das vorgeschlagene Profil waehlen Sie mit "
+       "--profil light (oder standard, high, probe).")
+
+doc.add_heading("Was die Anwendung dabei nicht tut", level=2)
+punkt("Sie laedt nichts ohne Ihre Bestaetigung. Ohne --bestaetigen nennt "
+      "sie nur Groesse, Lizenz und Herkunft und hoert auf.")
+punkt("Sie laedt nichts im Betriebsmodus OFFLINE.")
+punkt("Sie behauptet keine geprueften Bezugsquellen. Steht dort \"nicht "
+      "geprueft\", wurde die Adresse in diesem Programmstand nicht "
+      "abgerufen - dann wird die Datei auch nicht gegen eine hinterlegte "
+      "Pruefsumme geprueft.")
+punkt("Sie faengt zu wenig Speicherplatz vorher ab, statt mittendrin "
+      "abzubrechen.")
+
+absatz()
+doc.add_heading("Nachsehen und pruefen", level=2)
+tabelle_mit(
+    ["Befehl", "Wirkung"],
+    [
+        ["PORTABLE_BUCHHALTER_KONSOLE.exe modell status",
+         "Was ist da, was fehlt, und was waere der naechste Schritt"],
+        ["PORTABLE_BUCHHALTER_KONSOLE.exe modell pruefen",
+         "Stellt dem Modell eine Frage und nennt Antwortzeit und Tempo"],
+        ["PORTABLE_BUCHHALTER_KONSOLE.exe modell laden --url <Adresse>",
+         "Ein eigenes Modell aus einer selbst gewaehlten Quelle"],
+    ],
+    breiten=[8.0, 7.0],
+)
+
+kasten(
+    "Wenn die erste Antwort lange dauert",
+    "Das ist einmalig: das Modell wird in den Arbeitsspeicher geladen. Die "
+    "folgenden Antworten kommen deutlich schneller.\n\n"
+    "Kommt der Dienst gar nicht hoch, nennt die Meldung seine letzte "
+    "Ausgabe - meist reicht der Arbeitsspeicher nicht. Dann ein kleineres "
+    "Profil waehlen. Ausfuehrlich steht es in logs\\llama-server.log.",
+)
+
+# ================================================================ 3
+doc.add_heading("3.  Der Startbildschirm - was er Ihnen sagt", level=1)
 
 absatz("Bevor der Buchhalter startet, prueft er sich selbst und zeigt das "
        "Ergebnis an. Das ist keine Formalie: Sie sehen dort, ob er "
@@ -359,7 +442,7 @@ absatz("Ein echter Fehler wuerde die Zeile mit FEHLER kennzeichnen und die "
        "Schaltflaeche BUCHHALTER STARTEN gesperrt lassen.")
 
 # ================================================================ 3
-doc.add_heading("3.  Der Bildschirm: fuenf Registerkarten", level=1)
+doc.add_heading("4.  Der Bildschirm: fuenf Registerkarten", level=1)
 absatz("Nach dem Start sehen Sie oben eine Zeile mit fuenf Registerkarten. "
        "Alles, was Sie tun, geschieht in einer davon.")
 
@@ -389,7 +472,7 @@ absatz("Ganz unten laeuft eine Statuszeile mit, die auch den Pfad Ihres "
        "Datentraegers nennt.")
 
 # ================================================================ 3
-doc.add_heading("4.  Fachfragen ohne Unternehmensdaten - geht sofort", level=1)
+doc.add_heading("5.  Fachfragen ohne Unternehmensdaten - geht sofort", level=1)
 
 absatz("Sie muessen dem Buchhalter nichts ueber Ihren Betrieb erzaehlen, um "
        "ihn fachlich zu befragen. Das Fachwissen und das "
@@ -472,7 +555,7 @@ absatz("Nutzen Sie den Buchhalter ruhig erst eine Weile rein fachlich. Sie "
        "es ist keine Alles-oder-nichts-Entscheidung.")
 
 # ================================================================ 5
-doc.add_heading("5.  Ihr Unternehmen einrichten - empfohlen, nicht Pflicht", level=1)
+doc.add_heading("6.  Ihr Unternehmen einrichten - empfohlen, nicht Pflicht", level=1)
 
 absatz("Alles in diesem Kapitel ist freiwillig. Der Buchhalter arbeitet "
        "fachlich auch ohne (Kapitel 4). Je mehr er ueber Ihren Betrieb "
@@ -511,7 +594,7 @@ kasten(
 )
 
 # ================================================================ 4
-doc.add_heading("6.  Fragen stellen", level=1)
+doc.add_heading("7.  Fragen stellen", level=1)
 
 absatz("Registerkarte Unterhaltung. Der Bildschirm ist geteilt:")
 punkt("Links oben: der bisherige Gespraechsverlauf.")
@@ -538,7 +621,7 @@ tabelle_mit(
         ["Generierung stoppen", "Bricht eine laufende Antwort ab. Die Oberflaeche ist sofort "
          "wieder bedienbar; Ihre Frage bleibt gespeichert"],
         ["Antwort speichern", "Schreibt die letzte Antwort als Datei - Format daneben waehlbar "
-         "(siehe Kapitel 11)"],
+         "(siehe Kapitel 12)"],
         ["Unterhaltung exportieren", "Speichert das Gespraech als lesbare Datei auf dem Datentraeger"],
     ],
     breiten=[5.0, 10.0],
@@ -568,7 +651,7 @@ tabelle_mit(
         ["Fachfrage ohne eigenen Sachverhalt",
          "Recherchiert und antwortet mit Fundstellen."],
         ["Geschilderter Einzelfall",
-         "Voller Aufbau nach dem Schema aus Kapitel 7. Fehlen entscheidende "
+         "Voller Aufbau nach dem Schema aus Kapitel 8. Fehlen entscheidende "
          "Angaben, fragt der Buchhalter gezielt nach, statt zu raten."],
     ],
     breiten=[5.5, 9.5],
@@ -584,7 +667,7 @@ punkt("\"Wir haben einen Firmenwagen geleast. Welche Unterlagen brauchen wir "
       "fuer den Jahresabschluss?\"")
 
 # ================================================================ 5
-doc.add_heading("7.  Wie eine Antwort aufgebaut ist", level=1)
+doc.add_heading("8.  Wie eine Antwort aufgebaut ist", level=1)
 
 absatz("Der Buchhalter antwortet nach einem festen Schema. Nicht jeder "
        "Abschnitt kommt bei jeder Frage vor, aber die Reihenfolge ist immer "
@@ -652,11 +735,11 @@ absatz("Dann schreibt der Buchhalter offen: \"Hinweis: Es wurde keine "
        "Modellantwort erzeugt.\" Er recherchiert trotzdem in seinen Quellen "
        "und zeigt Ihnen die Fundstellen - er formuliert nur keine fachliche "
        "Wuerdigung. Das ist gewollt: lieber ehrlich nichts sagen als etwas "
-       "erfinden. Die Einrichtung eines Sprachmodells ist in "
-       "docs/MODELL_EINRICHTEN.md beschrieben (einmalig, etwa 5 GB).")
+       "erfinden. Wie Sie ein Modell einrichten, steht in Kapitel 2 - es sind "
+       "zwei Befehle.")
 
 # ================================================================ 7
-doc.add_heading("8.  Was automatisch gespeichert wird - und was nicht", level=1)
+doc.add_heading("9.  Was automatisch gespeichert wird - und was nicht", level=1)
 
 absatz("Die wichtigste Frage im taeglichen Umgang. Kurz: Ihre Unterhaltungen "
        "werden automatisch gespeichert. Alles, was in Ihr "
@@ -760,7 +843,7 @@ absatz("Automatisches Speichern schuetzt nicht vor einem Defekt des "
        "erstellen - und bewahren Sie sie an einem anderen Ort auf.")
 
 # ================================================================ 8
-doc.add_heading("9.  Belege hinzufuegen", level=1)
+doc.add_heading("10.  Belege hinzufuegen", level=1)
 
 absatz("Sie koennen eigene Dokumente einlesen - Rechnungen, Vertraege, "
        "Kontoauszuege als Text. Der Buchhalter kann sich dann in seinen "
@@ -781,7 +864,7 @@ kasten(
 )
 
 # ================================================================ 7
-doc.add_heading("10.  Unternehmenswissen pflegen", level=1)
+doc.add_heading("11.  Unternehmenswissen pflegen", level=1)
 
 absatz("Registerkarte Unternehmenswissen. Hier steht alles, was sich der "
        "Buchhalter ueber Ihren Betrieb gemerkt hat - versioniert, mit "
@@ -842,7 +925,7 @@ kasten(
 )
 
 # ================================================================ 11
-doc.add_heading("11.  Ergebnisse als Datei ausgeben", level=1)
+doc.add_heading("12.  Ergebnisse als Datei ausgeben", level=1)
 
 absatz("Der Buchhalter kann seine Ergebnisse als Datei herausgeben - als "
        "Excel-Tabelle, Word-Dokument, PowerPoint-Praesentation, PDF-Bericht "
@@ -906,7 +989,7 @@ tabelle_mit(
 )
 
 # ================================================================ 12
-doc.add_heading("12.  Erweiterungen (Plugins)", level=1)
+doc.add_heading("13.  Erweiterungen (Plugins)", level=1)
 
 absatz("Der Buchhalter kann neue Faehigkeiten aufnehmen, ohne dass das "
        "Programm neu gebaut wird. Eine solche Erweiterung heisst Plugin und "
@@ -964,7 +1047,7 @@ absatz("Ein Beispiel liegt bei: examples/plugin_html ergaenzt das "
        "wie eine Erweiterung aufgebaut ist.")
 
 # ================================================================ 8
-doc.add_heading("13.  Betriebsmodus: HYBRID, OFFLINE, ONLINE", level=1)
+doc.add_heading("14.  Betriebsmodus: HYBRID, OFFLINE, ONLINE", level=1)
 
 absatz("Sie bestimmen, ob der Buchhalter ins Internet darf. Die Auswahl "
        "steht oben rechts in der Kopfzeile und ist jederzeit erreichbar.")
@@ -1038,7 +1121,7 @@ absatz("Ueber die Konsolenfassung geht es ebenso: "
        "PORTABLE_BUCHHALTER_KONSOLE.exe modus OFFLINE wechselt.")
 
 # ================================================================ 12
-doc.add_heading("14.  Wissen aktualisieren", level=1)
+doc.add_heading("15.  Wissen aktualisieren", level=1)
 
 absatz("Registerkarte Wissen aktualisieren. Hier laedt der Buchhalter "
        "amtliche Quellen nach. Das ist der einzige Teil, der Internet "
@@ -1108,7 +1191,7 @@ kasten(
 )
 
 # ================================================================ 9
-doc.add_heading("15.  Einstellungen und Status", level=1)
+doc.add_heading("16.  Einstellungen und Status", level=1)
 
 absatz("Registerkarte Einstellungen und Status. Links stellen Sie ein, rechts "
        "sehen Sie den Zustand.")
@@ -1144,7 +1227,7 @@ absatz("Steht bei einem Punkt HINWEIS statt OK, ist das kein Fehler, sondern "
        "daneben sagt, was das bedeutet und wie es zu beheben ist.")
 
 # ================================================================ 12
-doc.add_heading("16.  Lizenz", level=1)
+doc.add_heading("17.  Lizenz", level=1)
 
 doc.add_heading("Im Augenblick muessen Sie nichts tun", level=2)
 absatz("Der Startbildschirm zeigt in der Zeile Lizenz:")
@@ -1277,7 +1360,7 @@ absatz("Diese Fassung ist eine Vorab- bzw. Pilotfassung. Sie ist noch nicht "
        "PORTABLE_BUCHHALTER_KONSOLE.exe reife")
 
 # ================================================================ 13
-doc.add_heading("17.  Was der Buchhalter nicht tut", level=1)
+doc.add_heading("18.  Was der Buchhalter nicht tut", level=1)
 
 absatz("Das ist kein Mangel, sondern bewusst so gebaut. Bitte lesen Sie es "
        "einmal in Ruhe.")
@@ -1309,7 +1392,7 @@ kasten(
 )
 
 # ================================================================ 11
-doc.add_heading("18.  Wenn etwas nicht funktioniert", level=1)
+doc.add_heading("19.  Wenn etwas nicht funktioniert", level=1)
 
 tabelle_mit(
     ["Was Sie sehen", "Was zu tun ist"],
@@ -1322,7 +1405,7 @@ tabelle_mit(
          "Weitere Informationen, dann Trotzdem ausfuehren."],
         ["\"Kein Sprachmodell verfuegbar\"",
          "Erwartet, solange kein Modell eingerichtet ist. Der Buchhalter "
-         "recherchiert weiterhin. Einrichtung: docs/MODELL_EINRICHTEN.md"],
+         "recherchiert weiterhin. Einrichtung: Kapitel 2, zwei Befehle."],
         ["Das Fenster geht nicht auf, Sie brauchen eine Ausgabe",
          "PORTABLE_BUCHHALTER_KONSOLE.exe verwenden - dieselbe Anwendung, aber "
          "mit Textausgabe. Zum Pruefen: PORTABLE_BUCHHALTER_KONSOLE.exe check"],
