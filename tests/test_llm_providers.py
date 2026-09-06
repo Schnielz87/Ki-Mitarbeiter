@@ -150,8 +150,18 @@ def test_manager_without_any_model_is_honest():
     manager = LlmManager(RetrievalOnlyProvider("kein Modell auf dem Datentraeger"))
     response = manager.generate([ChatMessage("user", "Wie buche ich Skonto?")])
     assert not response.is_generated
-    assert "keine Modellantwort" in response.text
-    assert "kein Modell auf dem Datentraeger" in response.text
+    # Auf die Substanz pruefen, nicht auf eine bestimmte Formulierung:
+    # es muss erkennbar sein, dass KEINE Antwort erzeugt wurde und woran es
+    # liegt - und es darf keine Ersatzantwort vorgetaeuscht werden.
+    assert "keine KI-Antwort" in response.text
+    assert "kein Sprachmodell" in response.text
+    assert "modell" in response.text.lower(), "der Weg zur Einrichtung muss genannt sein"
+    # Der technische Grund gehoert NICHT in die Antwort (Abschnitt 18:
+    # keine Modellpfade, keine internen Meldungen in der normalen Antwort),
+    # sondern in die Metadaten - fuer Status, Protokoll und Fehlersuche.
+    assert response.meta.get("reason") == "kein Modell auf dem Datentraeger"
+    assert "Datentraeger" not in response.text, \
+        "der technische Grund darf die Antwort nicht belasten"
 
 
 def test_llama_cpp_provider_reports_missing_model(tmp_path):

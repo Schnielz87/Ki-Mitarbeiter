@@ -237,32 +237,52 @@ class RetrievalOnlyProvider:
         return True, "Notbetrieb ohne Sprachmodell"
 
     def generate(self, messages, max_tokens=1024, temperature=0.2, stop=None) -> LlmResponse:
-        context = ""
-        question = ""
-        for message in messages:
-            if message.role == "user":
-                question = message.content
-            if message.role == "system" and "FUNDSTELLE" in message.content.upper():
-                context = message.content
+        """Kurze, ehrliche Statusmeldung - **keine** Ersatzantwort.
+
+        Frueher stand hier ein langer Text, dem anschliessend saemtliche
+        Fundstellen mit vollem Auszug angehaengt wurden. Das las sich wie
+        eine Antwort, war aber keine: eine Liste von Rohtreffern ist kein
+        Ersatz fuer ein fehlendes Sprachmodell. Wer sie sehen will, oeffnet
+        die Fundstellen ausdruecklich.
+        """
+        # Wirklich vorhandene Fundstellen erkennt man an der Nummerierung
+        # "[1]", nicht am blossen Vorkommen des Wortes: der Kontextblock
+        # traegt die Ueberschrift auch dann, wenn nichts gefunden wurde -
+        # und bei Smalltalk wird gar nicht erst gesucht.
+        # Wirklich vorhandene Fundstellen erkennt man an der Nummerierung
+        # "[1]", nicht am blossen Vorkommen des Wortes: der Kontextblock
+        # traegt die Ueberschrift auch dann, wenn nichts gefunden wurde.
+        alles = "\n".join(m.content for m in messages if m.role == "system")
+        nicht_gesucht = "Recherche: nicht durchgefuehrt" in alles
+        hat_kontext = "[1]" in alles
         lines = [
-            "**Hinweis: Es wurde keine Modellantwort erzeugt.**",
+            "**Es konnte keine KI-Antwort erzeugt werden.**",
             "",
-            "Auf diesem Rechner ist derzeit kein lokales Sprachmodell verfuegbar"
-            + (f" ({self.reason})." if self.reason else "."),
-            "Damit kann keine fachliche Wuerdigung formuliert werden.",
-            "",
-            "Was moeglich war: die lokale Recherche in den vorhandenen Quellen.",
-            "Die gefundenen Fundstellen stehen unten unveraendert - sie sind"
-            " ungeprueft und ersetzen keine fachliche Beurteilung.",
+            # Kein Dateipfad in der normalen Antwort (Abschnitt 18) - der
+            # gehoert in die Systempruefung und ins Protokoll.
+            "Auf diesem Rechner ist kein Sprachmodell eingerichtet.",
         ]
-        if not context:
-            lines += ["", "Zu dieser Frage wurde lokal **keine** passende Fundstelle gefunden."]
+        if nicht_gesucht:
+            # Konversation - hier fehlt keine Fundstelle, es wurde bewusst
+            # keine gesucht. Das darf nicht wie ein Mangel klingen.
+            pass
+        elif hat_kontext:
+            lines += [
+                "",
+                "Die lokale Recherche hat passende Fundstellen gefunden. Sie stehen "
+                "rechts unter *Quellen der letzten Antwort*; eine fachliche "
+                "Wuerdigung ist daraus **nicht** abgeleitet.",
+            ]
+        else:
+            lines += [
+                "",
+                "Zu dieser Frage wurde lokal ausserdem keine passende Fundstelle "
+                "gefunden.",
+            ]
         lines += [
             "",
-            "So wird ein Modell eingerichtet: siehe `docs/MODELL_EINRICHTEN.md`.",
+            "Einrichten mit: `PORTABLE_BUCHHALTER_KONSOLE.exe modell empfehlen`",
         ]
-        if question:
-            lines += ["", f"Ihre Frage lautete: „{question.strip()[:300]}“"]
         return LlmResponse(
             text="\n".join(lines), provider=self.name, model=self.model,
             meta={"generated": False, "reason": self.reason},

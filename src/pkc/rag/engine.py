@@ -27,6 +27,9 @@ from .fragetyp import Einstufung, Fragetyp, einstufen
 
 log = get_logger(__name__)
 
+#: Kennzeichen im Kontext: es wurde bewusst nicht recherchiert.
+KEINE_RECHERCHE = "Recherche: nicht durchgefuehrt, dies ist Konversation"
+
 
 @dataclass
 class AnswerResult:
@@ -116,6 +119,11 @@ class RagEngine:
             if mode == "OFFLINE"
             else "* Lokale Recherche; Online-Funktionen stehen zusaetzlich zur Verfuegung.",
         ]
+        # Ausdruecklich vermerken, ob ueberhaupt gesucht wurde. Sonst muesste
+        # der Anbieter raten - und wuerde bei Konversation faelschlich
+        # behaupten, es sei nichts gefunden worden.
+        if einstufung is not None and not einstufung.braucht_recherche:
+            header.append(f"* {KEINE_RECHERCHE} ({einstufung.grund})")
         if self.profile.limits:
             header += ["", "## GRENZEN DIESER ROLLE", ""]
             header += [f"* {limit}" for limit in self.profile.limits]
@@ -181,14 +189,17 @@ class RagEngine:
                 "Die Antwort nennt keine der gefundenen Fundstellen. Bitte besonders "
                 "sorgfaeltig pruefen."
             )
-        if not bundle.has_knowledge:
+        if not bundle.has_knowledge and einstufung.braucht_recherche:
+            # Nur wenn ueberhaupt gesucht wurde. Bei Smalltalk waere der
+            # Hinweis irrefuehrend: es fehlt nichts, es wurde bewusst nicht
+            # recherchiert.
             warnings.append(
                 "Zu dieser Frage lag lokal keine Fachfundstelle vor. Die Antwort stuetzt "
                 "sich nicht auf eine lokale Quelle."
             )
 
         text = self._append_footer(
-            text, bundle, used, mode, knowledge_date, response, warnings
+            text, bundle, used, mode, knowledge_date, response, warnings, einstufung
         )
         return AnswerResult(
             text=text, references=bundle.references, used_references=used,
@@ -200,20 +211,26 @@ class RagEngine:
     def _append_footer(
         self, text: str, bundle: ContextBundle, used: Sequence[SourceReference],
         mode: str, knowledge_date: str | None, response: LlmResponse,
-        warnings: Sequence[str],
+        warnings: Sequence[str], einstufung: Einstufung | None = None,
     ) -> str:
         parts = [text.rstrip()]
 
-        shown = list(used) or list(bundle.references)
+        # Bei Smalltalk wurde bewusst nicht recherchiert - dann gehoert auch
+        # kein Quellenabschnitt darunter.
+        if einstufung is not None and not einstufung.braucht_recherche:
+            shown = []
+        else:
+            shown = list(used) or list(bundle.references)
+
         if shown and not _has_section(text, "QUELLEN"):
-            if response.is_generated:
-                lines = [ref.as_line() for ref in shown]
-            else:
-                # Ohne Modellantwort ist die Fundstelle selbst das Ergebnis -
-                # dann wird der Auszug mitgegeben, nicht nur die Bezeichnung.
-                lines = [f"{ref.as_line()}\n    {ref.excerpt}" for ref in shown]
+            # Nur die Bezeichnung, nie der Auszug. Die vollstaendigen
+            # Fundstellen stehen im eigenen Quellenbereich der Oberflaeche
+            # bzw. unter "Recherche-Details". Frueher wurden sie ohne Modell
+            # mit vollem Text angehaengt - das las sich wie eine Antwort, war
+            # aber keine.
+            lines = [ref.as_line() for ref in shown]
             parts.append("**QUELLEN**\n" + "\n".join(lines))
-        elif not shown:
+        elif not shown and (einstufung is None or einstufung.braucht_recherche):
             parts.append(
                 "**QUELLEN**\nKeine lokale Fundstelle verwendet. Diese Antwort ist nicht "
                 "durch eine lokale Quelle belegt."

@@ -128,7 +128,8 @@ def test_missing_model_does_not_break_the_application(portable_root):
 
         outcome = controller.ask("Welche Pflichtangaben muss eine Rechnung enthalten?")
         assert not outcome.answer.model_answered
-        assert "keine Modellantwort" in outcome.answer.text
+        assert "keine KI-Antwort" in outcome.answer.text
+        assert "kein Sprachmodell" in outcome.answer.text
         assert outcome.answer.references, "die Recherche muss trotzdem funktionieren"
     finally:
         controller.shutdown()

@@ -176,6 +176,136 @@ def cmd_update(args) -> int:
         controller.shutdown()
 
 
+def cmd_recherche(args) -> int:
+    """Zeigt die rohen Fundstellen zu einer Frage (Abschnitt 6).
+
+    Rohtreffer sind technische Einzelheiten. Sie gehoeren nicht in die
+    normale Antwort - wer sie sehen will, ruft sie ausdruecklich ab.
+    """
+    controller = _controller(args)
+    try:
+        controller.bootstrap()
+        from pkc.rag.fragetyp import einstufen
+
+        einstufung = einstufen(args.frage)
+        print(f"Einstufung : {einstufung.typ.value}  ({einstufung.grund})")
+        if not einstufung.braucht_recherche:
+            print("Fuer diese Nachricht wird bewusst nicht recherchiert.")
+            return 0
+
+        treffer, eintraege = controller.rag.retrieve(args.frage)
+        print(f"Fundstellen: {len(treffer)}\n")
+        for nummer, hit in enumerate(treffer, start=1):
+            print(f"[{nummer}] {hit.title or hit.reference or '(ohne Titel)'}")
+            print(f"      Quelle    : {hit.source_id}")
+            print(f"      Dokument  : {hit.doc_uid}")
+            print(f"      Bewertung : {hit.score:.4f}")
+            if getattr(hit, "url", ""):
+                print(f"      Adresse   : {hit.url}")
+            auszug = (hit.text or "").strip().replace("\n", " ")
+            print(f"      Auszug    : {auszug[:200]}\n")
+        if eintraege:
+            print(f"Unternehmenswissen im Kontext: {len(eintraege)} Eintraege")
+        return 0
+    finally:
+        controller.shutdown()
+
+
+def cmd_modell(args) -> int:
+    """Sprachmodell einrichten und pruefen (Abschnitt 14).
+
+    Bisher gab es dafuer nur ein Werkzeug neben der Anwendung. Fuer den
+    Anwender, der nur die EXE hat, war es damit unerreichbar.
+    """
+    controller = _controller(args)
+    try:
+        from pkc.hardware import detect, recommend_profile
+        from pkc.llm.manager import RECOMMENDED_MODELS, discover_models
+
+        verzeichnis = controller.paths.get("models")
+        vorhanden = discover_models(verzeichnis)
+
+        if args.aktion == "status":
+            print(f"Modellverzeichnis: {verzeichnis}")
+            if not vorhanden:
+                print("Es ist kein Sprachmodell eingerichtet.")
+                print("\nOhne Modell recherchiert der Buchhalter zwar und zeigt "
+                      "Fundstellen,\nformuliert aber keine fachliche Antwort.")
+                print("\nNaechster Schritt:  modell empfehlen")
+                return 2
+            for modell in vorhanden:
+                print(f"  {modell.name}  ({modell.size_bytes // (1024*1024)} MB)")
+            print()
+            for schluessel, wert in controller.llm.status().items():
+                print(f"  {schluessel:16}: {wert}")
+            return 0
+
+        if args.aktion == "empfehlen":
+            hardware = detect()
+            profil = recommend_profile(hardware)
+            print("Erkannte Hardware")
+            print(f"  Arbeitsspeicher : {hardware.total_ram_gb:.1f} GB")
+            print(f"  Prozessorkerne  : {hardware.cpu_count}")
+            print(f"  Empfehlung      : {profil.name}\n")
+            print("Geeignete Modelle:")
+            for eintrag in RECOMMENDED_MODELS.get(profil.key, []):
+                print(f"  {eintrag['name']}")
+                print(f"      Groesse   : {eintrag.get('size_hint','?')}")
+                print(f"      Bezug     : {eintrag.get('source','siehe Anbieter')}")
+            print("\nHerunterladen:")
+            print("  modell laden --url <Adresse> [--pruefsumme <sha256>]")
+            print("\nEs wird nichts ohne ausdrueckliche Angabe einer Adresse "
+                  "geladen:\ndie Bezugsquelle und ihre Lizenzbedingungen waehlen "
+                  "Sie bewusst selbst.")
+            return 0
+
+        if args.aktion == "laden":
+            if not args.url:
+                print("Es wird --url benoetigt.", file=sys.stderr)
+                return 2
+            if controller.mode is Mode.OFFLINE:
+                print("Betriebsart OFFLINE - es wird nichts geladen.")
+                return 2
+            from pkc.llm.bezug import laden
+
+            def zeige(geladen, gesamt, tempo):
+                if gesamt:
+                    print(f"\r  {geladen*100/gesamt:5.1f} %  "
+                          f"{geladen/1024**3:5.2f} von {gesamt/1024**3:5.2f} GB  "
+                          f"{tempo/1024**2:5.1f} MB/s", end="", flush=True)
+
+            print(f"Lade nach {verzeichnis}")
+            ergebnis = laden(args.url, verzeichnis, args.pruefsumme, args.name,
+                             fortschritt=zeige)
+            print()
+            print(ergebnis.meldung)
+            if ergebnis.ok:
+                print(f"SHA-256: {ergebnis.pruefsumme}")
+                print("\nNaechster Schritt:  modell pruefen")
+            return 0 if ergebnis.ok else 1
+
+        if args.aktion == "pruefen":
+            if not vorhanden:
+                print("Es ist kein Modell vorhanden, das geprueft werden koennte.")
+                return 2
+            print("Sende eine Testfrage an das Modell ...")
+            from pkc.llm.base import ChatMessage
+
+            antwort = controller.llm.generate(
+                [ChatMessage("user", "Antworte mit genau einem Satz: Was ist eine Rechnung?")],
+                max_tokens=120)
+            if not antwort.is_generated:
+                print("Das Modell hat nicht geantwortet.")
+                print(f"  Grund: {antwort.meta.get('reason','unbekannt')}")
+                return 1
+            print(f"\nAntwort des Modells:\n  {antwort.text.strip()[:400]}")
+            print(f"\nDauer: {antwort.elapsed:.1f} s - das Modell arbeitet.")
+            return 0
+        return 2
+    finally:
+        controller.shutdown()
+
+
 def cmd_modus(args) -> int:
     """Betriebsmodus anzeigen oder wechseln (HYBRID / OFFLINE / ONLINE).
 
@@ -561,6 +691,18 @@ def build_parser() -> argparse.ArgumentParser:
     lizenz.add_argument("--lizenz", default="", help="Pfad zu license.json")
     lizenz.add_argument("--signatur", default="", help="Pfad zu license.sig")
     lizenz.set_defaults(func=cmd_lizenz)
+
+    recherche = neu("recherche", "Rohe Fundstellen zu einer Frage anzeigen")
+    recherche.add_argument("frage")
+    recherche.set_defaults(func=cmd_recherche)
+
+    modell = neu("modell", "Sprachmodell einrichten und pruefen")
+    modell.add_argument("aktion", nargs="?", default="status",
+                        choices=["status", "empfehlen", "laden", "pruefen"])
+    modell.add_argument("--url", default="", help="Bezugsadresse der Modelldatei")
+    modell.add_argument("--pruefsumme", default="", help="erwartete SHA-256")
+    modell.add_argument("--name", default="", help="Dateiname im Modellordner")
+    modell.set_defaults(func=cmd_modell)
 
     modus = neu("modus", "Betriebsmodus anzeigen oder wechseln")
     modus.add_argument("neuer_modus", nargs="?", default="",
