@@ -154,6 +154,7 @@ class UpdatePipeline:
         max_documents: int = 200,
         chunk_tokens: int = 400,
         chunk_overlap: int = 60,
+        config=None,
     ):
         self.paths = paths
         self.store = store
@@ -163,8 +164,27 @@ class UpdatePipeline:
         self.max_documents = int(max_documents)
         self.chunk_tokens = int(chunk_tokens)
         self.chunk_overlap = int(chunk_overlap)
+        #: Wird fuer die quellenspezifischen Intervalle gebraucht (E2.20).
+        #: Ohne Konfiguration gilt die Vorgabe je Quellenart.
+        self.config = config
 
     # -- Planung -------------------------------------------------------
+    def _faellige_quellen(self, ausgewaehlt):
+        """Teilt die Auswahl in faellige Dokumente und uebersprungene Quellen."""
+        from .zeitplan import quelle_faellig, quellenintervall
+
+        zustand = {z["source_id"]: z for z in self.store.sources()}
+        faellig: list = []
+        ruhend: set[str] = set()
+        for quelle, dokument in ausgewaehlt:
+            eintrag = zustand.get(quelle.source_id, {})
+            intervall = quellenintervall(self.config, quelle)
+            if quelle_faellig(intervall, str(eintrag.get("last_success") or "")):
+                faellig.append((quelle, dokument))
+            else:
+                ruhend.add(quelle.source_id)
+        return faellig, ruhend
+
     def sync_sources(self) -> int:
         """Uebernimmt das Register in die Datenbank."""
         for source in self.registry:
@@ -205,6 +225,7 @@ class UpdatePipeline:
         source_ids: Sequence[str] | None = None,
         dry_run: bool = False,
         progress: Callable[[str, int, int], None] | None = None,
+        nur_faellige: bool = False,
     ) -> UpdateReport:
         run_id = _dt.datetime.now().strftime("%Y%m%d-%H%M%S")
         report = UpdateReport(run_id=run_id, trigger=trigger, started_at=utc_now())
@@ -222,11 +243,26 @@ class UpdatePipeline:
             return report
 
         self.sync_sources()
+        gewuenscht = set(source_ids) if source_ids else None
         selected = [
             (source, doc)
             for source, doc in self.registry.all_documents()
-            if source_ids is None or source.source_id in set(source_ids)
+            if gewuenscht is None or source.source_id in gewuenscht
         ]
+
+        # Quellenspezifische Intervalle (E2.20): Gesetze und Rechtsprechung
+        # werden haeufiger geprueft als allgemeine Behoerdeninformationen.
+        # Das gilt nur fuer die Automatik: wer von Hand aktualisiert, will
+        # alles pruefen, und ausdruecklich genannte Quellen gehen immer.
+        uebersprungen: list[str] = []
+        if gewuenscht is None and nur_faellige:
+            faellige, uebersprungen = self._faellige_quellen(selected)
+            if uebersprungen:
+                report.messages.append(
+                    f"{len(uebersprungen)} Quelle(n) sind noch nicht wieder faellig: "
+                    + ", ".join(sorted(uebersprungen))
+                )
+            selected = faellige
         if not selected:
             report.status = "failed"
             report.messages.append("Keine aktiven Quellen im Register ausgewaehlt.")

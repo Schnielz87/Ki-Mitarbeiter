@@ -24,7 +24,7 @@ from app.controller import AppController
 from pkc.config import Config
 from pkc.llm import katalog as katalogmodul
 from pkc.netstate import NetworkMonitor
-from test_modelldienst import _modell, _programm
+from test_modelldienst import VORLAUF, _modell, _programm
 
 
 def _anwendung(paths, online: bool = True) -> AppController:
@@ -242,6 +242,7 @@ def test_probe_mit_dienst_meldet_die_antwort(anwendung, portable_root):
     _programm(portable_root.get("runtime") / "llama")
     _modell(portable_root.get("models"), "probe.gguf")
     anwendung.modell_neu_laden()
+    anwendung.llm.primary.server.vorlauf = VORLAUF
 
     ergebnis = anwendung.modell_probe()
     assert ergebnis["ok"], ergebnis.get("grund")
@@ -259,6 +260,7 @@ def test_anwendung_antwortet_mit_modell_und_quellen(anwendung, portable_root):
     _programm(portable_root.get("runtime") / "llama")
     _modell(portable_root.get("models"), "probe.gguf")
     anwendung.modell_neu_laden()
+    anwendung.llm.primary.server.vorlauf = VORLAUF
 
     ergebnis = anwendung.ask("Welche Pflichtangaben muss eine Rechnung enthalten?")
     text = ergebnis.answer.text
@@ -280,6 +282,7 @@ def test_der_dienst_wird_beim_beenden_heruntergefahren(portable_root):
 
     controller = _anwendung(portable_root)
     controller.bootstrap(build_embeddings=False)
+    controller.llm.primary.server.vorlauf = VORLAUF
     controller.modell_probe()
     server = controller.llm.primary.server
     assert server.laeuft

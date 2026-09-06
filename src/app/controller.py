@@ -254,6 +254,7 @@ class AppController:
                 max_documents=int(self.config.get("updates.max_documents_per_run", 200)),
                 chunk_tokens=int(self.config.get("retrieval.chunk_tokens", 400)),
                 chunk_overlap=int(self.config.get("retrieval.chunk_overlap", 60)),
+                config=self.config,
             )
 
         # Connectoren
@@ -1163,13 +1164,20 @@ class AppController:
     def run_update(
         self, trigger: str = "manual", source_ids: Sequence[str] | None = None,
         dry_run: bool = False, progress: Callable[[str, int, int], None] | None = None,
+        nur_faellige: bool = False,
     ) -> UpdateReport:
+        """Fuehrt ein Wissensupdate durch.
+
+        ``nur_faellige`` ist fuer den selbsttaetigen Lauf gedacht: dann
+        werden nur Quellen abgerufen, deren Intervall abgelaufen ist
+        (E2.20). Von Hand angestossen wird immer alles geprueft.
+        """
         if self.updater is None:
             raise RuntimeError(f"Quellenregister nicht nutzbar: {self.registry_error}")
         status = self.network.check()
         report = self.updater.run(
             trigger=trigger, online=status.online, source_ids=source_ids,
-            dry_run=dry_run, progress=progress,
+            dry_run=dry_run, progress=progress, nur_faellige=nur_faellige,
         )
         self.audit.record("wissensupdate", "update", report.run_id, status=report.status,
                           aktualisiert=report.updated, fehlgeschlagen=report.failed)

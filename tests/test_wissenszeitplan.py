@@ -149,3 +149,105 @@ def test_as_dict_enthaelt_alles_fuer_die_anzeige(config):
     for schluessel in ("lage", "letzte_pruefung", "naechste_pruefung",
                        "tage_seit_letzter", "intervall_tage", "text"):
         assert schluessel in daten
+
+
+# ==================================================================
+# Quellenspezifische Intervalle (E2.20)
+#
+# Gesetze aendern sich haeufiger als eine allgemeine
+# Behoerdeninformation. Jede Quelle taeglich abzurufen waere unnoetige
+# Last auf amtlichen Servern - und ein Grund, gesperrt zu werden.
+# ==================================================================
+
+class _Quelle:
+    """Eine Quelle, wie das Register sie liefert."""
+
+    def __init__(self, source_id, kind, meta=None, update_intervall=None):
+        self.source_id = source_id
+        self.kind = kind
+        self.meta = meta or {}
+        if update_intervall is not None:
+            self.update_intervall = update_intervall
+
+
+def test_vorgabe_je_quellenart(portable_root):
+    from pkc.config import Config
+    from pkc.updater.zeitplan import quellenintervall
+
+    config = Config.load(portable_root)
+    assert quellenintervall(config, _Quelle("Q01", "law")) == 7
+    assert quellenintervall(config, _Quelle("Q05", "case_law")) == 7
+    assert quellenintervall(config, _Quelle("Q03", "authority")) == 30
+    assert quellenintervall(config, _Quelle("Q12", "secondary")) == 30
+
+
+def test_unbekannte_art_faellt_auf_das_allgemeine_intervall(portable_root):
+    from pkc.config import Config
+    from pkc.updater.zeitplan import quellenintervall
+
+    config = Config.load(portable_root)
+    config.set("updates.schedule", "weekly")
+    assert quellenintervall(config, _Quelle("Q99", "irgendwas")) == 7
+
+
+def test_die_quelle_selbst_hat_das_letzte_wort(portable_root):
+    """Ohne Programmaenderung aenderbar - im Register, nicht im Code."""
+    from pkc.config import Config
+    from pkc.updater.zeitplan import quellenintervall
+
+    config = Config.load(portable_root)
+    assert quellenintervall(config, _Quelle("Q01", "law", update_intervall="daily")) == 1
+    assert quellenintervall(config, _Quelle("Q01", "law", {"update_intervall": 90})) == 90
+    assert quellenintervall(config, _Quelle("Q01", "law", update_intervall="off")) is None
+
+
+def test_einstellung_je_art_geht_vor_der_vorgabe(portable_root):
+    from pkc.config import Config
+    from pkc.updater.zeitplan import quellenintervall
+
+    config = Config.load(portable_root)
+    config.set("updates.per_kind", {"authority": "daily"})
+    assert quellenintervall(config, _Quelle("Q03", "authority")) == 1
+    assert quellenintervall(config, _Quelle("Q01", "law")) == 7, "andere Arten unberuehrt"
+
+
+def test_ohne_konfiguration_gilt_die_vorgabe():
+    from pkc.updater.zeitplan import quellenintervall
+
+    assert quellenintervall(None, _Quelle("Q01", "law")) == 7
+
+
+def test_faelligkeit_einer_einzelnen_quelle():
+    import datetime as dt
+
+    from pkc.updater.zeitplan import quelle_faellig
+
+    jetzt = dt.datetime(2026, 9, 6, tzinfo=dt.timezone.utc)
+    vor_drei = (jetzt - dt.timedelta(days=3)).isoformat()
+    vor_zehn = (jetzt - dt.timedelta(days=10)).isoformat()
+
+    assert quelle_faellig(7, vor_zehn, jetzt) is True
+    assert quelle_faellig(7, vor_drei, jetzt) is False
+    assert quelle_faellig(7, "", jetzt) is True, "noch nie abgerufen heisst faellig"
+    assert quelle_faellig(None, vor_zehn, jetzt) is False, "ohne Intervall keine Automatik"
+
+
+# Die Vorrichtung stammt aus dem Test der Abrufkette - dort steht ein
+# vollstaendiges Register mit echtem Testserver.
+from test_updater_pipeline import setup  # noqa: E402,F401
+
+
+def test_automatik_ueberspringt_ruhende_quellen(setup):
+    """Der selbsttaetige Lauf holt nur, was faellig ist - der Lauf von Hand alles."""
+    pipeline = setup[0]
+    erster = pipeline.run(trigger="test")
+    assert erster.updated > 0
+
+    automatisch = pipeline.run(trigger="auto", nur_faellige=True)
+    assert automatisch.updated == 0 and automatisch.unchanged == 0, \
+        "gerade geholte Quellen sind nicht wieder faellig"
+    assert any("nicht wieder faellig" in m for m in automatisch.messages)
+
+    von_hand = pipeline.run(trigger="manual")
+    assert von_hand.unchanged > 0 or von_hand.updated > 0, \
+        "von Hand wird immer alles geprueft"

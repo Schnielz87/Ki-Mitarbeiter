@@ -86,6 +86,11 @@ class Llamaserver:
     gpu_layers: int = 0
     port: int = 0
     startgrenze: float = STARTGRENZE_S
+    #: Befehl, der dem Programm vorangestellt wird. Gebraucht wird das an
+    #: zwei Stellen: wenn der Dienst ueber ein Startskript laufen soll (etwa
+    #: um Kerne zu binden), und in den Tests, die den Dienst gegen einen
+    #: Stellvertreter pruefen - eine Textdatei kann Windows nicht ausfuehren.
+    vorlauf: list[str] = field(default_factory=list)
     _vorgang: subprocess.Popen | None = field(default=None, repr=False)
     _protokoll: Path | None = field(default=None, repr=False)
 
@@ -100,6 +105,7 @@ class Llamaserver:
     # -- Start ---------------------------------------------------------
     def _befehl(self) -> list[str]:
         befehl = [
+            *self.vorlauf,
             str(self.programm),
             "-m", str(self.modell),
             "--host", "127.0.0.1",

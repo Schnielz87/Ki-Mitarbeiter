@@ -30,8 +30,7 @@ from pkc.llm.providers import MitgelieferterServerProvider
 from pkc.llm.server import Llamaserver, beschreibung, finde_server
 
 #: Ein Stellvertreter fuer llama-server: dieselben Endpunkte, ohne Modell.
-STELLVERTRETER = '''#!{python}
-import json, sys, time
+STELLVERTRETER = '''import json, sys, time
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
 verzoegerung = float("{verzoegerung}")
@@ -89,22 +88,26 @@ time.sleep(verzoegerung)
 HTTPServer(("127.0.0.1", port), Griff).serve_forever()
 '''
 
-VERSAGER = '''#!{python}
-import sys
+VERSAGER = '''import sys
 sys.stderr.write("error: konnte das Modell nicht laden\\n")
 sys.exit(1)
 '''
 
 
+#: Der Stellvertreter wird ueber den Python-Interpreter gestartet. Direkt
+#: ausfuehrbar waere er nur unter Linux; Windows lehnt eine Textdatei mit der
+#: Endung .exe ab (WinError 216). So laeuft derselbe Test auf beiden Systemen.
+VORLAUF = [sys.executable]
+
+
 def _programm(ordner: Path, vorlage: str = STELLVERTRETER, verzoegerung: float = 0.0) -> Path:
-    """Legt eine ausfuehrbare Programmdatei mit dem Namen von llama-server an."""
+    """Legt eine Programmdatei mit dem Namen von llama-server an."""
     ordner.mkdir(parents=True, exist_ok=True)
     name = "llama-server.exe" if os.name == "nt" else "llama-server"
     ziel = ordner / name
-    ziel.write_text(
-        vorlage.format(python=sys.executable, verzoegerung=verzoegerung), encoding="utf-8"
-    )
-    ziel.chmod(0o755)
+    ziel.write_text(vorlage.format(verzoegerung=verzoegerung), encoding="utf-8")
+    if os.name != "nt":
+        ziel.chmod(0o755)
     return ziel
 
 
@@ -120,7 +123,7 @@ def dienst(tmp_path):
     """Ein startbereiter Dienst mit Stellvertreter und Modelldatei."""
     programm = _programm(tmp_path / "runtime" / "llama")
     modell = _modell(tmp_path / "models")
-    server = Llamaserver(programm=programm, modell=modell)
+    server = Llamaserver(programm=programm, modell=modell, vorlauf=VORLAUF)
     try:
         yield server
     finally:
@@ -186,7 +189,8 @@ def test_beenden_ist_mehrfach_aufrufbar(dienst):
 def test_dienst_wartet_bis_der_server_bereit_ist(tmp_path):
     """Ein Modell braucht Zeit zum Laden - solange darf nicht gefragt werden."""
     programm = _programm(tmp_path / "runtime", verzoegerung=1.5)
-    server = Llamaserver(programm=programm, modell=_modell(tmp_path / "models"))
+    server = Llamaserver(programm=programm, modell=_modell(tmp_path / "models"),
+                         vorlauf=VORLAUF)
     try:
         begonnen = time.monotonic()
         server.starten()
@@ -200,7 +204,7 @@ def test_dienst_wartet_bis_der_server_bereit_ist(tmp_path):
 def test_fehlstart_wird_verstaendlich_gemeldet(tmp_path):
     programm = _programm(tmp_path / "runtime", vorlage=VERSAGER)
     server = Llamaserver(programm=programm, modell=_modell(tmp_path / "models"),
-                         startgrenze=10.0)
+                         startgrenze=10.0, vorlauf=VORLAUF)
     with pytest.raises(RuntimeError) as fehler:
         server.starten(protokollordner=tmp_path / "logs")
     assert "nicht hochgekommen" in str(fehler.value)
@@ -208,12 +212,14 @@ def test_fehlstart_wird_verstaendlich_gemeldet(tmp_path):
 
 
 def test_fehlende_dateien_werden_benannt(tmp_path):
-    server = Llamaserver(programm=tmp_path / "fehlt", modell=_modell(tmp_path / "models"))
+    server = Llamaserver(programm=tmp_path / "fehlt", modell=_modell(tmp_path / "models"),
+                         vorlauf=VORLAUF)
     with pytest.raises(RuntimeError) as fehler:
         server.starten()
     assert "Programmdatei fehlt" in str(fehler.value)
 
-    server = Llamaserver(programm=_programm(tmp_path / "runtime"), modell=tmp_path / "weg.gguf")
+    server = Llamaserver(programm=_programm(tmp_path / "runtime"),
+                         modell=tmp_path / "weg.gguf", vorlauf=VORLAUF)
     with pytest.raises(RuntimeError) as fehler:
         server.starten()
     assert "Modelldatei fehlt" in str(fehler.value)
@@ -249,7 +255,7 @@ def test_anbieter_gibt_stueckweise_heraus(dienst):
 def test_anbieter_meldet_fehlstart_als_modellfehler(tmp_path):
     programm = _programm(tmp_path / "runtime", vorlage=VERSAGER)
     server = Llamaserver(programm=programm, modell=_modell(tmp_path / "models"),
-                         startgrenze=10.0)
+                         startgrenze=10.0, vorlauf=VORLAUF)
     anbieter = MitgelieferterServerProvider(server, protokollordner=tmp_path / "logs")
     with pytest.raises(LlmError):
         anbieter.generate([ChatMessage("user", "Frage")])
