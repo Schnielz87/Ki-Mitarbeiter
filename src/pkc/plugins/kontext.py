@@ -55,6 +55,8 @@ class Pluginkontext:
     _artefakte: Any = None
     _netz_erlaubt: bool = False
     werkzeuge: list[Werkzeug] = field(default_factory=list)
+    #: Zusaetzliche Ausgabeformate, die dieses Plugin angemeldet hat.
+    formate: list[str] = field(default_factory=list)
 
     # -- Rechtepruefung ------------------------------------------------
     def _verlangt(self, recht: str) -> None:
@@ -86,6 +88,19 @@ class Pluginkontext:
         from ..artefakte import registrieren
 
         registrieren(schreiber)
+        self.formate.append(schreiber.kuerzel)
+
+    @property
+    def beitraege(self) -> list[str]:
+        """Was dieses Plugin der Anwendung hinzugefuegt hat - fuer die Anzeige.
+
+        Ein Plugin muss kein Werkzeug anmelden: ein Dateihandler ist ebenso
+        eine neue Faehigkeit. Ohne diese Zusammenfassung meldete die
+        Systempruefung "0 zusaetzliche Faehigkeiten", obwohl das Plugin ein
+        Ausgabeformat beigesteuert hatte.
+        """
+        return ([werkzeug.name for werkzeug in self.werkzeuge]
+                + [f"Dateiformat {kuerzel}" for kuerzel in self.formate])
 
     # -- Unternehmensgedaechtnis ---------------------------------------
     def gedaechtnis_lesen(self, schluessel: str):

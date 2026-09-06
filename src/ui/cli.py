@@ -306,6 +306,9 @@ def cmd_plugin(args) -> int:
                 for werkzeug in werkzeuge:
                     print(f"  {werkzeug.name:24s} {werkzeug.beschreibung} "
                           f"(aus {werkzeug.plugin})")
+            formate = [b for b in verwaltung.beitraege() if b.startswith("Dateiformat")]
+            if formate:
+                print("\nZusaetzliche Ausgabeformate: " + ", ".join(formate))
             return 0
 
         if args.aktion in ("pruefen", "installieren"):

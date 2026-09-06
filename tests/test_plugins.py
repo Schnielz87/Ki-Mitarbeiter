@@ -317,3 +317,27 @@ def test_installation_bleibt_unter_der_uebergebenen_wurzel(tmp_path, verwaltung,
     ordner = verwaltung.plugin_ordner("testplugin")
     assert ordner.is_relative_to(portable_root.root), \
         f"Plugin landete ausserhalb der Wurzel: {ordner}"
+
+
+def test_ein_dateiformat_zaehlt_als_faehigkeit(tmp_path, verwaltung, portable_root):
+    """Ein Plugin muss kein Werkzeug anmelden, um etwas beizutragen.
+
+    Anlass: die Systempruefung meldete "0 zusaetzliche Faehigkeiten", obwohl
+    das Plugin gerade ein Ausgabeformat ergaenzt hatte. Gezaehlt wurden nur
+    Werkzeuge.
+    """
+    import json as _json
+    from pathlib import Path
+
+    from pkc.artefakte import abmelden
+
+    quelle = Path(__file__).resolve().parents[1] / "examples" / "plugin_html"
+    paket = packen(quelle, tmp_path / "html_export",
+                   _json.loads((quelle / "manifest.json").read_text(encoding="utf-8")))
+    try:
+        verwaltung.installieren(paket, bestaetigt=True)
+        verwaltung.aktivieren("html_export")
+        verwaltung.laden()
+        assert verwaltung.beitraege() == ["Dateiformat html"]
+    finally:
+        abmelden("html")

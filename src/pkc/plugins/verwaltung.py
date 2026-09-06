@@ -302,12 +302,16 @@ class Pluginverwaltung:
         einstieg(kontext)
         self.geladen[manifest.id] = kontext
         self._melden("plugin_geladen", manifest.id,
-                     werkzeuge=[w.name for w in kontext.werkzeuge])
+                     beitraege=kontext.beitraege)
         return kontext
 
     # -- Auskunft ------------------------------------------------------
     def werkzeuge(self) -> list[Werkzeug]:
         return [w for kontext in self.geladen.values() for w in kontext.werkzeuge]
+
+    def beitraege(self) -> list[str]:
+        """Alles, was die geladenen Plugins beigesteuert haben."""
+        return [b for kontext in self.geladen.values() for b in kontext.beitraege]
 
     def rechtebeschreibung(self, rechte) -> list[str]:
         return [f"{recht}: {BERECHTIGUNGEN.get(recht, 'unbekannt')}" for recht in rechte]

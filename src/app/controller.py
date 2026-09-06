@@ -393,8 +393,9 @@ class AppController:
         if plugins:
             report.add(
                 "Plugins", not fehlerhaft,
-                f"{len(plugins) - len(fehlerhaft)} aktiv, "
-                f"{len(self.plugins.werkzeuge())} zusaetzliche Faehigkeiten"
+                f"{len(plugins) - len(fehlerhaft)} aktiv"
+                + (f" · ergaenzt: {', '.join(self.plugins.beitraege())}"
+                   if self.plugins.beitraege() else " · ohne zusaetzliche Faehigkeit")
                 + (f", {len(fehlerhaft)} abgeschaltet: {fehlerhaft[0].fehler}"
                    if fehlerhaft else ""),
                 critical=False,
