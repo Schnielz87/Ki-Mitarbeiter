@@ -163,6 +163,8 @@ for nummer, kapitel in enumerate([
     "Was automatisch gespeichert wird - und was nicht",
     "Belege hinzufuegen",
     "Unternehmenswissen pflegen",
+    "Ergebnisse als Datei ausgeben",
+    "Erweiterungen (Plugins)",
     "Betriebsmodus: HYBRID, OFFLINE, ONLINE",
     "Wissen aktualisieren",
     "Einstellungen und Status",
@@ -519,9 +521,43 @@ tabelle_mit(
         ["Absenden", "Schickt Ihre Frage ab"],
         ["Neue Unterhaltung", "Beginnt ein neues Gespraech; das alte bleibt rechts erhalten"],
         ["Dokument hinzufuegen", "Liest einen Beleg ein, auf den Sie sich dann beziehen koennen"],
+        ["Generierung stoppen", "Bricht eine laufende Antwort ab. Die Oberflaeche ist sofort "
+         "wieder bedienbar; Ihre Frage bleibt gespeichert"],
+        ["Antwort speichern", "Schreibt die letzte Antwort als Datei - Format daneben waehlbar "
+         "(siehe Kapitel 11)"],
         ["Unterhaltung exportieren", "Speichert das Gespraech als lesbare Datei auf dem Datentraeger"],
     ],
     breiten=[5.0, 10.0],
+)
+
+doc.add_heading("Der Buchhalter merkt sich das Gespraech", level=2)
+absatz("Sie muessen nicht jede Frage vollstaendig ausformulieren. Innerhalb "
+       "einer Unterhaltung bezieht sich der Buchhalter auf das Vorherige:")
+punkt("Sie: \"Ich habe eine Rechnung aus Frankreich.\"")
+punkt("Buchhalter: \"Ist der Lieferant Unternehmer?\"")
+punkt("Sie: \"Ja.\" - das genuegt. Die Rueckfrage wird richtig zugeordnet.")
+absatz("Mit Neue Unterhaltung beginnt ein neuer Zusammenhang. Das ist "
+       "sinnvoll, wenn es um einen anderen Sachverhalt geht.")
+
+doc.add_heading("Nicht jede Nachricht wird gleich behandelt", level=2)
+absatz("Der Buchhalter erkennt, um welche Art von Nachricht es sich handelt, "
+       "und antwortet entsprechend. Auf \"Guten Morgen\" folgt keine "
+       "Trefferliste aus dem Umsatzsteuerrecht.")
+tabelle_mit(
+    ["Art der Nachricht", "Was der Buchhalter tut"],
+    [
+        ["Begruessung, Rueckfrage an Sie, kurze Verstaendigung",
+         "Antwortet kurz. Es wird nicht recherchiert, und es steht kein "
+         "Quellenabschnitt darunter - es fehlt nichts."],
+        ["Kurze Wissensfrage (\"Wie hoch ist der Regelsteuersatz?\")",
+         "Kurze, belegte Antwort. Kein Aufbau ueber mehrere Abschnitte."],
+        ["Fachfrage ohne eigenen Sachverhalt",
+         "Recherchiert und antwortet mit Fundstellen."],
+        ["Geschilderter Einzelfall",
+         "Voller Aufbau nach dem Schema aus Kapitel 7. Fehlen entscheidende "
+         "Angaben, fragt der Buchhalter gezielt nach, statt zu raten."],
+    ],
+    breiten=[5.5, 9.5],
 )
 
 doc.add_heading("Gute Fragen", level=2)
@@ -566,6 +602,35 @@ kasten(
     "auch wenn sie ueberzeugend klingt.\n\n"
     "FREIGABEBEDARF sagt Ihnen, was noch nicht erledigt ist. Ein "
     "Buchungsvorschlag ist ein Vorschlag, keine Buchung.",
+)
+
+doc.add_heading("Wie die Antwort im Fenster erscheint", level=2)
+absatz("Ueber Ihrer Frage steht BENUTZER, ueber der Antwort der Name des "
+       "Mitarbeiters - zum Beispiel PORTIVA - Buchhalter. Die Antwort steht "
+       "oben, darunter kleiner und ruhiger die Abschnitte QUELLEN, "
+       "WISSENSSTAND, FREIGABEBEDARF und die Hinweise der Anwendung.")
+absatz("Ist ein Sprachmodell eingerichtet, laeuft die Antwort waehrend der "
+       "Erzeugung Stueck fuer Stueck ein, statt am Ende auf einmal zu "
+       "erscheinen. Sobald sie fertig ist, tritt die gepruefte Fassung mit "
+       "Quellen und Wissensstand an ihre Stelle. Dauert es Ihnen zu lange: "
+       "Generierung stoppen.")
+absatz("Zeichen wie ** oder ## sehen Sie nicht - Fettdruck ist Fettdruck, "
+       "eine Ueberschrift ist eine Ueberschrift. In der Konsolenfassung "
+       "werden diese Zeichen entfernt, weil eine Textausgabe keinen "
+       "Fettdruck kennt.")
+
+doc.add_heading("Rechts: Quellen der letzten Antwort", level=2)
+absatz("Dort stehen die Fundstellen mit Nummer, Bezeichnung, Rang der Quelle "
+       "und einem Auszug. Die Nummern in der Antwort - [1], [2] - verweisen "
+       "genau dorthin. Der volle Auszug steht bewusst nur rechts: eine "
+       "Antwort ist eine Antwort, keine Trefferliste.")
+kasten(
+    "Wenn nur Fachmodule gefunden wurden",
+    "Dann schreibt der Buchhalter ausdruecklich, dass fuer diese Aussage nur "
+    "Sekundaerquellen vorliegen und die Primaerquelle zu pruefen ist - "
+    "Gesetzestext, Verwaltungsanweisung oder Rechtsprechung. Ohne diesen "
+    "Hinweis saehe eine Antwort aus den mitgelieferten Fachmodulen genauso "
+    "belegt aus wie eine aus dem Gesetzestext.",
 )
 
 doc.add_heading("Wenn kein Sprachmodell eingerichtet ist", level=2)
@@ -762,8 +827,130 @@ kasten(
     "damit Sie es jederzeit lesen und pruefen koennen.",
 )
 
+# ================================================================ 11
+doc.add_heading("11.  Ergebnisse als Datei ausgeben", level=1)
+
+absatz("Der Buchhalter kann seine Ergebnisse als Datei herausgeben - als "
+       "Excel-Tabelle, Word-Dokument, PowerPoint-Praesentation, PDF-Bericht "
+       "oder in einem einfachen Textformat. Das geschieht vollstaendig auf "
+       "dem Datentraeger: ohne Internet und ohne installiertes Microsoft "
+       "Office.")
+
+doc.add_heading("So speichern Sie eine Antwort", level=2)
+schritt("Frage stellen und die Antwort abwarten.")
+schritt("Rechts neben Antwort speichern das Format waehlen - zum Beispiel pdf.")
+schritt("Auf Antwort speichern klicken. Die Anwendung nennt Ihnen den Pfad.")
+
+absatz()
+doc.add_heading("Die Formate", level=2)
+tabelle_mit(
+    ["Format", "Wofuer es gedacht ist"],
+    [
+        ["xlsx", "Excel-Arbeitsmappe: Auswertungen und Buchungslisten. Betraege "
+                 "sind Zahlen, mit denen Excel rechnet; Konto- und Belegnummern "
+                 "bleiben Text und verlieren keine fuehrende Null."],
+        ["docx", "Word-Dokument: Berichte und Dokumentationen, mit Ueberschriften "
+                 "und Tabellen."],
+        ["pptx", "PowerPoint: Kurzbericht, je Abschnitt eine Folie."],
+        ["pdf", "PDF: unveraenderlicher Bericht zum Weitergeben."],
+        ["csv", "Tabelle fuer die Weiterverarbeitung; oeffnet in Excel richtig."],
+        ["txt / md", "Einfacher Text beziehungsweise Text mit Gliederung."],
+        ["json", "Maschinenlesbar, fuer eigene Auswertungen."],
+    ],
+    breiten=[3.0, 12.0],
+)
+
+doc.add_heading("Wo die Dateien liegen", level=2)
+absatz("Im Ordner workspace\\artefakte auf dem Datentraeger - also bei Ihren "
+       "Unternehmensdaten, nicht im Programmordner und nicht auf dem "
+       "Computer, an dem Sie gerade arbeiten. Arbeiten mehrere Unternehmen "
+       "auf demselben Datentraeger, hat jedes seinen eigenen Ordner.")
+
+kasten(
+    "Nichts wird ueberschrieben",
+    "Speichern Sie zweimal unter demselben Namen, entsteht eine zweite "
+    "Fassung: Bericht.pdf, dann Bericht_v2.pdf. Ihre erste Datei bleibt "
+    "unveraendert. Ersetzt wird nur, wenn Sie es ausdruecklich verlangen.\n\n"
+    "Bricht das Speichern ab, bleibt keine halbe Datei zurueck, die wie ein "
+    "fertiger Bericht aussieht.",
+)
+
+doc.add_heading("Mit der Konsolenfassung", level=2)
+tabelle_mit(
+    ["Befehl", "Wirkung"],
+    [
+        ["PORTABLE_BUCHHALTER_KONSOLE.exe datei formate",
+         "Zeigt alle Formate, die erzeugt werden koennen"],
+        ["PORTABLE_BUCHHALTER_KONSOLE.exe datei antwort --format docx",
+         "Speichert die letzte Antwort als Word-Dokument"],
+        ["PORTABLE_BUCHHALTER_KONSOLE.exe datei text --text \"...\" --format pdf",
+         "Erzeugt eine Datei aus eigenem Text"],
+        ["PORTABLE_BUCHHALTER_KONSOLE.exe datei liste",
+         "Zeigt die zuletzt erzeugten Dateien"],
+    ],
+    breiten=[8.0, 7.0],
+)
+
+# ================================================================ 12
+doc.add_heading("12.  Erweiterungen (Plugins)", level=1)
+
+absatz("Der Buchhalter kann neue Faehigkeiten aufnehmen, ohne dass das "
+       "Programm neu gebaut wird. Eine solche Erweiterung heisst Plugin und "
+       "kommt als einzelne Datei mit der Endung .kimplug.")
+
+absatz("Beispiele: ein zusaetzliches Ausgabeformat, eine weitere "
+       "Wissensquelle, die Anbindung an ein anderes System.")
+
+doc.add_heading("Bevor Sie etwas installieren", level=2)
+absatz("Ein Plugin laeuft mit den Rechten der Anwendung. Deshalb gilt:")
+punkt("Die Anwendung zeigt Ihnen vorher, was das Plugin verlangt - zum "
+      "Beispiel Unternehmensgedaechtnis lesen oder Verbindung ins Internet.")
+punkt("Ohne Ihre ausdrueckliche Bestaetigung wird nichts installiert.")
+punkt("Installiert ist noch nicht aktiv. Das Aktivieren ist ein zweiter "
+      "Schritt.")
+punkt("Ein Plugin von einem Herausgeber, den Sie nicht kennen, sollten Sie "
+      "nicht installieren - so wie Sie auch sonst kein fremdes Programm "
+      "starten wuerden.")
+
+doc.add_heading("Der Ablauf", level=2)
+tabelle_mit(
+    ["Befehl", "Wirkung"],
+    [
+        ["PORTABLE_BUCHHALTER_KONSOLE.exe plugin pruefen <Datei>",
+         "Zeigt Name, Herausgeber, Signatur und die verlangten Berechtigungen. "
+         "Installiert wird dabei nichts."],
+        ["PORTABLE_BUCHHALTER_KONSOLE.exe plugin installieren <Datei> --bestaetigen",
+         "Installiert das Plugin und erteilt die verlangten Berechtigungen"],
+        ["PORTABLE_BUCHHALTER_KONSOLE.exe plugin aktivieren <Kennung>",
+         "Schaltet es ein - ab dem naechsten Start steht die Faehigkeit bereit"],
+        ["PORTABLE_BUCHHALTER_KONSOLE.exe plugin liste",
+         "Zeigt alle Plugins mit Zustand, Rechten und zusaetzlichen Faehigkeiten"],
+        ["PORTABLE_BUCHHALTER_KONSOLE.exe plugin deaktivieren <Kennung>",
+         "Schaltet es wieder aus, ohne es zu entfernen"],
+        ["PORTABLE_BUCHHALTER_KONSOLE.exe plugin entfernen <Kennung>",
+         "Entfernt es. Die Daten des Plugins bleiben erhalten - sie gehoeren Ihnen"],
+    ],
+    breiten=[8.4, 6.6],
+)
+
+kasten(
+    "Was die Anwendung ueberwacht - und was nicht",
+    "Jede Berechtigung wird einzeln erteilt und jeder Vorgang protokolliert. "
+    "Ein Plugin, das keine Erlaubnis fuer das Unternehmensgedaechtnis hat, "
+    "kommt nicht daran. Und im Betriebsmodus OFFLINE greift auch ein Plugin "
+    "mit Interneterlaubnis nicht ins Netz.\n\n"
+    "Was die Anwendung NICHT leisten kann: ein Plugin technisch vom Rest "
+    "abzuschotten. Es laeuft im selben Programm. Deshalb der Grundsatz oben: "
+    "nur installieren, was aus vertrauenswuerdiger Quelle stammt. "
+    "Einzelheiten in PLUGIN_KONZEPT.md.",
+)
+
+absatz("Ein Beispiel liegt bei: examples/plugin_html ergaenzt das "
+       "Ausgabeformat HTML. Es verlangt keinerlei Berechtigungen und zeigt, "
+       "wie eine Erweiterung aufgebaut ist.")
+
 # ================================================================ 8
-doc.add_heading("11.  Betriebsmodus: HYBRID, OFFLINE, ONLINE", level=1)
+doc.add_heading("13.  Betriebsmodus: HYBRID, OFFLINE, ONLINE", level=1)
 
 absatz("Sie bestimmen, ob der Buchhalter ins Internet darf. Die Auswahl "
        "steht oben rechts in der Kopfzeile und ist jederzeit erreichbar.")
@@ -837,7 +1024,7 @@ absatz("Ueber die Konsolenfassung geht es ebenso: "
        "PORTABLE_BUCHHALTER_KONSOLE.exe modus OFFLINE wechselt.")
 
 # ================================================================ 12
-doc.add_heading("12.  Wissen aktualisieren", level=1)
+doc.add_heading("14.  Wissen aktualisieren", level=1)
 
 absatz("Registerkarte Wissen aktualisieren. Hier laedt der Buchhalter "
        "amtliche Quellen nach. Das ist der einzige Teil, der Internet "
@@ -907,7 +1094,7 @@ kasten(
 )
 
 # ================================================================ 9
-doc.add_heading("13.  Einstellungen und Status", level=1)
+doc.add_heading("15.  Einstellungen und Status", level=1)
 
 absatz("Registerkarte Einstellungen und Status. Links stellen Sie ein, rechts "
        "sehen Sie den Zustand.")
@@ -943,7 +1130,7 @@ absatz("Steht bei einem Punkt HINWEIS statt OK, ist das kein Fehler, sondern "
        "daneben sagt, was das bedeutet und wie es zu beheben ist.")
 
 # ================================================================ 12
-doc.add_heading("14.  Lizenz", level=1)
+doc.add_heading("16.  Lizenz", level=1)
 
 doc.add_heading("Im Augenblick muessen Sie nichts tun", level=2)
 absatz("Der Startbildschirm zeigt in der Zeile Lizenz:")
@@ -1076,7 +1263,7 @@ absatz("Diese Fassung ist eine Vorab- bzw. Pilotfassung. Sie ist noch nicht "
        "PORTABLE_BUCHHALTER_KONSOLE.exe reife")
 
 # ================================================================ 13
-doc.add_heading("15.  Was der Buchhalter nicht tut", level=1)
+doc.add_heading("17.  Was der Buchhalter nicht tut", level=1)
 
 absatz("Das ist kein Mangel, sondern bewusst so gebaut. Bitte lesen Sie es "
        "einmal in Ruhe.")
@@ -1108,7 +1295,7 @@ kasten(
 )
 
 # ================================================================ 11
-doc.add_heading("16.  Wenn etwas nicht funktioniert", level=1)
+doc.add_heading("18.  Wenn etwas nicht funktioniert", level=1)
 
 tabelle_mit(
     ["Was Sie sehen", "Was zu tun ist"],
