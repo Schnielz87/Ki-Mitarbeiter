@@ -23,6 +23,7 @@ from tkinter import filedialog, messagebox, scrolledtext, ttk
 from app.controller import AppController, AskOutcome, StartupReport
 from pkc.branding import load_brand, profilname
 from pkc.netstate import Mode
+from ui.antwort import teilen
 from ui.markdown import zerlegen
 from pkc.audit import ApprovalState
 from pkc.memory.schema_keys import CATEGORIES
@@ -31,6 +32,9 @@ PAD = 8
 FONT_BASE = ("Segoe UI", 10)
 FONT_MONO = ("Consolas", 10)
 FONT_TITLE = ("Segoe UI", 14, "bold")
+
+#: Stelle im Chat, ab der die gerade laufende Antwort steht (Abschnitt 21).
+MARKE_STROM = "laufende_antwort"
 
 
 class Abgebrochen(Exception):
@@ -287,6 +291,12 @@ class MainWindow:
         self.root.minsize(900, 600)
         self.root.protocol("WM_DELETE_WINDOW", self._on_close)
 
+        # Abschnitt 23: die Unterhaltung soll sich wie ein Gespraech lesen.
+        # Wer spricht, steht als Name darueber - nicht als "Sie"/"Buchhalter",
+        # sondern mit der Marke und dem aktiven Profil.
+        self._sprecher_ich = "BENUTZER"
+        self._sprecher_ki = self.brand.titel(self.profil)
+
         self._build_header()
         self._build_body()
         self._build_statusbar()
@@ -385,6 +395,19 @@ class MainWindow:
         self.chat = scrolledtext.ScrolledText(left, wrap="word", font=FONT_BASE, state="disabled")
         self.chat.pack(fill="both", expand=True)
         self.chat.tag_configure("wer", font=("Segoe UI", 10, "bold"))
+        # Abschnitt 23: Frage und Antwort sollen sich auf einen Blick
+        # unterscheiden lassen.
+        self.chat.tag_configure("sprecher_ich", font=("Segoe UI", 9, "bold"),
+                                foreground="#666666", spacing1=10)
+        self.chat.tag_configure("sprecher_ki", font=("Segoe UI", 10, "bold"),
+                                foreground="#1f4e79", spacing1=10)
+        # Quellen, Wissensstand und Hinweise stehen unter der Antwort -
+        # lesbar, aber ruhiger als die Antwort selbst.
+        self.chat.tag_configure("anhang", font=("Segoe UI", 9), foreground="#555555",
+                                lmargin1=12, lmargin2=12, spacing1=2)
+        self.chat.tag_configure("anhang_kopf", font=("Segoe UI", 9, "bold"),
+                                foreground="#444444", lmargin1=12, lmargin2=12,
+                                spacing1=6)
         self.chat.tag_configure("system", foreground="#555555")
         self.chat.tag_configure("hinweis", foreground="#8a4b00")
         # Stile fuer die Markdown-Darstellung (Abschnitt 7). Ohne sie
@@ -627,6 +650,13 @@ class MainWindow:
         self.statusbar.pack(fill="x", side="bottom")
 
     # -- Chat ----------------------------------------------------------
+    def _sprecherstil(self, who: str) -> str:
+        if who == self._sprecher_ki:
+            return "sprecher_ki"
+        if who == self._sprecher_ich:
+            return "sprecher_ich"
+        return "wer"
+
     def _append_chat(self, who: str, text: str, tag: str = "") -> None:
         """Fuegt einen Beitrag ein - Markdown wird dabei ausgewertet.
 
@@ -635,16 +665,84 @@ class MainWindow:
         Text unveraendert; dort gibt es kein Markdown.
         """
         self.chat.configure(state="normal")
-        self.chat.insert("end", f"\n{who}\n", "wer")
+        self.chat.insert("end", f"\n{who}\n", self._sprecherstil(who))
         if tag:
             self.chat.insert("end", f"{text}\n", tag)
         else:
-            for stueck in zerlegen(text):
-                self.chat.insert("end", stueck.text,
-                                 stueck.stil if stueck.stil != "normal" else ())
-            self.chat.insert("end", "\n")
+            self._text_einfuegen(text)
         self.chat.configure(state="disabled")
         self.chat.see("end")
+
+    def _text_einfuegen(self, text: str) -> None:
+        """Antwort oben, Anhang darunter - beides an der Einfuegestelle.
+
+        Abschnitt 23: Quellen, Wissensstand, Freigabebedarf und Hinweise
+        gehoeren unter die Antwort und duerfen sie nicht optisch erschlagen.
+        Der Text selbst bleibt unveraendert - nur die Darstellung trennt.
+        """
+        teile = teilen(text)
+        for stueck in zerlegen(teile.antwort):
+            self.chat.insert("end", stueck.text,
+                             stueck.stil if stueck.stil != "normal" else ())
+        if teile.hat_anhang:
+            self.chat.insert("end", "\n")
+            for stueck in zerlegen(teile.anhang):
+                stil = "anhang_kopf" if stueck.stil in (
+                    "fett", "ueberschrift1", "ueberschrift2") else "anhang"
+                self.chat.insert("end", stueck.text, stil)
+        self.chat.insert("end", "\n")
+
+    # -- Schrittweise Ausgabe (Abschnitt 21) ---------------------------
+    def _strom_zuruecksetzen(self) -> None:
+        """Verwirft, was bisher schrittweise angezeigt wurde - samt Namenszeile.
+
+        Die Marke steht **vor** dem Namen. So bleibt nach einem Abbruch keine
+        leere Sprechblase stehen, und ein zweiter Anbieter faengt sauber von
+        vorn an.
+        """
+        if not getattr(self, "_strom_laeuft", False):
+            return
+        self.chat.configure(state="normal")
+        self.chat.delete(MARKE_STROM, "end")
+        self.chat.configure(state="disabled")
+        self._strom_laeuft = False
+        self._strom_leer = True
+
+    def _strom_ausgeben(self) -> None:
+        """Holt fertige Textstuecke aus dem Arbeitsfaden in das Fenster.
+
+        Laeuft im Oberflaechen-Thread (ueber die Warteschleife der
+        Hintergrundaufgabe) - Tkinter darf nur von dort bedient werden. Eine
+        leere Zeichenkette bedeutet: der Anbieter hat abgebrochen, das bisher
+        Gezeigte gilt nicht mehr.
+        """
+        puffer = getattr(self, "_strom_puffer", None)
+        if puffer is None:
+            return
+        while True:
+            try:
+                stueck = puffer.get_nowait()
+            except queue.Empty:
+                return
+            if stueck == "":
+                self._strom_zuruecksetzen()
+                continue
+            if not getattr(self, "_strom_laeuft", False):
+                # Erst beim ersten echten Textstueck erscheint der Name -
+                # sonst stuende eine leere Sprechblase da, falls das Modell
+                # gar nicht antwortet. Die Marke wird davor gesetzt: dann
+                # laesst sich der ganze Beitrag wieder entfernen.
+                self.chat.configure(state="normal")
+                self.chat.mark_set(MARKE_STROM, "end-1c")
+                self.chat.mark_gravity(MARKE_STROM, "left")
+                self.chat.insert("end", f"\n{self._sprecher_ki}\n", "sprecher_ki")
+                self.chat.configure(state="disabled")
+                self._strom_laeuft = True
+            self.chat.configure(state="normal")
+            self.chat.insert("end", stueck)
+            self.chat.configure(state="disabled")
+            self.chat.see("end")
+            self._strom_leer = False
 
     def _send(self) -> str:
         if self.busy:
@@ -653,35 +751,56 @@ class MainWindow:
         if not question:
             return "break"
         self.entry.delete("1.0", "end")
-        self._append_chat("Sie", question)
+        self._append_chat(self._sprecher_ich, question)
         self._set_busy(True, "Der Buchhalter recherchiert lokal ...")
 
+        # Abschnitt 21: Textstuecke kommen aus dem Arbeitsfaden, angezeigt
+        # werden sie ausschliesslich im Oberflaechen-Thread.
+        self._strom_puffer = queue.Queue()
+        self._strom_laeuft = False
+        self._strom_leer = True
+
         def work() -> AskOutcome:
-            return self.controller.ask(question)
+            return self.controller.ask(question, on_token=self._strom_puffer.put)
 
         def done(outcome: AskOutcome | None, error: Exception | None) -> None:
             self._set_busy(False)
             self.stop_button.configure(state="disabled")
             self._laufende_aufgabe = None
             if isinstance(error, Abgebrochen):
+                # Ein halber Absatz ohne Quellen und ohne Hinweise ist keine
+                # Antwort. Er wird entfernt, statt stehenzubleiben.
+                self._strom_zuruecksetzen()
                 self._append_chat(
                     "System",
                     "Abgebrochen. Die Frage wurde gespeichert, es wurde nur keine "
                     "Antwort erzeugt.", "system")
                 return
             if error is not None:
+                self._strom_zuruecksetzen()
                 self._append_chat("Fehler", f"{type(error).__name__}: {error}", "hinweis")
                 return
             assert outcome is not None
-            self._append_chat("Buchhalter", outcome.answer.text)
+            self._antwort_anzeigen(outcome.answer.text)
             self._show_sources(outcome)
             self._refresh_conversations()
             self._ask_about_candidates(outcome)
 
         self._laufende_aufgabe = BackgroundTask(self.root)
         self.stop_button.configure(state="normal")
-        self._laufende_aufgabe.run(work, done)
+        self._laufende_aufgabe.run(work, done, on_tick=self._strom_ausgeben)
         return "break"
+
+    def _antwort_anzeigen(self, text: str) -> None:
+        """Zeigt die fertige Antwort - notfalls anstelle des Stroms.
+
+        Waehrend der Erzeugung steht der rohe Modelltext im Fenster. Am Ende
+        tritt der gepruefte Text an seine Stelle: mit Quellenteil, Wissensstand
+        und den Hinweisen der Anwendung, und in der lesbaren Darstellung. Was
+        angezeigt bleibt, ist damit genau das, was auch gespeichert wurde.
+        """
+        self._strom_zuruecksetzen()
+        self._append_chat(self._sprecher_ki, text)
 
     def _abbrechen(self) -> None:
         """Bricht eine laufende Erzeugung ab (Abschnitt 22)."""
@@ -745,7 +864,8 @@ class MainWindow:
         self.chat.delete("1.0", "end")
         self.chat.configure(state="disabled")
         for message in self.controller.messages(item["uid"]):
-            who = {"user": "Sie", "assistant": "Buchhalter"}.get(message["role"], "System")
+            who = {"user": self._sprecher_ich,
+                   "assistant": self._sprecher_ki}.get(message["role"], "System")
             self._append_chat(who, message["content"])
         self._refresh_conversations()
 

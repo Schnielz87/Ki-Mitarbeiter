@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
-from typing import Sequence
+from typing import Callable, Sequence
 
 from ..llm.base import ChatMessage, LlmResponse
 from ..llm.manager import LlmManager
@@ -151,6 +151,7 @@ class RagEngine:
         max_tokens: int = 1024,
         temperature: float = 0.2,
         prefer_online: bool = False,
+        on_token: Callable[[str], None] | None = None,
     ) -> AnswerResult:
         # Erst einstufen, dann entscheiden, ob ueberhaupt recherchiert wird.
         # Auf "Kannst Du mir helfen?" gehoeren keine acht Fundstellen aus dem
@@ -165,9 +166,12 @@ class RagEngine:
         messages = self.build_messages(question, bundle, history, mode,
                                        knowledge_date, einstufung)
 
+        # ``on_token`` gibt die Antwort waehrend der Erzeugung heraus
+        # (Abschnitt 21). Es aendert nichts am Ergebnis: Quellenteil,
+        # Wissensstand und Warnungen entstehen wie bisher erst danach.
         response = self.llm.generate(
             messages, max_tokens=max_tokens, temperature=temperature,
-            prefer_online=prefer_online,
+            prefer_online=prefer_online, on_token=on_token,
         )
 
         text = response.text

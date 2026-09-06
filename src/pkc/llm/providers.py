@@ -25,6 +25,23 @@ from .base import ChatMessage, LlmError, LlmResponse
 log = get_logger(__name__)
 
 
+def _teil_aus_brocken(brocken: Any) -> tuple[str, str]:
+    """Zieht Textstueck und Abbruchgrund aus einem Antwortbrocken.
+
+    Sowohl llama-cpp-python als auch OpenAI-kompatible Dienste liefern beim
+    schrittweisen Erzeugen dieselbe Form: ``choices[0].delta.content``. Aeltere
+    Dienste schicken stattdessen ``text``. Beides wird angenommen; alles
+    andere wird uebergangen, statt die laufende Antwort abzubrechen.
+    """
+    try:
+        choice = brocken["choices"][0]
+    except (KeyError, IndexError, TypeError):
+        return "", ""
+    delta = choice.get("delta") or {}
+    stueck = delta.get("content") or choice.get("text") or ""
+    return (stueck if isinstance(stueck, str) else ""), (choice.get("finish_reason") or "")
+
+
 class LlamaCppProvider:
     """Lokales GGUF-Modell ueber ``llama-cpp-python`` (im Prozess)."""
 
@@ -86,27 +103,57 @@ class LlamaCppProvider:
         log.info("Lokales Modell geladen: %s", self.model_path.name)
         return self._llama
 
-    def generate(self, messages, max_tokens=1024, temperature=0.2, stop=None) -> LlmResponse:
+    def generate(self, messages, max_tokens=1024, temperature=0.2, stop=None,
+                 on_token: Callable[[str], None] | None = None) -> LlmResponse:
+        """Erzeugt eine Antwort; mit ``on_token`` Stueck fuer Stueck.
+
+        Abschnitt 21: die Antwort soll waehrend der Erzeugung erscheinen. Ohne
+        ``on_token`` bleibt es beim bisherigen Verhalten - eine vollstaendige
+        Antwort am Stueck. Das ist der Rueckfallweg, wenn die Oberflaeche
+        keine schrittweise Ausgabe anfordert.
+        """
         llama = self._ensure_loaded()
         started = time.monotonic()
-        try:
-            result = llama.create_chat_completion(
-                messages=[m.as_dict() for m in messages],
-                max_tokens=max_tokens,
-                temperature=temperature,
-                stop=list(stop) if stop else None,
+        anfrage = {
+            "messages": [m.as_dict() for m in messages],
+            "max_tokens": max_tokens,
+            "temperature": temperature,
+            "stop": list(stop) if stop else None,
+        }
+        if on_token is None:
+            try:
+                result = llama.create_chat_completion(**anfrage)
+            except Exception as exc:
+                raise LlmError(f"Lokale Inferenz fehlgeschlagen: {exc}") from exc
+            choice = result["choices"][0]
+            usage = result.get("usage", {})
+            return LlmResponse(
+                text=(choice["message"]["content"] or "").strip(),
+                provider=self.name, model=self.model,
+                prompt_tokens=int(usage.get("prompt_tokens", 0)),
+                completion_tokens=int(usage.get("completion_tokens", 0)),
+                elapsed=time.monotonic() - started,
+                truncated=choice.get("finish_reason") == "length",
             )
+
+        teile: list[str] = []
+        grund = ""
+        try:
+            for brocken in llama.create_chat_completion(stream=True, **anfrage):
+                stueck, grund_neu = _teil_aus_brocken(brocken)
+                if grund_neu:
+                    grund = grund_neu
+                if stueck:
+                    teile.append(stueck)
+                    on_token(stueck)
         except Exception as exc:
             raise LlmError(f"Lokale Inferenz fehlgeschlagen: {exc}") from exc
-        choice = result["choices"][0]
-        usage = result.get("usage", {})
         return LlmResponse(
-            text=(choice["message"]["content"] or "").strip(),
+            text="".join(teile).strip(),
             provider=self.name, model=self.model,
-            prompt_tokens=int(usage.get("prompt_tokens", 0)),
-            completion_tokens=int(usage.get("completion_tokens", 0)),
             elapsed=time.monotonic() - started,
-            truncated=choice.get("finish_reason") == "length",
+            truncated=grund == "length",
+            meta={"streaming": True},
         )
 
     def describe(self) -> dict:
@@ -172,13 +219,14 @@ class OpenAICompatibleProvider:
         except (urllib.error.URLError, OSError, TimeoutError) as exc:
             return False, f"Modelldienst nicht erreichbar: {exc}"
 
-    def generate(self, messages, max_tokens=1024, temperature=0.2, stop=None) -> LlmResponse:
+    def generate(self, messages, max_tokens=1024, temperature=0.2, stop=None,
+                 on_token: Callable[[str], None] | None = None) -> LlmResponse:
         payload = {
             "model": self.model,
             "messages": [m.as_dict() for m in messages],
             "max_tokens": int(max_tokens),
             "temperature": float(temperature),
-            "stream": False,
+            "stream": on_token is not None,
         }
         if stop:
             payload["stop"] = list(stop)
@@ -190,6 +238,8 @@ class OpenAICompatibleProvider:
             request.add_header("Authorization", f"Bearer {self.api_key}")
 
         started = time.monotonic()
+        if on_token is not None:
+            return self._strom(request, on_token, started)
         try:
             with urllib.request.urlopen(request, timeout=self.timeout) as response:
                 data = json.loads(response.read().decode("utf-8"))
@@ -211,6 +261,61 @@ class OpenAICompatibleProvider:
             completion_tokens=int(usage.get("completion_tokens", 0)),
             elapsed=time.monotonic() - started,
             truncated=choice.get("finish_reason") == "length",
+        )
+
+    def _strom(self, request, on_token: Callable[[str], None], started: float) -> LlmResponse:
+        """Liest die Antwort als Ereignisstrom (Abschnitt 21).
+
+        Der Dienst schickt Zeilen der Form ``data: {...}`` und zum Schluss
+        ``data: [DONE]``. Bricht der Strom mittendrin ab, gilt das nicht als
+        halbe Antwort: der Aufrufer bekommt einen Fehler und damit den
+        ehrlichen Weg in den Notbetrieb.
+        """
+        teile: list[str] = []
+        grund = ""
+        abgeschlossen = False
+        try:
+            with urllib.request.urlopen(request, timeout=self.timeout) as response:
+                for rohzeile in response:
+                    zeile = rohzeile.decode("utf-8", errors="replace").strip()
+                    if not zeile or not zeile.startswith("data:"):
+                        continue
+                    nutzlast = zeile[5:].strip()
+                    if nutzlast == "[DONE]":
+                        abgeschlossen = True
+                        break
+                    try:
+                        brocken = json.loads(nutzlast)
+                    except json.JSONDecodeError:
+                        continue
+                    stueck, grund_neu = _teil_aus_brocken(brocken)
+                    if grund_neu:
+                        grund = grund_neu
+                        abgeschlossen = True
+                    if stueck:
+                        teile.append(stueck)
+                        on_token(stueck)
+        except urllib.error.HTTPError as exc:
+            detail = exc.read().decode("utf-8", errors="replace")[:300]
+            raise LlmError(f"Modelldienst meldete HTTP {exc.code}: {detail}") from exc
+        except (urllib.error.URLError, OSError, TimeoutError) as exc:
+            raise LlmError(f"Modelldienst nicht erreichbar: {exc}") from exc
+        text = "".join(teile).strip()
+        if not text:
+            raise LlmError("Der Modelldienst hat keinen Text geliefert.")
+        if not abgeschlossen:
+            # Ein Strom, der einfach aufhoert, ist kein fertiger Satz. Er als
+            # Antwort auszugeben waere die gefaehrlichste Variante: er sieht
+            # vollstaendig aus. Also gilt er als Ausfall.
+            raise LlmError(
+                "Der Modelldienst hat die Antwort nicht zu Ende geliefert "
+                f"(abgebrochen nach {len(text)} Zeichen)."
+            )
+        return LlmResponse(
+            text=text, provider=self.name, model=self.model,
+            elapsed=time.monotonic() - started,
+            truncated=grund == "length",
+            meta={"streaming": True},
         )
 
     def describe(self) -> dict:

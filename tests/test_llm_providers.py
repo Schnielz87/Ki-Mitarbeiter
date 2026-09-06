@@ -55,6 +55,21 @@ class _ModelHandler(BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(b"Modell ueberlastet")
             return
+        if request.get("stream"):
+            # Ereignisstrom wie ihn llama-server und OpenAI-kompatible
+            # Dienste liefern (Abschnitt 21).
+            self.send_response(200)
+            self.send_header("Content-Type", "text/event-stream")
+            self.end_headers()
+            for stueck in ["Eine ", "Antwort ", "in Stuecken."]:
+                brocken = json.dumps({"choices": [{"delta": {"content": stueck}}]})
+                self.wfile.write(f"data: {brocken}\n\n".encode())
+                self.wfile.flush()
+                if _ModelHandler.behaviour == "stream_bricht_ab":
+                    return          # Verbindung mittendrin weg
+            ende = json.dumps({"choices": [{"delta": {}, "finish_reason": "stop"}]})
+            self.wfile.write(f"data: {ende}\n\ndata: [DONE]\n\n".encode())
+            return
         if _ModelHandler.behaviour == "garbage":
             payload = b'{"unerwartet": true}'
         else:
@@ -179,3 +194,111 @@ def test_model_discovery(tmp_path):
     found = discover_models(models)
     assert len(found) == 1
     assert found[0].quantisation == "Q4_K_M" and found[0].name.endswith(".gguf")
+
+
+# -- Schrittweise Ausgabe (Abschnitt 21) --------------------------------
+
+def test_server_antwortet_stueckweise(model_server):
+    """Die Antwort erscheint waehrend der Erzeugung, nicht erst danach."""
+    provider = OpenAICompatibleProvider(model_server.base, model="testmodell",
+                                        name="local-server")
+    gesehen: list[str] = []
+    response = provider.generate([ChatMessage("user", "Frage")], on_token=gesehen.append)
+
+    assert gesehen == ["Eine ", "Antwort ", "in Stuecken."], \
+        "jedes Stueck muss einzeln herausgegeben werden"
+    assert response.text == "Eine Antwort in Stuecken."
+    assert response.meta.get("streaming") is True
+    assert model_server.handler.seen[-1]["stream"] is True
+
+
+def test_ohne_rueckmeldung_wird_nicht_gestromt(model_server):
+    """Ohne ``on_token`` bleibt es beim Abruf am Stueck - der Rueckfallweg."""
+    provider = OpenAICompatibleProvider(model_server.base, model="testmodell")
+    provider.generate([ChatMessage("user", "Frage")])
+    assert model_server.handler.seen[-1]["stream"] is False
+
+
+def test_abbruch_mitten_im_strom_ist_keine_halbe_antwort(model_server):
+    """Ein abgerissener Strom darf nicht als fertige Antwort durchgehen."""
+    model_server.handler.behaviour = "stream_bricht_ab"
+    provider = OpenAICompatibleProvider(model_server.base, model="testmodell")
+    gesehen: list[str] = []
+    with pytest.raises(LlmError):
+        provider.generate([ChatMessage("user", "Frage")], on_token=gesehen.append)
+
+
+class _LlamaDoppel:
+    """Ersetzt die geladene GGUF-Datei - prueft nur den Aufrufweg."""
+
+    def __init__(self):
+        self.aufrufe: list[dict] = []
+
+    def create_chat_completion(self, **kwargs):
+        self.aufrufe.append(kwargs)
+        if not kwargs.get("stream"):
+            return {"choices": [{"message": {"content": "Ganze Antwort"},
+                                 "finish_reason": "stop"}],
+                    "usage": {"prompt_tokens": 10, "completion_tokens": 3}}
+        return iter([
+            {"choices": [{"delta": {"content": "Ganze "}}]},
+            {"choices": [{"delta": {"content": "Antwort"}, "finish_reason": "stop"}]},
+        ])
+
+
+def test_lokales_modell_gibt_stueckweise_heraus(tmp_path):
+    datei = tmp_path / "modell.gguf"
+    datei.write_bytes(b"x")
+    provider = LlamaCppProvider(datei)
+    doppel = _LlamaDoppel()
+    provider._llama = doppel
+
+    gesehen: list[str] = []
+    response = provider.generate([ChatMessage("user", "Frage")], on_token=gesehen.append)
+    assert gesehen == ["Ganze ", "Antwort"]
+    assert response.text == "Ganze Antwort"
+    assert doppel.aufrufe[-1]["stream"] is True
+
+    ohne = provider.generate([ChatMessage("user", "Frage")])
+    assert ohne.text == "Ganze Antwort"
+    assert "stream" not in doppel.aufrufe[-1]
+
+
+class _StummerAnbieter:
+    """Anbieter ohne schrittweise Ausgabe - muss trotzdem bedienbar bleiben."""
+
+    name = "stumm"
+    model = "keins"
+
+    def available(self):
+        return True, "bereit"
+
+    def generate(self, messages, max_tokens=1024, temperature=0.2, stop=None):
+        from pkc.llm.base import LlmResponse
+        return LlmResponse(text="Am Stueck", provider=self.name, model=self.model)
+
+    def describe(self):
+        return {"anbieter": self.name}
+
+
+def test_anbieter_ohne_strom_bleibt_nutzbar():
+    """``on_token`` darf einen einfachen Anbieter nicht unbrauchbar machen."""
+    manager = LlmManager(_StummerAnbieter())
+    gesehen: list[str] = []
+    response = manager.generate([ChatMessage("user", "Frage")], on_token=gesehen.append)
+    assert response.text == "Am Stueck"
+    assert gesehen == [], "ohne Faehigkeit wird auch nichts stueckweise gemeldet"
+
+
+def test_notbetrieb_verwirft_bereits_gezeigte_stuecke(model_server):
+    """Faellt alles aus, darf kein Rest der abgebrochenen Antwort stehenbleiben."""
+    model_server.handler.behaviour = "stream_bricht_ab"
+    online = OpenAICompatibleProvider(model_server.base, model="testmodell",
+                                      name="online")
+    manager = LlmManager(online)
+    gesehen: list[str] = []
+    response = manager.generate([ChatMessage("user", "Frage")], on_token=gesehen.append)
+
+    assert not response.is_generated, "ohne Modellantwort kein 'generated'"
+    assert "" in gesehen, "der Neubeginn muss gemeldet werden"
+    assert gesehen[-1] == "", "das zuletzt Gezeigte muss verworfen werden"

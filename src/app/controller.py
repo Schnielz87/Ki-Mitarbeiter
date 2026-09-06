@@ -612,6 +612,7 @@ class AppController:
         as_of: str | None = None,
         use_history: bool = True,
         prefer_online: bool = False,
+        on_token: Callable[[str], None] | None = None,
     ) -> AskOutcome:
         question = (question or "").strip()
         if not question:
@@ -633,6 +634,7 @@ class AppController:
             as_of=as_of, max_tokens=int(self.config.get("llm.max_output_tokens", 1024)),
             temperature=float(self.config.get("llm.temperature", 0.2)),
             prefer_online=prefer_online and lage.online_moeglich,
+            on_token=on_token,
         )
 
         message_id = self._store_message(

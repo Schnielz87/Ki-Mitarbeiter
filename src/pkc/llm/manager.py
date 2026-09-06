@@ -11,7 +11,8 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Iterable, Sequence
+import inspect
+from typing import Any, Callable, Iterable, Sequence
 
 from ..logging_setup import get_logger
 from .base import ChatMessage, LlmError, LlmProvider, LlmResponse
@@ -20,6 +21,18 @@ from .providers import (
 )
 
 log = get_logger(__name__)
+
+
+def _kann_strom(provider: LlmProvider) -> bool:
+    """Nimmt der Anbieter eine Rueckmeldung je Textstueck entgegen?
+
+    Geprueft wird die Unterschrift, nicht der Name: so bleiben eigene
+    Anbieter und Testdoppel ohne Aenderung benutzbar.
+    """
+    try:
+        return "on_token" in inspect.signature(provider.generate).parameters
+    except (TypeError, ValueError):
+        return False
 
 MODEL_SUFFIXES = (".gguf",)
 
@@ -217,8 +230,20 @@ class LlmManager:
         temperature: float = 0.2,
         stop: Iterable[str] | None = None,
         prefer_online: bool = False,
+        on_token: Callable[[str], None] | None = None,
     ) -> LlmResponse:
-        """Erzeugt eine Antwort. Ein Online-Ausfall faellt auf lokal zurueck."""
+        """Erzeugt eine Antwort. Ein Online-Ausfall faellt auf lokal zurueck.
+
+        ``on_token`` wird nur an Anbieter weitergereicht, die schrittweise
+        erzeugen koennen (Abschnitt 21). Alle anderen antworten wie bisher am
+        Stueck - eine schrittweise Ausgabe ist erwuenscht, eine richtige
+        Antwort ist wichtiger.
+
+        Bricht ein Anbieter mitten im Strom ab, sind bereits Stuecke bei der
+        Oberflaeche angekommen. Der naechste Anbieter beginnt dann von vorn;
+        deshalb meldet ``on_token`` den Neubeginn mit einer leeren Zeichenkette,
+        und die Oberflaeche verwirft das bisher Angezeigte.
+        """
         order: list[LlmProvider] = []
         if prefer_online and self.allow_online and self.online is not None:
             order.append(self.online)
@@ -229,7 +254,13 @@ class LlmManager:
         errors: list[str] = []
         for provider in order:
             try:
-                response = provider.generate(messages, max_tokens, temperature, stop)
+                if on_token is not None and _kann_strom(provider):
+                    if errors:
+                        on_token("")
+                    response = provider.generate(messages, max_tokens, temperature, stop,
+                                                 on_token=on_token)
+                else:
+                    response = provider.generate(messages, max_tokens, temperature, stop)
                 if errors:
                     response.meta["fallback_von"] = errors
                 self.last_error = ""
@@ -239,6 +270,10 @@ class LlmManager:
                 log.warning("Anbieter %s fehlgeschlagen: %s", provider.name, exc)
 
         self.last_error = " | ".join(errors)
+        if on_token is not None:
+            # Nichts von dem, was bereits durchlief, darf als Antwort
+            # stehenbleiben: es kam von einem Anbieter, der abgebrochen hat.
+            on_token("")
         fallback = RetrievalOnlyProvider(self.last_error)
         response = fallback.generate(messages, max_tokens, temperature, stop)
         response.meta["fallback_von"] = errors

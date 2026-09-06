@@ -127,6 +127,9 @@ class _TextWidget(_Widget):
     def __init__(self, master=None, **options):
         super().__init__(master, **options)
         self.buffer = ""
+        #: Marken zeigen auf eine Stelle im Puffer - so laesst sich, wie in
+        #: Tk, ein bestimmter Bereich wieder entfernen (schrittweise Ausgabe).
+        self.marks: dict[str, int] = {}
 
     def insert(self, index, text, *tags):
         if str(index) in ("1.0", "0.0"):
@@ -135,8 +138,23 @@ class _TextWidget(_Widget):
             self.buffer += str(text)
         return self
 
+    def mark_set(self, name, index="end"):
+        self.marks[str(name)] = len(self.buffer)
+        return self
+
+    def mark_gravity(self, name, direction=None): return self
+
+    def mark_unset(self, *names):
+        for name in names:
+            self.marks.pop(str(name), None)
+        return self
+
     def delete(self, start=None, end=None):
-        self.buffer = ""
+        stelle = self.marks.get(str(start))
+        if stelle is not None:
+            self.buffer = self.buffer[:stelle]
+        else:
+            self.buffer = ""
         return self
 
     def get(self, start="1.0", end="end"):

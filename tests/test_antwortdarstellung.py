@@ -233,3 +233,34 @@ def test_komplexer_fall_fordert_rueckfragen_an(portable_root):
         assert "hoechstens drei" in anweisung
     finally:
         controller.shutdown()
+
+
+# -- Abschnitt 23: Antwort oben, Anhang darunter -------------------------
+
+def test_anhang_wird_von_der_antwort_getrennt():
+    from ui.antwort import teilen
+
+    teile = teilen(
+        "Die Rechnung ist ohne Umsatzsteuer zu buchen [1].\n\n"
+        "**QUELLEN**\n[1] UStG Paragraf 13b\n\n"
+        "**WISSENSSTAND**\nLokaler Wissensstand: 2026-01-01"
+    )
+    assert teile.antwort == "Die Rechnung ist ohne Umsatzsteuer zu buchen [1]."
+    assert teile.hat_anhang
+    assert "QUELLEN" in teile.anhang and "WISSENSSTAND" in teile.anhang
+
+
+def test_ohne_anhang_bleibt_alles_antwort():
+    from ui.antwort import teilen
+
+    teile = teilen("Guten Morgen! Womit kann ich helfen?")
+    assert teile.antwort == "Guten Morgen! Womit kann ich helfen?"
+    assert not teile.hat_anhang
+
+
+def test_das_wort_quellen_im_satz_trennt_nicht():
+    """'in den vorliegenden Quellen' ist keine Ueberschrift."""
+    from ui.antwort import teilen
+
+    teile = teilen("In den vorliegenden Quellen steht dazu nichts Naeheres.")
+    assert not teile.hat_anhang
