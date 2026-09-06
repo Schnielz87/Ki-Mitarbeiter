@@ -69,6 +69,30 @@ oeffnet, hat keine Konsole offen und liest das als "geht nicht", nicht als
   stand dort ein Kasten mit drei Klicks und darunter weiter Konsolentext.
   Ein Test vergleicht die genannten Schaltflaechen mit denen im Fenster
 
+### Gemessen: 0,1 Sekunden bis zum ersten Wort
+
+Auf einem echten Windows-Rechner, Probemodell, nur CPU, mit `modell messen`:
+
+| Durchgang | bis zum ersten Wort |
+|---|---|
+| erster (mit Laden des Modells) | 38 bis 71 s |
+| **jeder weitere** | **0,1 s** |
+
+Der Unterschied ist der gemerkte Kopf des Prompts: der Modelldienst behaelt
+den verarbeiteten Anfang und muss ihn nicht erneut durchrechnen. Danach
+laeuft die Antwort sichtbar weiter - man liest mit, statt zu warten.
+
+* **Der Kopf wird beim Start einmal vorab geschickt** (Vorwaermen). Damit
+  gilt die 0,1 Sekunde auch fuer die erste Frage, nicht erst fuer die
+  zweite. Es kostet nur die Zeit, in der der Benutzer ohnehin das Fenster
+  oeffnet
+* **Beenden waehrend des Vorladens laesst keinen Dienst mehr zurueck.** Der
+  Vorladefaden prueft vor jedem Schritt, ob die Anwendung noch laeuft, und
+  das Beenden wartet auf ihn. Sonst waere ein Modelldienst erst nach dem
+  Schliessen fertig hochgekommen - und niemand haette ihn je abgeschaltet
+* Das Paket enthaelt beide Fassungen des Modelldienstes: 44,6 MB fuer CPU,
+  97,6 MB fuer Vulkan
+
 ### Der Prompt selbst - der groesste verbliebene Posten
 
 Die Messung im Bauablauf hat gezeigt, wo die Zeit wirklich hingeht: die

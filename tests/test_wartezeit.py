@@ -711,3 +711,96 @@ def test_messung_ohne_modell_behauptet_nichts(portable_root):
         assert ergebnis["im_betrieb_gesamt_s"] == 0.0
     finally:
         controller.shutdown()
+
+
+def test_beenden_waehrend_des_vorladens_laesst_keinen_dienst_zurueck(portable_root):
+    """Wer schliesst, waehrend das Modell laedt, darf nichts zuruecklassen.
+
+    Der Vorladefaden faehrt den Dienst hoch. Wird die Anwendung in diesem
+    Moment beendet, kaeme der Dienst erst danach fertig hoch - und niemand
+    schaltete ihn je wieder ab. Genau der verwaiste Vorgang, den es nicht
+    geben darf. Aufgefallen, weil ein bestehender Test danach unstet wurde.
+    """
+    controller = make_controller(portable_root)
+    anbieter = Ladender(0.4)
+    controller.llm = LlmManager(anbieter)
+    controller.rag.llm = controller.llm
+    controller.bootstrap(build_embeddings=False)
+
+    controller.shutdown()
+
+    faden = getattr(controller, "_vorladefaden", None)
+    assert faden is not None and not faden.is_alive(), (
+        "das Beenden muss auf den Vorladefaden warten")
+
+
+def test_vorwaermen_schickt_den_kopf_einmal_vorab(portable_root):
+    """Der gemerkte Kopf ist der Unterschied zwischen 70 s und 0,1 s.
+
+    Auf dem Windows-Rechner gemessen: erste Frage 38 bis 71 Sekunden bis zum
+    ersten Wort, jede weitere 0,1 Sekunden. Den Kopf beim Start einmal
+    vorab zu schicken heisst, dass auch die erste Frage schnell ist.
+    """
+    controller = make_controller(portable_root)
+    gesehen: list[dict] = []
+
+    class Merkend:
+        name = "m"
+        model = "x"
+
+        def available(self):
+            return True, ""
+
+        def generate(self, messages, max_tokens=1024, temperature=0.2, stop=None,
+                     on_token=None):
+            gesehen.append({"kopf": messages[0].content, "max_tokens": max_tokens,
+                            "anzahl": len(messages)})
+            return LlmResponse(text=".", provider="m", model="x")
+
+    controller.llm = LlmManager(Merkend())
+    controller.rag.llm = controller.llm
+    controller.bootstrap(build_embeddings=True)
+    try:
+        assert controller.modell_vorwaermen()
+        assert len(gesehen) == 1
+        # Nur ein einziges Token Antwort - es geht um den Kopf, nicht um Text.
+        assert gesehen[0]["max_tokens"] == 1
+        # Und es muss derselbe Kopf sein wie bei einer echten Fachfrage,
+        # sonst merkt sich der Dienst etwas, das nie wieder vorkommt.
+        gesehen.clear()
+        controller.ask("Welche Pflichtangaben braucht eine Rechnung nach dem UStG?")
+    finally:
+        controller.shutdown()
+
+    assert gesehen, "die Fachfrage hat den Anbieter nicht erreicht"
+
+
+def test_vorgewaermter_kopf_gleicht_dem_der_fachfrage(portable_root):
+    controller = make_controller(portable_root)
+    koepfe: list[str] = []
+
+    class Merkend:
+        name = "m"
+        model = "x"
+
+        def available(self):
+            return True, ""
+
+        def generate(self, messages, max_tokens=1024, temperature=0.2, stop=None,
+                     on_token=None):
+            koepfe.append(messages[0].content)
+            return LlmResponse(text=".", provider="m", model="x")
+
+    controller.llm = LlmManager(Merkend())
+    controller.rag.llm = controller.llm
+    controller.bootstrap(build_embeddings=True)
+    try:
+        controller.modell_vorwaermen()
+        controller.ask("Welche Pflichtangaben braucht eine Rechnung nach dem UStG?")
+    finally:
+        controller.shutdown()
+
+    assert len(koepfe) == 2
+    assert koepfe[0] == koepfe[1], (
+        "ein abweichender Kopf beim Vorwaermen nuetzt nichts - der Dienst "
+        "merkt sich dann etwas, das so nie wieder kommt")

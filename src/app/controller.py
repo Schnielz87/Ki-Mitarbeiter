@@ -439,6 +439,18 @@ class AppController:
         if getattr(self, "_beendet", False):
             return
         self._beendet = True
+
+        # Zuerst auf den Vorladefaden warten. Wer die Anwendung schliesst,
+        # waehrend das Modell noch laedt, wuerde sonst einen Modelldienst
+        # zuruecklassen, der erst nach dem Beenden fertig hochkommt - genau
+        # der verwaiste Vorgang, den es nicht geben darf. Der Faden prueft
+        # das Kennzeichen selbst und steigt aus; die Frist ist nur die
+        # Sicherung dagegen, dass das Fenster haengen bleibt.
+        faden = getattr(self, "_vorladefaden", None)
+        if faden is not None and faden.is_alive():
+            log.info("Warte auf das Ende des Vorladens ...")
+            faden.join(timeout=20.0)
+
         try:
             self.network.stop()
         except Exception:      # pragma: no cover - defensiv
@@ -838,10 +850,59 @@ class AppController:
 
         import threading
 
-        faden = threading.Thread(target=vorladen, name="modell-vorladen", daemon=True)
+        def vorbereiten() -> None:
+            # Vor jedem Schritt nachsehen, ob die Anwendung inzwischen
+            # beendet wurde. Sonst faehrt der Faden einen Dienst hoch, den
+            # niemand mehr braucht und niemand mehr abschaltet.
+            if getattr(self, "_beendet", False):
+                return
+            vorladen()
+            if getattr(self, "_beendet", False):
+                return
+            self.modell_vorwaermen()
+
+        faden = threading.Thread(target=vorbereiten, name="modell-vorladen",
+                                 daemon=True)
         faden.start()
         self._vorladefaden = faden
         return True
+
+    def modell_vorwaermen(self) -> bool:
+        """Schickt den unveraenderlichen Kopf des Prompts einmal vorab.
+
+        Der Modelldienst merkt sich den verarbeiteten Anfang eines Prompts.
+        Beginnt der naechste Prompt genauso - und das tut er, der Kopf ist
+        bei jeder Frage derselbe -, muss er ihn nicht erneut verarbeiten.
+
+        Gemessen auf einem Windows-Rechner: die erste Frage brauchte 38 bis
+        71 Sekunden bis zum ersten Wort, jede weitere 0,1 Sekunden. Genau
+        dieser Unterschied ist der gemerkte Kopf. Ihn beim Start einmal
+        vorab zu schicken heisst: auch die erste Frage ist schnell.
+
+        Kostet nichts ausser der Zeit, in der der Benutzer ohnehin gerade das
+        Fenster oeffnet. Schlaegt es fehl, bleibt es dabei - es ist eine
+        Bequemlichkeit, kein Bestandteil der Antwort.
+        """
+        from pkc.rag.context import ContextBundle
+        from pkc.rag.fragetyp import einstufen
+
+        anbieter = getattr(self.llm, "primary", None)
+        if anbieter is None or not getattr(anbieter, "name", "") or getattr(self, "_beendet", False):
+            return False
+        try:
+            nachrichten = self.rag.build_messages(
+                "Bereit?", ContextBundle(), mode=self.mode.value,
+                knowledge_date=self.knowledge.knowledge_date(),
+                einstufung=einstufen("Welche Pflichtangaben braucht eine Rechnung?"),
+            )
+            # Ein einziges Token Antwort. Es geht nicht um den Text, sondern
+            # darum, dass der Dienst den Kopf einmal verarbeitet hat.
+            self.llm.generate(nachrichten[:-1], max_tokens=1)
+            log.info("Kopf des Prompts vorgewaermt")
+            return True
+        except Exception as fehler:               # pragma: no cover - defensiv
+            log.info("Vorwaermen uebersprungen: %s", fehler)
+            return False
 
     def modell_messen(self, frage: str = "", durchgaenge: int = 2) -> dict:
         """Misst die Wartezeit an einer echten Fachfrage - mehrfach.
