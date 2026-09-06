@@ -13,6 +13,7 @@ import sys
 from pathlib import Path
 
 from app.controller import AppController, LicenseRequired
+from pkc.artefakte import ArtefaktFehler
 from pkc.audit import ApprovalState
 from pkc.config import Config
 from pkc.netstate import Mode
@@ -211,6 +212,60 @@ def cmd_recherche(args) -> int:
         if eintraege:
             print(f"Unternehmenswissen im Kontext: {len(eintraege)} Eintraege")
         return 0
+    finally:
+        controller.shutdown()
+
+
+def cmd_datei(args) -> int:
+    """Erzeugt eine Datei aus der letzten Antwort oder aus einem Text (E4).
+
+    Der Auftrag verlangt, dass die Anwendung Arbeitsergebnisse nicht nur
+    anzeigt, sondern als Datei herausgibt - offline und ohne installiertes
+    Office.
+    """
+    controller = _controller(args)
+    try:
+        controller.bootstrap()
+        if args.aktion == "formate":
+            print("Diese Formate koennen erzeugt werden:\n")
+            for eintrag in controller.artefakt_formate():
+                print(f"  {eintrag['format']:5s} {eintrag['endung']:6s} "
+                      f"{eintrag['bezeichnung']:28s} {eintrag['zweck']}")
+            print(f"\nAblage: {controller.artefakte.ordner}")
+            return 0
+
+        if args.aktion == "liste":
+            eintraege = controller.artefakt_liste()
+            if not eintraege:
+                print("Es wurde noch keine Datei erzeugt.")
+                return 0
+            for eintrag in eintraege:
+                fehlt = "" if eintrag.get("vorhanden") else "  (Datei nicht mehr vorhanden)"
+                print(f"{eintrag['erzeugt']}  {eintrag['format']:5s} "
+                      f"{eintrag['pfad']}{fehlt}")
+            return 0
+
+        if args.aktion == "text":
+            if not args.text:
+                print("Bitte den Inhalt mit --text angeben.", file=sys.stderr)
+                return 2
+            artefakt = controller.datei_erzeugen(
+                args.text, args.format, args.name,
+                ueberschreiben=args.ueberschreiben,
+            )
+        else:                                   # antwort
+            artefakt = controller.antwort_speichern(
+                args.format, name=args.name, ueberschreiben=args.ueberschreiben,
+            )
+        print(f"Gespeichert: {artefakt.pfad}")
+        print(f"  Format   : {artefakt.format}")
+        print(f"  Fassung  : {artefakt.version}")
+        print(f"  Groesse  : {artefakt.groesse} Bytes")
+        print(f"  SHA-256  : {artefakt.pruefsumme}")
+        return 0
+    except (ValueError, ArtefaktFehler) as fehler:
+        print(str(fehler), file=sys.stderr)
+        return 1
     finally:
         controller.shutdown()
 
@@ -707,6 +762,17 @@ def build_parser() -> argparse.ArgumentParser:
     modell.add_argument("--pruefsumme", default="", help="erwartete SHA-256")
     modell.add_argument("--name", default="", help="Dateiname im Modellordner")
     modell.set_defaults(func=cmd_modell)
+
+    datei = neu("datei", "Ergebnisse als Datei ausgeben (Excel, Word, PDF ...)")
+    datei.add_argument("aktion", nargs="?", default="antwort",
+                       choices=["antwort", "text", "formate", "liste"])
+    datei.add_argument("--format", default="pdf",
+                       help="txt, md, json, csv, xlsx, docx, pptx oder pdf")
+    datei.add_argument("--name", default="", help="Dateiname ohne Endung")
+    datei.add_argument("--text", default="", help="Inhalt fuer die Aktion 'text'")
+    datei.add_argument("--ueberschreiben", action="store_true",
+                       help="vorhandene Datei ersetzen statt neue Fassung anlegen")
+    datei.set_defaults(func=cmd_datei)
 
     modus = neu("modus", "Betriebsmodus anzeigen oder wechseln")
     modus.add_argument("neuer_modus", nargs="?", default="",

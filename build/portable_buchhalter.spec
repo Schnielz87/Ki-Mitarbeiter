@@ -40,6 +40,10 @@ hidden_imports = [
     "pkc.updater.pipeline",
     "pkc.security", "pkc.security.vault",
     "pkc.audit", "pkc.audit.log", "pkc.audit.approvals",
+    # Dateiausgabe (Erweiterung E4) - die Formatschreiber werden ueber die
+    # Registrierung geladen, PyInstaller sieht diesen Weg nicht von selbst.
+    "pkc.artefakte", "pkc.artefakte.modell", "pkc.artefakte.ooxml",
+    "pkc.artefakte.pdf", "pkc.artefakte.schreiber", "pkc.artefakte.werk",
     "pkc.connectors", "pkc.connectors.base", "pkc.connectors.files",
     "pkc.connectors.rest", "pkc.connectors.erp_stubs", "pkc.connectors.registry",
     # Standardbibliothek, die PyInstaller nicht immer selbst findet

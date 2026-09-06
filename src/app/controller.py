@@ -16,6 +16,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable, Iterable, Sequence
 
+from pkc.artefakte import Artefaktwerk, aus_markdown
 from pkc.audit import ApprovalState, ApprovalStore, AuditLog
 from pkc.checkpoint import CheckpointManager
 from pkc.config import Config
@@ -194,6 +195,13 @@ class AppController:
 
         self.brand = load_brand(self.paths, self.config)
         self.profile_display_name = _profilname(self.profile)
+
+        # Dateiausgabe (Erweiterung E4). Erzeugte Dateien sind Kundendaten
+        # und liegen deshalb im Kundenbereich, nicht im Programmordner.
+        self.artefakte = Artefaktwerk(
+            self.paths, audit=self.audit, profil=self.profile_display_name,
+            marke=self.brand.name,
+        )
 
         # Tresor
         self.vault = SecretVault(self.paths.secrets_file)
@@ -575,6 +583,66 @@ class AppController:
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text("\n".join(lines), encoding="utf-8")
         return target
+
+    # ------------------------------------------------------------------
+    # Dateiausgabe (Erweiterung E4)
+    # ------------------------------------------------------------------
+    def artefakt_formate(self) -> list[dict]:
+        """Welche Dateiformate erzeugt werden koennen."""
+        return self.artefakte.formate()
+
+    def artefakt_liste(self, limit: int = 50) -> list[dict]:
+        return self.artefakte.liste(limit=limit)
+
+    def datei_erzeugen(self, inhalt, format: str, name: str = "", *,
+                       unterordner: str = "", ueberschreiben: bool = False,
+                       angaben: dict | None = None):
+        """Erzeugt eine Datei aus Text oder einem Dokument."""
+        return self.artefakte.erzeugen(
+            inhalt, format, name, unterordner=unterordner,
+            ueberschreiben=ueberschreiben, angaben=angaben,
+        )
+
+    def antwort_speichern(self, format: str, conversation_uid: str = "",
+                          name: str = "", ueberschreiben: bool = False):
+        """Speichert die letzte Antwort der Unterhaltung als Datei.
+
+        Gespeichert wird der Text, der auch im Fenster steht - mit
+        Quellenteil und Wissensstand. Ein Bericht ohne diese Angaben waere
+        nicht mehr nachvollziehbar.
+        """
+        uid = conversation_uid or self.conversation_uid
+        antworten = [m for m in self.messages(uid) if m["role"] == "assistant"] if uid else []
+        if not antworten:
+            # Auf der Kommandozeile ist jede Ausfuehrung ein eigener Lauf. Ohne
+            # diesen Rueckgriff liesse sich die Antwort, die eben noch auf dem
+            # Bildschirm stand, nicht mehr speichern.
+            letzte = self.company_db.one(
+                "SELECT c.uid AS uid FROM messages m JOIN conversations c"
+                " ON c.id = m.conversation_id WHERE m.role='assistant'"
+                " ORDER BY m.id DESC LIMIT 1"
+            )
+            if letzte is not None:
+                uid = letzte["uid"]
+                antworten = [m for m in self.messages(uid) if m["role"] == "assistant"]
+        if not antworten:
+            raise ValueError("Es gibt noch keine Antwort, die gespeichert werden koennte.")
+        letzte = antworten[-1]
+        frage = ""
+        for nachricht in self.messages(uid):
+            if nachricht["role"] == "user":
+                frage = nachricht["content"]
+            if nachricht["id"] == letzte["id"]:
+                break
+        titel = (frage or "Antwort").strip().splitlines()[0][:70]
+        dokument = aus_markdown(letzte["content"], titel=titel)
+        dokument.angaben.update({
+            "beschreibung": f"Antwort vom {letzte['created_at']}",
+            "betriebsart": letzte.get("mode", ""),
+        })
+        return self.artefakte.erzeugen(
+            dokument, format, name or titel, ueberschreiben=ueberschreiben,
+        )
 
     def _store_message(
         self, conversation_uid: str, role: str, content: str,

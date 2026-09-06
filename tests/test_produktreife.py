@@ -90,6 +90,10 @@ def test_ausgehende_adressen_sind_nur_die_erklaerten():
         "127.0.0.1", "localhost",                                 # lokaler Modelldienst
         "gesetze-im-internet.de", "bundesfinanzministerium.de",   # Netzstatuspruefung
         "example",                                                # Beispiele
+        # XML-Namensraeume der Office-Formate. Das sind Kennungen, keine
+        # Abrufadressen: sie stehen in jeder DOCX-, XLSX- und PPTX-Datei und
+        # werden nie aufgerufen. Der folgende Test sichert das ab.
+        "schemas.openxmlformats.org", "purl.org", "www.w3.org", "schemas.",
     )
     unerklaert = {
         adresse: datei for adresse, datei in gefunden.items()
@@ -99,6 +103,19 @@ def test_ausgehende_adressen_sind_nur_die_erklaerten():
         "Nicht erklaerte fest hinterlegte Adressen im ausfuehrenden Code: "
         + ", ".join(f"{a} ({d})" for a, d in sorted(unerklaert.items()))
     )
+
+
+def test_dateiformate_verbinden_nicht():
+    """Die Formatschreiber duerfen keine Netzverbindung aufbauen.
+
+    Sie enthalten Adressen - aber nur als XML-Namensraeume. Wuerde dort
+    jemals ein Abruf hinzukommen, faellt dieser Test.
+    """
+    netz = re.compile(r"\b(urlopen|urlretrieve|requests\.|httpx\.|socket\.)")
+    for datei in (ROOT / "src" / "pkc" / "artefakte").glob("*.py"):
+        treffer = [z.strip() for z in datei.read_text(encoding="utf-8").splitlines()
+                   if netz.search(z)]
+        assert not treffer, f"{datei.name} enthaelt Netzzugriffe: {treffer}"
 
 
 def test_nachschlagewerke_verbinden_nicht():

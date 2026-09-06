@@ -442,6 +442,16 @@ class MainWindow:
         ttk.Button(buttons, text="Dokument hinzufuegen", command=self._add_document).pack(
             fill="x", pady=(4, 0)
         )
+        # Erweiterung E4: das Ergebnis soll als Datei herausgehen koennen -
+        # ohne installiertes Office und ohne Internet.
+        speichern = ttk.Frame(buttons)
+        speichern.pack(fill="x", pady=(4, 0))
+        self.datei_format = tk.StringVar(value="pdf")
+        ttk.Combobox(speichern, textvariable=self.datei_format, state="readonly", width=6,
+                     values=[eintrag["format"] for eintrag
+                             in self.controller.artefakt_formate()]).pack(side="right")
+        ttk.Button(speichern, text="Antwort speichern",
+                   command=self._antwort_speichern).pack(side="left", fill="x", expand=True)
         ttk.Label(buttons, text="Strg+Eingabe sendet", foreground="#666666").pack(pady=(4, 0))
 
         right = ttk.Frame(panes)
@@ -801,6 +811,18 @@ class MainWindow:
         """
         self._strom_zuruecksetzen()
         self._append_chat(self._sprecher_ki, text)
+
+    def _antwort_speichern(self) -> None:
+        """Schreibt die letzte Antwort als Datei (Erweiterung E4)."""
+        try:
+            artefakt = self.controller.antwort_speichern(self.datei_format.get())
+        except Exception as fehler:
+            messagebox.showerror("Speichern", str(fehler), parent=self.root)
+            return
+        self._append_chat(
+            "System",
+            f"Gespeichert als {artefakt.format.upper()}:\n{artefakt.pfad}", "system")
+        messagebox.showinfo("Gespeichert", f"{artefakt.pfad}", parent=self.root)
 
     def _abbrechen(self) -> None:
         """Bricht eine laufende Erzeugung ab (Abschnitt 22)."""

@@ -1,3 +1,11 @@
 -r requirements.txt
 pytest>=8.0
 pyinstaller>=6.3
+
+# Nur zum Pruefen der erzeugten Dateien (Erweiterung E4). Die Anwendung
+# selbst braucht sie NICHT: Word-, Excel-, PowerPoint- und PDF-Dateien
+# entstehen mit der Standardbibliothek. Hier dienen sie als unabhaengige
+# Gegenprobe - was diese Lesebibliotheken oeffnen koennen, ist kein
+# selbstgebautes Wunschformat.
+python-docx>=1.1
+python-pptx>=1.0
