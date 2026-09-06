@@ -69,6 +69,14 @@ oeffnet, hat keine Konsole offen und liest das als "geht nicht", nicht als
   stand dort ein Kasten mit drei Klicks und darunter weiter Konsolentext.
   Ein Test vergleicht die genannten Schaltflaechen mit denen im Fenster
 
+### Die Messung misst jetzt, was ein Mensch erlebt
+
+`modell messen` wartet vor dem ersten Durchgang ab, bis die Anwendung
+bereit ist - Modell geladen, Kopf des Prompts vorgewaermt. So wartet auch
+ein Mensch: er oeffnet das Fenster und tippt erst dann seine Frage. Eine
+Messung, die sofort losfragt, misst das Laden mit und damit etwas, das im
+Betrieb nicht vorkommt.
+
 ### Gemessen: 0,1 Sekunden bis zum ersten Wort
 
 Auf einem echten Windows-Rechner, Probemodell, nur CPU, mit `modell messen`:

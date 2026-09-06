@@ -867,6 +867,22 @@ class AppController:
         self._vorladefaden = faden
         return True
 
+    def modell_abwarten(self, frist: float = 300.0) -> float:
+        """Wartet, bis das Vorladen fertig ist. Gibt die Wartezeit zurueck.
+
+        Gebraucht fuer ehrliche Messungen und fuer Ablaeufe ohne Benutzer.
+        Im Fenster wartet niemand darauf: dort laeuft das Vorladen waehrend
+        der Benutzer sich zurechtfindet und seine Frage tippt.
+        """
+        import time as _time
+
+        faden = getattr(self, "_vorladefaden", None)
+        if faden is None or not faden.is_alive():
+            return 0.0
+        begonnen = _time.monotonic()
+        faden.join(timeout=max(float(frist), 0.0))
+        return round(_time.monotonic() - begonnen, 1)
+
     def modell_vorwaermen(self) -> bool:
         """Schickt den unveraenderlichen Kopf des Prompts einmal vorab.
 
@@ -920,6 +936,13 @@ class AppController:
 
         frage = frage or ("Welche Pflichtangaben braucht eine Rechnung nach "
                           "dem Umsatzsteuergesetz?")
+
+        # Erst abwarten, bis die Anwendung bereit ist. Sonst misst der erste
+        # Durchgang das Laden des Modells mit - und das erlebt so niemand:
+        # wer das Fenster oeffnet, braucht Sekunden, bis er seine Frage
+        # getippt hat. In dieser Zeit laedt und waermt die Anwendung.
+        bereit_nach = self.modell_abwarten()
+
         laeufe: list[dict] = []
         for nummer in range(1, max(int(durchgaenge), 1) + 1):
             erstes: list[float] = []
@@ -952,6 +975,7 @@ class AppController:
             "ok": bool(gute),
             "frage": frage,
             "tempo": str(self.config.get("llm.tempo", tempo.VORGABE)),
+            "bereit_nach_s": bereit_nach,
             "laeufe": laeufe,
             # Der zweite Lauf ist der Alltag: Dienst laeuft, Kopf ist bekannt.
             "im_betrieb_erstes_wort_s": gute[-1]["erstes_wort_s"] if gute else 0.0,

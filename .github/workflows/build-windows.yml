@@ -377,6 +377,11 @@ jobs:
           # Durchgang ist der Alltag - genau ihn erlebt der Benutzer, der die
           # Anwendung offen hat.
           #
+          # Vor dem ersten Durchgang wartet die Messung ab, bis die
+          # Anwendung bereit ist - Modell geladen, Kopf des Prompts
+          # vorgewaermt. So wartet auch ein Mensch: er oeffnet das Fenster
+          # und tippt erst dann seine Frage.
+          #
           # Der erste Entwurf mass stattdessen die Laufzeit des ganzen
           # Programmaufrufs. Das ergab 70 bis 105 Sekunden und war
           # unbrauchbar: jeder Aufruf startet den Modelldienst neu.
@@ -394,10 +399,14 @@ jobs:
             $betrieb = if ($ausgabe -match "Im laufenden Betrieb:\s*([0-9.,]+)\s*s bis zum ersten Wort,\s*([0-9.,]+)\s*s") {
               @($matches[1], $matches[2])
             } else { @("?", "?") }
+            $erste = if ($ausgabe -match "1\s+([0-9.,]+)s\s+([0-9.,]+)s\s+erste Frage") {
+              $matches[1]
+            } else { "?" }
             $zeilen += [pscustomobject]@{
               stufe = $stufe
-              erstes_wort_s = $betrieb[0]
-              gesamt_s = $betrieb[1]
+              erste_frage_1_wort_s = $erste
+              spaeter_1_wort_s = $betrieb[0]
+              spaeter_gesamt_s = $betrieb[1]
             }
           }
 

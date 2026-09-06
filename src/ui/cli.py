@@ -522,13 +522,18 @@ def cmd_modell(args) -> int:
             print("Messe an einer echten Fachfrage (zwei Durchgaenge) ...\n")
             ergebnis = controller.modell_messen(args.frage or "")
             print(f"Frage : {ergebnis['frage']}")
-            print(f"Tempo : {ergebnis['tempo']}\n")
+            print(f"Tempo : {ergebnis['tempo']}")
+            if ergebnis.get("bereit_nach_s"):
+                print(f"Warten auf die Bereitschaft der Anwendung: "
+                      f"{ergebnis['bereit_nach_s']} s "
+                      "(im Fenster laeuft das beim Start nebenher)")
+            print()
             print(f"{'Durchgang':11} {'1. Wort':>9} {'gesamt':>9}   Bemerkung")
             for lauf in ergebnis["laeufe"]:
                 if not lauf.get("ok"):
                     print(f"{lauf['nummer']:<11} {'-':>9} {'-':>9}   {lauf.get('grund', '')}")
                     continue
-                bemerkung = ("mit Laden des Modells" if lauf["nummer"] == 1
+                bemerkung = ("erste Frage, Anwendung bereit" if lauf["nummer"] == 1
                              else "im laufenden Betrieb")
                 print(f"{lauf['nummer']:<11} {lauf['erstes_wort_s']:>8.1f}s "
                       f"{lauf['gesamt_s']:>8.1f}s   {bemerkung}")

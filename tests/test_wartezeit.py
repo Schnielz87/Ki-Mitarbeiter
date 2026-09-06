@@ -804,3 +804,44 @@ def test_vorgewaermter_kopf_gleicht_dem_der_fachfrage(portable_root):
     assert koepfe[0] == koepfe[1], (
         "ein abweichender Kopf beim Vorwaermen nuetzt nichts - der Dienst "
         "merkt sich dann etwas, das so nie wieder kommt")
+
+
+def test_messung_wartet_erst_auf_die_bereitschaft(portable_root):
+    """Sonst misst der erste Durchgang das Laden mit - so wartet niemand.
+
+    Wer das Fenster oeffnet, braucht Sekunden, bis die Frage getippt ist. In
+    dieser Zeit laedt die Anwendung das Modell und waermt den Kopf des
+    Prompts vor. Eine Messung, die sofort losfragt, misst etwas, das im
+    Betrieb nicht vorkommt.
+    """
+    controller = make_controller(portable_root)
+    anbieter = Ladender(0.3)
+
+    def generate(messages, max_tokens=1024, temperature=0.2, stop=None, on_token=None):
+        assert anbieter.geladen.is_set(), (
+            "die Messung hat gefragt, bevor das Modell geladen war")
+        if on_token:
+            on_token("**ERGEBNIS**\nBelegt in [1].")
+        return LlmResponse(text="**ERGEBNIS**\nBelegt in [1].", provider="ladend",
+                           model="x", completion_tokens=8)
+
+    anbieter.generate = generate
+    controller.llm = LlmManager(anbieter)
+    controller.rag.llm = controller.llm
+    controller.bootstrap(build_embeddings=True)
+    try:
+        ergebnis = controller.modell_messen()
+        assert ergebnis["ok"]
+        assert ergebnis["bereit_nach_s"] >= 0.0
+        assert len(ergebnis["laeufe"]) == 2
+    finally:
+        controller.shutdown()
+
+
+def test_abwarten_ohne_vorladen_kostet_keine_zeit(portable_root):
+    controller = make_controller(portable_root)
+    controller.bootstrap(build_embeddings=False)
+    try:
+        assert controller.modell_abwarten() == 0.0
+    finally:
+        controller.shutdown()
