@@ -441,6 +441,28 @@ jobs:
           Get-ChildItem "dist\Portable-Buchhalter\models" -ErrorAction SilentlyContinue |
             Format-Table Name, Length | Out-String | Write-Host
 
+      - name: Pruefergebnisse zum Nachlesen ausgeben
+        if: always()
+        shell: pwsh
+        run: |
+          # Am Ende noch einmal im Klartext: so stehen die tatsaechlich
+          # gepruefte Adresse und die gebildete Pruefsumme dort, wo man sie
+          # sucht - im Protokoll des Laufs, nicht nur in einer Anlage.
+          foreach ($datei in @("quellenpruefung.json", "modell_pruefsumme.txt")) {
+            $pfad = Join-Path $env:RUNNER_TEMP $datei
+            if (Test-Path $pfad) {
+              Write-Host "----- $datei -----"
+              Get-Content $pfad -Raw | Write-Host
+            }
+          }
+          $register = Join-Path $env:RUNNER_TEMP "quellenregister_pruefung.json"
+          if (Test-Path $register) {
+            Write-Host "----- Quellenregister: nicht erreichbare Adressen -----"
+            (Get-Content $register -Raw | ConvertFrom-Json) |
+              Where-Object { -not $_.erreichbar } |
+              Format-Table quelle, dokument, status | Out-String -Width 200 | Write-Host
+          }
+
       - name: Ergebnis bereitstellen
         uses: actions/upload-artifact@v4
         with:
