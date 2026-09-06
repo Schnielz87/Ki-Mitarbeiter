@@ -1,0 +1,34 @@
+{
+  "task_number": "28",
+  "task_name": "Sprachmodell belegt, Quellenregister geprueft, Haenger in robots.txt behoben",
+  "status": "abgeschlossen",
+  "work_done": [
+    "Modellkatalog traegt gemessene Werte aus dem Bauablauf (Adressen, Groessen, Teildateien, Pruefsumme) mit Lauf als Beleg",
+    "tools/quellen_pruefen.py: prueft das Register mit dem HTTP-Zugriff der Anwendung selbst, nennt jeden Grund, traegt das Ergebnis ein",
+    "robots.txt wurde ohne Zeitgrenze geholt - konnte den Wissensabgleich endlos anhalten; behoben und geprueft",
+    "quellen pruefen fragte mit HEAD statt GET und mass damit etwas anderes als der Betrieb",
+    "Bedienungsanleitung baut ihre Modelltabelle aus dem Katalog statt aus festen Zahlen"
+  ],
+  "files": [
+    "config/model_catalog.json",
+    "config/source_registry.json",
+    "tools/quellen_pruefen.py",
+    "src/pkc/updater/http_client.py",
+    "tests/test_robots.py",
+    "tests/test_quellenpruefung.py"
+  ],
+  "tests": [
+    "python -m pytest tests -q"
+  ],
+  "test_result": "509 bestanden, 1 uebersprungen | Windows-Ablauf 34035777317: alle 23 Schritte bestanden, Artefakt 56.839.619 Bytes",
+  "open_points": [
+    "Sechs Adressen im Quellenregister antworten mit 404 und brauchen je eine neue - nur von einem Rechner mit Zugang zu ermitteln",
+    "Abnahme B, D, F, K, L - brauchen einen Menschen an einem Windows-Rechner"
+  ],
+  "next_task": "Abnahme auf einem Windows-Rechner; danach die sechs toten Quellenadressen ersetzen",
+  "resume_hint": "Das Sprachmodell laeuft und ist im Windows-Ablauf mit einem echten Modell nachgewiesen. Das Quellenregister ist gegen die echten Server geprueft; der Befund steht bei jeder Quelle unter 'pruefung'. Offen sind Punkte, die einen Menschen mit Bildschirm und normalem Internetzugang brauchen.",
+  "git_commit": "ee7b630de3c9eee1c3d630544e242f8e9ea7e29b",
+  "created_at": "2026-09-06T13:54:00+00:00",
+  "checksums": {},
+  "notes": ""
+}

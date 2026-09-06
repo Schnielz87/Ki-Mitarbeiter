@@ -1,10 +1,10 @@
 {
-  "task_number": "27",
-  "task_name": "Sprachmodell laeuft, Plugins getrennt, offene Punkte geschlossen",
+  "task_number": "28",
+  "task_name": "Sprachmodell belegt, Quellenregister geprueft, Haenger in robots.txt behoben",
   "status": "abgeschlossen",
-  "created_at": "2026-09-06T13:00:39+00:00",
-  "git_commit": "782a13d16cdf7a5c743d87ba5b5ea0efda436620",
-  "next_task": "Abnahme auf einem Windows-Rechner: B, D, F, K, L",
-  "resume_hint": "Das Sprachmodell laeuft und ist im Windows-Ablauf mit einem echten Modell nachgewiesen. Offen sind nur noch Punkte, die einen Menschen an einem Windows-Rechner brauchen.",
-  "checkpoint_file": "TASK_27_sprachmodell_laeuft_plugins_getrennt_offene_punkte_geschloss.json"
+  "created_at": "2026-09-06T13:54:00+00:00",
+  "git_commit": "ee7b630de3c9eee1c3d630544e242f8e9ea7e29b",
+  "next_task": "Abnahme auf einem Windows-Rechner; danach die sechs toten Quellenadressen ersetzen",
+  "resume_hint": "Das Sprachmodell laeuft und ist im Windows-Ablauf mit einem echten Modell nachgewiesen. Das Quellenregister ist gegen die echten Server geprueft; der Befund steht bei jeder Quelle unter 'pruefung'. Offen sind Punkte, die einen Menschen mit Bildschirm und normalem Internetzugang brauchen.",
+  "checkpoint_file": "TASK_28_sprachmodell_belegt_quellenregister_geprueft_haenger_in_robo.json"
 }
