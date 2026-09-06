@@ -901,3 +901,47 @@ def test_eigene_frage_wird_uebernommen(portable_root):
         assert ergebnis["fragen"] == ["Wie buche ich Skonto?"]
     finally:
         controller.shutdown()
+
+
+def test_messung_nennt_die_laufende_fassung_des_dienstes(tmp_path):
+    """Ob die Grafikkarte genutzt wird, darf man nicht raten muessen."""
+    from pkc.llm.providers import MitgelieferterServerProvider
+    from pkc.llm.server import Llamaserver
+
+    fassung = tmp_path / "llama" / "vulkan"
+    fassung.mkdir(parents=True)
+    import os
+    programm = fassung / ("llama-server.exe" if os.name == "nt" else "llama-server")
+    programm.write_text("x")
+    modell = tmp_path / "m.gguf"
+    modell.write_text("x")
+
+    server = Llamaserver(programm=programm, modell=modell, gpu_layers=99, port=1)
+    server.benutzt = programm
+    server.tempoflags_aktiv = True
+    auskunft = MitgelieferterServerProvider(server).describe()
+
+    assert auskunft["fassung"] == "vulkan"
+    assert auskunft["gpu_schichten"] == 99
+    assert auskunft["tempoflags"] is True
+
+
+def test_auskunft_folgt_der_tatsaechlich_gestarteten_datei(tmp_path):
+    """Nach einem Rueckfall laeuft eine andere Datei als die gewaehlte."""
+    from pkc.llm.providers import MitgelieferterServerProvider
+    from pkc.llm.server import Llamaserver
+
+    import os
+    name = "llama-server.exe" if os.name == "nt" else "llama-server"
+    for art in ("vulkan", "cpu"):
+        (tmp_path / "llama" / art).mkdir(parents=True)
+        (tmp_path / "llama" / art / name).write_text("x")
+    modell = tmp_path / "m.gguf"
+    modell.write_text("x")
+
+    server = Llamaserver(programm=tmp_path / "llama" / "vulkan" / name,
+                         modell=modell, gpu_layers=99, port=1,
+                         rueckfall=tmp_path / "llama" / "cpu" / name)
+    # Der Rueckfall hat gegriffen - die Auskunft muss das zeigen.
+    server.benutzt = tmp_path / "llama" / "cpu" / name
+    assert MitgelieferterServerProvider(server).describe()["fassung"] == "cpu"

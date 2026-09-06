@@ -69,6 +69,13 @@ oeffnet, hat keine Konsole offen und liest das als "geht nicht", nicht als
   stand dort ein Kasten mit drei Klicks und darunter weiter Konsolentext.
   Ein Test vergleicht die genannten Schaltflaechen mit denen im Fenster
 
+### Sichtbar, welche Fassung des Dienstes laeuft
+
+`modell messen` nennt jetzt die laufende Fassung und ob auf Prozessor oder
+Grafikkarte gerechnet wird - und zwar die tatsaechlich gestartete Datei,
+nicht die gewaehlte. Nach einem Rueckfall von Vulkan auf CPU steht dort
+also "cpu". Ob die Grafikkarte genutzt wird, soll niemand raten muessen.
+
 ### Die eigene Messung war geschoent - korrigiert
 
 Der zweite Durchgang stellte dieselbe Frage wie der erste. Der Modelldienst

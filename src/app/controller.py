@@ -989,6 +989,10 @@ class AppController:
             "fragen": fragen,
             "tempo": str(self.config.get("llm.tempo", tempo.VORGABE)),
             "bereit_nach_s": bereit_nach,
+            # Auskunft ueber den Dienst, wenn er eine gibt. Eine Messung
+            # darf nicht daran scheitern, dass ein Anbieter nichts erzaehlt.
+            "dienst": (self.llm.primary.describe()
+                       if hasattr(self.llm.primary, "describe") else {}),
             "laeufe": laeufe,
             # Der zweite Lauf ist der Alltag: Dienst laeuft, Kopf ist bekannt.
             "im_betrieb_erstes_wort_s": gute[-1]["erstes_wort_s"] if gute else 0.0,

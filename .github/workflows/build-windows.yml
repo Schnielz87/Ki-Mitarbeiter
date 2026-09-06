@@ -402,6 +402,8 @@ jobs:
             $erste = if ($ausgabe -match "1\s+([0-9.,]+)s\s+([0-9.,]+)s\s+erste Frage") {
               $matches[1]
             } else { "?" }
+            $dienst = if ($ausgabe -match "Dienst\s*:\s*(.+)") { $matches[1].Trim() } else { "?" }
+            Write-Host "  Dienst: $dienst"
             $zeilen += [pscustomobject]@{
               stufe = $stufe
               erste_frage_1_wort_s = $erste

@@ -420,10 +420,17 @@ class MitgelieferterServerProvider(OpenAICompatibleProvider):
         return super().generate(messages, max_tokens, temperature, stop, on_token=on_token)
 
     def describe(self) -> dict:
+        # Welche Fassung tatsaechlich laeuft, muss sichtbar sein: mit
+        # Grafikkarte ist die Geschwindigkeit ein Vielfaches, und ob sie
+        # genommen wurde, kann man sonst nur raten.
+        benutzt = getattr(self.server, "benutzt", None) or self.server.programm
         return {
             "anbieter": self.name,
             "modell": self.model,
-            "programm": str(self.server.programm),
+            "programm": str(benutzt),
+            "fassung": Path(benutzt).parent.name,
+            "gpu_schichten": int(getattr(self.server, "gpu_layers", 0) or 0),
+            "tempoflags": bool(getattr(self.server, "tempoflags_aktiv", False)),
             "laeuft": self.server.laeuft,
             "benoetigt_internet": False,
         }

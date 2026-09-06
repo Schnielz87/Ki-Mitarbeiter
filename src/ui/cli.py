@@ -524,6 +524,14 @@ def cmd_modell(args) -> int:
             for nummer, gestellt in enumerate(ergebnis["fragen"], start=1):
                 print(f"Frage {nummer}: {gestellt}")
             print(f"Tempo  : {ergebnis['tempo']}")
+            dienst = ergebnis.get("dienst", {})
+            if dienst.get("fassung"):
+                # Mit Grafikkarte ist die Geschwindigkeit ein Vielfaches.
+                # Ob sie genommen wurde, soll man nicht raten muessen.
+                auf = ("Grafikkarte" if dienst.get("gpu_schichten") else "Prozessor")
+                print(f"Dienst : {dienst['fassung']} (rechnet auf: {auf}"
+                      + (", Zusatzschalter aktiv" if dienst.get("tempoflags") else "")
+                      + ")")
             if ergebnis.get("bereit_nach_s"):
                 print(f"Warten auf die Bereitschaft der Anwendung: "
                       f"{ergebnis['bereit_nach_s']} s "
