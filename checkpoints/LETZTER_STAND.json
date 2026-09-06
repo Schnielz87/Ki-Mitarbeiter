@@ -1,10 +1,10 @@
 {
-  "task_number": "25",
-  "task_name": "Windows-Ablauf wieder gruen",
+  "task_number": "26",
+  "task_name": "Erweiterungen E1 bis E6 umgesetzt und nachgewiesen",
   "status": "abgeschlossen",
-  "created_at": "2026-09-05T15:01:43+00:00",
-  "git_commit": "fce4af59dcbc7f2df259c5918a9e50873e5a58d5",
-  "next_task": "Abnahme und Pilotbetrieb",
-  "resume_hint": "Status bleibt 'fertig zur Abnahme' - nicht MVP FERTIG, nicht COMMERCIAL READY",
-  "checkpoint_file": "TASK_25_windows_ablauf_wieder_gruen.json"
+  "created_at": "2026-09-06T08:43:33+00:00",
+  "git_commit": "cdcb4d7cff25decb54a0bfbfd71a21cafc2cd46d",
+  "next_task": "Abnahme (docs/ABNAHME.md), insbesondere B, C, D, F, G, K, L",
+  "resume_hint": "Alles aus Teil 4 ist umgesetzt oder ausdruecklich als offen benannt. Naechster Schritt ist die Abnahme, nicht weiterer Code.",
+  "checkpoint_file": "TASK_26_erweiterungen_e1_bis_e6_umgesetzt_und_nachgewiesen.json"
 }
