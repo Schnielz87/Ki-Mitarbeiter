@@ -278,7 +278,10 @@ class AppController:
         data_config = self.paths.get("config")
         if program_config.resolve() == data_config.resolve():
             return seeded
-        for name in ("source_registry.json",):
+        # Der Modellkatalog gehoert genauso dazu: ohne ihn kaeme der
+        # gefuehrte Weg zum Sprachmodell in einem frischen Datenbereich
+        # nicht an seine Bezugsquellen.
+        for name in ("source_registry.json", "model_catalog.json"):
             source = program_config / name
             target = data_config / name
             if source.is_file() and not target.is_file():
@@ -427,6 +430,12 @@ class AppController:
             self.network.stop()
         except Exception:      # pragma: no cover - defensiv
             log.debug("Netzueberwachung liess sich nicht sauber beenden", exc_info=True)
+        try:
+            # Ein selbst gestarteter Modelldienst darf die Anwendung nicht
+            # ueberleben - er haelt sonst still den Speicher des Modells.
+            self.llm.beenden()
+        except Exception:      # pragma: no cover - defensiv
+            log.debug("Modelldienst liess sich nicht sauber beenden", exc_info=True)
         try:
             self.audit.record("beenden", "anwendung", "")
         except Exception:
@@ -609,6 +618,189 @@ class AppController:
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text("\n".join(lines), encoding="utf-8")
         return target
+
+    # ------------------------------------------------------------------
+    # Sprachmodell einrichten (Erweiterung E6, Abschnitt 13 und 14)
+    # ------------------------------------------------------------------
+    def modell_katalog(self):
+        """Die hinterlegten Bezugsquellen - mit Pruefstand je Eintrag."""
+        from pkc.llm import katalog
+
+        return katalog.laden(self.paths.get("config"))
+
+    def modell_lage(self) -> dict:
+        """Was ist da, was fehlt, und was waere der naechste Schritt?
+
+        Diese eine Auskunft beantwortet die Frage, an der bisher jeder
+        haengenblieb: warum sagt die Anwendung "kein Sprachmodell"?
+        """
+        from pkc.hardware import detect, recommend_profile
+        from pkc.llm.manager import discover_models
+        from pkc.llm.server import beschreibung, finde_server
+
+        modelle = discover_models(self.paths.get("models"))
+        programm = finde_server(self.paths.get("runtime"))
+        hardware = detect(self.paths.root)
+        profil = recommend_profile(hardware)
+        katalog = self.modell_katalog()
+        empfehlung = katalog.fuer_profil(profil)
+
+        # "Bereit" heisst hier: ein Sprachmodell kann antworten. Der
+        # Notbetrieb meldet sich selbst als verfuegbar - er ist es auch, aber
+        # eben ohne Modell. Das als "bereit" auszugeben waere irrefuehrend.
+        from pkc.llm.providers import RetrievalOnlyProvider
+
+        bereit, hinweis = self.llm.primary.available()
+        bereit = bereit and not isinstance(self.llm.primary, RetrievalOnlyProvider)
+        fehlt: list[str] = []
+        if not modelle:
+            fehlt.append("die Modelldatei")
+        if programm is None:
+            fehlt.append("der Modelldienst (runtime/llama)")
+
+        return {
+            "modelle": [
+                {"name": m.name, "groesse_gb": m.size_gb, "pfad": str(m.path)}
+                for m in modelle
+            ],
+            "modellverzeichnis": str(self.paths.get("models")),
+            "dienst": beschreibung(programm),
+            "dienst_vorhanden": programm is not None,
+            "anbieter": self.llm.primary.describe(),
+            "bereit": bereit,
+            "hinweis": hinweis,
+            "fehlt": fehlt,
+            "hardware": {
+                "arbeitsspeicher_gb": hardware.ram_total_gb,
+                "kerne": hardware.cpu_cores,
+                "freier_platz_gb": hardware.free_disk_gb,
+                "grafik": hardware.gpu_name,
+            },
+            "empfohlenes_profil": profil,
+            "empfohlenes_profil_text": PROFILES.get(profil, {}).get("label", profil),
+            "empfehlung": empfehlung.as_dict() if empfehlung else None,
+            "katalog": [q.as_dict() for q in katalog],
+            "katalogfehler": katalog.fehler,
+        }
+
+    def modell_beziehen(self, wunsch: str = "", *, bestaetigt: bool = False,
+                        ueberschreiben: bool = False, fortschritt=None) -> dict:
+        """Laedt ein Modell aus dem Katalog - nach ausdruecklicher Bestaetigung.
+
+        Vier Sperren, die bewusst so sind:
+
+        * Im Betriebsmodus OFFLINE wird nichts geladen.
+        * Ohne Bestaetigung wird nichts geladen - es geht um mehrere Gigabyte
+          und um Lizenzbedingungen, die der Betreiber kennen muss.
+        * Ein Eintrag, dessen Adresse nie geprueft wurde, wird als solcher
+          benannt (Masterprompt 42).
+        * Reicht der Platz nicht, wird abgebrochen, bevor etwas beginnt.
+        """
+        from pkc.llm.bezug import laden
+
+        katalog = self.modell_katalog()
+        if not len(katalog):
+            raise ValueError(katalog.fehler or "Der Modellkatalog ist leer.")
+
+        quelle = katalog.waehlen(wunsch) if wunsch else None
+        if quelle is None and not wunsch:
+            from pkc.hardware import detect, recommend_profile
+
+            quelle = katalog.fuer_profil(recommend_profile(detect(self.paths.root)))
+        if quelle is None:
+            moeglich = ", ".join(q.id for q in katalog)
+            raise ValueError(f"Unbekannte Auswahl '{wunsch}'. Moeglich: {moeglich}")
+
+        if self.mode is Mode.OFFLINE:
+            raise ValueError(
+                "Betriebsart OFFLINE: es wird nichts geladen. Fuer den Bezug "
+                "eines Modells auf HYBRID oder ONLINE umschalten."
+            )
+        if not self.lage.online_moeglich:
+            raise ValueError(
+                "Zurzeit besteht keine Internetverbindung. Ein Modell laesst "
+                "sich nur mit Verbindung beziehen - der uebrige Betrieb "
+                "braucht sie nicht."
+            )
+        if not bestaetigt:
+            raise ValueError(
+                f"Vor dem Laden ist zu bestaetigen: {quelle.name}, etwa "
+                f"{quelle.groesse_gb} GB, Lizenz {quelle.lizenz}. "
+                f"Pruefstand der Bezugsquelle: {quelle.pruefstand}."
+            )
+
+        ziel = self.paths.get("models")
+        ziel.mkdir(parents=True, exist_ok=True)
+        frei_gb = shutil.disk_usage(ziel).free / 1024**3
+        if frei_gb < quelle.groesse_gb * 1.1:
+            raise ValueError(
+                f"Auf dem Datentraeger sind nur {frei_gb:.1f} GB frei, "
+                f"benoetigt werden etwa {quelle.groesse_gb} GB."
+            )
+
+        self.audit.record("modell_bezug", "modell", quelle.id, url=quelle.url,
+                          geprueft=quelle.geprueft)
+        ergebnis = laden(quelle.url, ziel, quelle.sha256, quelle.datei,
+                         ueberschreiben=ueberschreiben, fortschritt=fortschritt)
+        self.audit.record("modell_bezug_ende", "modell", quelle.id,
+                          status="ok" if ergebnis.ok else "fehler",
+                          meldung=ergebnis.meldung)
+        return {
+            "ok": ergebnis.ok,
+            "quelle": quelle.as_dict(),
+            "pfad": str(ergebnis.pfad) if ergebnis.pfad else "",
+            "pruefsumme": ergebnis.pruefsumme,
+            "meldung": ergebnis.meldung,
+            "pruefsumme_vergleichbar": bool(quelle.sha256),
+            "bytes": ergebnis.bytes_geladen,
+        }
+
+    def modell_neu_laden(self) -> None:
+        """Baut die Modellanbindung neu auf - nach einem Bezug noetig."""
+        try:
+            self.llm.beenden()
+        except Exception:                        # pragma: no cover - defensiv
+            log.debug("Alter Modelldienst liess sich nicht beenden", exc_info=True)
+        self.llm = LlmManager.from_config(self.config, self.paths, self.vault.get_quiet)
+        self.rag.llm = self.llm
+
+    def modell_probe(self, frage: str = "Antworte mit einem Satz: wofuer steht "
+                                        "die Abkuerzung UStG?") -> dict:
+        """Stellt dem Modell eine kleine Frage - der ehrliche Nachweis.
+
+        Nicht "das Modell ist eingerichtet", sondern: es hat geantwortet,
+        und zwar in dieser Zeit mit diesem Text.
+        """
+        import time as _time
+
+        from pkc.llm.base import ChatMessage
+
+        bereit, hinweis = self.llm.primary.available()
+        if not bereit:
+            return {"ok": False, "grund": hinweis, "anbieter": self.llm.primary.name}
+
+        begonnen = _time.monotonic()
+        try:
+            antwort = self.llm.generate(
+                [ChatMessage("system", "Antworte knapp auf Deutsch."),
+                 ChatMessage("user", frage)],
+                max_tokens=120,
+            )
+        except Exception as fehler:
+            return {"ok": False, "grund": str(fehler), "anbieter": self.llm.primary.name}
+        dauer = _time.monotonic() - begonnen
+
+        return {
+            "ok": bool(antwort.is_generated and antwort.text.strip()),
+            "anbieter": antwort.provider,
+            "modell": antwort.model,
+            "text": antwort.text.strip(),
+            "dauer_s": round(dauer, 1),
+            "token": antwort.completion_tokens,
+            "token_je_sekunde": (round(antwort.completion_tokens / dauer, 1)
+                                 if antwort.completion_tokens and dauer > 0 else 0.0),
+            "grund": "" if antwort.is_generated else "Es hat kein Sprachmodell geantwortet.",
+        }
 
     # ------------------------------------------------------------------
     # Dateiausgabe (Erweiterung E4)

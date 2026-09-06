@@ -57,6 +57,44 @@ jobs:
         timeout-minutes: 10
         run: python -m pytest tests -q
 
+      - name: Modelldienst llama.cpp besorgen
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Die fertige Programmdatei aus dem offiziellen Projekt. Fuer
+          # llama-cpp-python gibt es keine fertigen Pakete - der Kunde
+          # muesste uebersetzen, was fuer eine portable Anwendung ausscheidet.
+          $api = "https://api.github.com/repos/ggml-org/llama.cpp/releases/latest"
+          $release = Invoke-RestMethod -Uri $api -Headers @{
+            Authorization = "Bearer $env:GH_TOKEN"
+            "User-Agent"  = "PORTIVA-Bauablauf"
+          }
+          Write-Host "llama.cpp Fassung: $($release.tag_name)"
+          $muster = @("*bin-win-cpu-x64.zip", "*bin-win-avx2-x64.zip", "*win-x64.zip")
+          $paket = $null
+          foreach ($m in $muster) {
+            $paket = $release.assets | Where-Object { $_.name -like $m } | Select-Object -First 1
+            if ($paket) { break }
+          }
+          if (-not $paket) {
+            $release.assets | ForEach-Object { Write-Host "  vorhanden: $($_.name)" }
+            throw "Kein passendes Windows-Paket in der Veroeffentlichung gefunden."
+          }
+          Write-Host "Paket: $($paket.name) ($([math]::Round($paket.size/1MB,1)) MB)"
+          Invoke-WebRequest -Uri $paket.browser_download_url -OutFile "$env:RUNNER_TEMP\llama.zip"
+          Expand-Archive "$env:RUNNER_TEMP\llama.zip" -DestinationPath "$env:RUNNER_TEMP\llama" -Force
+
+          New-Item -ItemType Directory -Force -Path "runtime\llama" | Out-Null
+          $server = Get-ChildItem "$env:RUNNER_TEMP\llama" -Recurse -Filter "llama-server.exe" |
+                    Select-Object -First 1
+          if (-not $server) { throw "llama-server.exe fehlt im heruntergeladenen Paket." }
+          Copy-Item $server.Directory.FullName\* -Destination "runtime\llama" -Recurse -Force
+          "llama.cpp $($release.tag_name), MIT-Lizenz, bezogen am $(Get-Date -Format 'yyyy-MM-dd')" |
+            Set-Content "runtime\llama\HERKUNFT.txt"
+          Get-ChildItem "runtime\llama" | Select-Object Name, Length |
+            Format-Table | Out-String | Write-Host
+
       - name: Portablen Ordner bauen
         run: powershell -NoProfile -ExecutionPolicy Bypass -File build\build_windows.ps1 -OhneTests
 
@@ -163,6 +201,86 @@ jobs:
             subst X: /D
           }
 
+      - name: Bezugsquellen der Modelle pruefen
+        shell: pwsh
+        run: |
+          # Der Katalog behauptet nichts - hier wird jede Adresse tatsaechlich
+          # abgerufen. Was nicht antwortet, wird nicht als geprueft vermerkt.
+          $katalog = Get-Content "config\model_catalog.json" -Raw | ConvertFrom-Json
+          $heute = Get-Date -Format "yyyy-MM-dd"
+          $ergebnisse = @()
+          foreach ($modell in $katalog.modelle) {
+            $zeile = [ordered]@{ id = $modell.id; url = $modell.url }
+            try {
+              $antwort = Invoke-WebRequest -Uri $modell.url -Method Head -MaximumRedirection 5 -TimeoutSec 60
+              $groesse = [int64]$antwort.Headers["Content-Length"][0]
+              $zeile.erreichbar = $true
+              $zeile.groesse_bytes = $groesse
+              $zeile.geprueft_am = $heute
+              Write-Host ("OK      {0,-16} {1,8:N2} GB" -f $modell.id, ($groesse/1GB))
+            } catch {
+              $zeile.erreichbar = $false
+              $zeile.fehler = $_.Exception.Message
+              Write-Host ("FEHLER  {0,-16} {1}" -f $modell.id, $_.Exception.Message)
+            }
+            $ergebnisse += [pscustomobject]$zeile
+          }
+          $ergebnisse | ConvertTo-Json -Depth 4 | Set-Content "$env:RUNNER_TEMP\quellenpruefung.json"
+          if (($ergebnisse | Where-Object { -not $_.erreichbar }).Count -gt 0) {
+            throw "Mindestens eine hinterlegte Bezugsquelle antwortet nicht."
+          }
+
+      - name: Sprachmodell - beziehen, starten, antworten lassen
+        shell: pwsh
+        timeout-minutes: 15
+        run: |
+          Set-Location dist\Portable-Buchhalter
+          Write-Host "--- Lage vor dem Einrichten ---"
+          .\PORTABLE_BUCHHALTER_KONSOLE.exe modell status | Out-String | Write-Host
+
+          Write-Host "--- Ohne Bestaetigung darf nichts geladen werden ---"
+          .\PORTABLE_BUCHHALTER_KONSOLE.exe modell einrichten --profil probe | Out-String | Write-Host
+          if ($LASTEXITCODE -eq 0) { throw "Es wurde ohne Bestaetigung geladen." }
+
+          Write-Host "--- Modell beziehen und einrichten ---"
+          $ausgabe = .\PORTABLE_BUCHHALTER_KONSOLE.exe modell einrichten --profil probe --bestaetigen | Out-String
+          Write-Host $ausgabe
+          if ($LASTEXITCODE -ne 0) { throw "Das Einrichten des Modells schlug fehl." }
+          if ($ausgabe -notmatch "einsatzbereit") { throw "Das Modell hat nicht geantwortet." }
+
+          $summe = ($ausgabe -split "`n" | Where-Object { $_ -match "SHA-256" }) -join ""
+          Write-Host "Pruefsumme des bezogenen Modells: $summe"
+          $summe | Set-Content "$env:RUNNER_TEMP\modell_pruefsumme.txt"
+
+          Write-Host "--- Eine echte Fachfrage, mit Modell ---"
+          $antwort = .\PORTABLE_BUCHHALTER_KONSOLE.exe --offline frage "Was besagt Paragraf 14 UStG in einem Satz?" | Out-String
+          Write-Host $antwort
+          if ($antwort -match "Es konnte keine KI-Antwort erzeugt werden") {
+            throw "Die Anwendung lief trotz vorhandenem Modell im Notbetrieb."
+          }
+          if ($antwort -notmatch "WISSENSSTAND") { throw "Der Antwort fehlt der Wissensstand." }
+          if ($antwort -notmatch "kein Sprachmodell verfuegbar") {
+            Write-Host "Bestaetigt: die Antwort stammt vom Sprachmodell."
+          } else {
+            throw "Der Wissensstand meldet weiterhin 'kein Sprachmodell verfuegbar'."
+          }
+
+          Write-Host "--- Laeuft der Dienst nach dem Programmende noch? ---"
+          $rest = Get-Process llama-server -ErrorAction SilentlyContinue
+          if ($rest) { throw "Der Modelldienst laeuft nach dem Programmende weiter." }
+          Write-Host "Kein verwaister Vorgang - in Ordnung."
+
+      - name: Pruefergebnisse sichern
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Modellpruefung
+          path: |
+            ${{ runner.temp }}/quellenpruefung.json
+            ${{ runner.temp }}/modell_pruefsumme.txt
+          retention-days: 30
+          if-no-files-found: warn
+
       - name: Dateien erzeugen - Excel, Word, PowerPoint, PDF (Erweiterung E4)
         shell: pwsh
         run: |
@@ -208,6 +326,15 @@ jobs:
           if (-not (Test-Path "workspace\artefakte\Pluginprobe.html")) {
             throw "Die HTML-Datei aus dem Plugin wurde nicht erzeugt."
           }
+
+      - name: Bezogenes Modell wieder entfernen
+        shell: pwsh
+        run: |
+          # Das Modell gehoert nicht ins Auslieferungspaket: es ist mehrere
+          # Gigabyte gross, und seine Lizenz waehlt der Betreiber selbst aus.
+          Remove-Item "dist\Portable-Buchhalter\models\*.gguf" -Force -ErrorAction SilentlyContinue
+          Get-ChildItem "dist\Portable-Buchhalter\models" -ErrorAction SilentlyContinue |
+            Format-Table Name, Length | Out-String | Write-Host
 
       - name: Ergebnis bereitstellen
         uses: actions/upload-artifact@v4

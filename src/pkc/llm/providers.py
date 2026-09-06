@@ -325,6 +325,67 @@ class OpenAICompatibleProvider:
         }
 
 
+class MitgelieferterServerProvider(OpenAICompatibleProvider):
+    """Der mitgelieferte llama.cpp-Server - von der Anwendung selbst gestartet.
+
+    Der Dienst wird **nicht** beim Programmstart hochgefahren, sondern bei der
+    ersten Frage. Sonst wuerde jeder Start der Anwendung das Laden eines
+    mehrere Gigabyte grossen Modells abwarten, auch wenn der Benutzer nur
+    kurz im Unternehmenswissen nachsehen will.
+    """
+
+    def __init__(self, server, protokollordner=None, name: str = "mitgelieferter-server"):
+        super().__init__(base_url="http://127.0.0.1:0", model=server.modell.name,
+                         requires_internet=False, name=name)
+        self.server = server
+        self.protokollordner = protokollordner
+        self.startfehler = ""
+
+    def available(self) -> tuple[bool, str]:
+        """Beurteilt die Lage, **ohne** den Dienst zu starten."""
+        if self.startfehler:
+            return False, self.startfehler
+        if not Path(self.server.programm).is_file():
+            return False, f"Der Modelldienst fehlt: {self.server.programm}"
+        if not Path(self.server.modell).is_file():
+            return False, f"Die Modelldatei fehlt: {self.server.modell}"
+        if self.server.laeuft:
+            return True, f"Modell laeuft: {self.server.modell.name}"
+        groesse = Path(self.server.modell).stat().st_size / 1024**3
+        return True, (
+            f"Modell bereit: {self.server.modell.name} ({groesse:.1f} GB). "
+            "Der Dienst wird bei der ersten Frage gestartet - das dauert "
+            "einmalig etwas."
+        )
+
+    def _sicherstellen(self) -> None:
+        if self.server.laeuft:
+            return
+        try:
+            self.base_url = self.server.starten(self.protokollordner).rstrip("/")
+            self.startfehler = ""
+        except Exception as fehler:
+            self.startfehler = str(fehler)
+            raise LlmError(f"Der Modelldienst konnte nicht gestartet werden: {fehler}") from fehler
+
+    def generate(self, messages, max_tokens=1024, temperature=0.2, stop=None,
+                 on_token: Callable[[str], None] | None = None) -> LlmResponse:
+        self._sicherstellen()
+        return super().generate(messages, max_tokens, temperature, stop, on_token=on_token)
+
+    def describe(self) -> dict:
+        return {
+            "anbieter": self.name,
+            "modell": self.model,
+            "programm": str(self.server.programm),
+            "laeuft": self.server.laeuft,
+            "benoetigt_internet": False,
+        }
+
+    def beenden(self) -> None:
+        self.server.beenden()
+
+
 class RetrievalOnlyProvider:
     """Notbetrieb: kein Sprachmodell verfuegbar.
 

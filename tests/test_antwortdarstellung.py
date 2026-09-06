@@ -134,8 +134,9 @@ def test_modell_status_meldet_fehlendes_modell(portable_root, capsys):
     code = main(["--root", str(portable_root.root), "--offline", "modell", "status"])
     assert code == 2, "fehlendes Modell ist ein Hinweis, kein Erfolg"
     ausgabe = capsys.readouterr().out
-    assert "kein Sprachmodell eingerichtet" in ausgabe
-    assert "modell empfehlen" in ausgabe, "der naechste Schritt muss dastehen"
+    assert "keine Modelldatei" in ausgabe
+    assert "Es fehlt" in ausgabe, "es muss dastehen, was genau fehlt"
+    assert "modell einrichten" in ausgabe, "der naechste Schritt muss dastehen"
 
 
 def test_modell_laden_ist_offline_gesperrt(portable_root, capsys, monkeypatch):
@@ -148,7 +149,8 @@ def test_modell_laden_ist_offline_gesperrt(portable_root, capsys, monkeypatch):
     code = main(["--root", str(portable_root.root), "--offline", "modell", "laden",
                  "--url", "https://beispiel.invalid/modell.gguf"])
     assert code == 2
-    assert "OFFLINE" in capsys.readouterr().out
+    gesehen = capsys.readouterr()
+    assert "OFFLINE" in gesehen.out + gesehen.err
 
 
 def test_download_prueft_die_pruefsumme(tmp_path, http_server):

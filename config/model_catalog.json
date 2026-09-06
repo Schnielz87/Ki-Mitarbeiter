@@ -1,0 +1,67 @@
+{
+  "hinweis": "Bezugsquellen fuer lokale Sprachmodelle. Die Angaben unter 'pruefung' werden vom Windows-Bauablauf gesetzt - dort wird jede Adresse tatsaechlich abgerufen. Ein Eintrag ohne bestaetigte Pruefung wird von der Anwendung als ungeprueft gekennzeichnet.",
+  "stand": "2026-09-06",
+  "modelle": [
+    {
+      "id": "qwen2.5-0.5b",
+      "profil": "probe",
+      "name": "Qwen2.5-0.5B-Instruct (Q4_K_M)",
+      "lizenz": "Apache-2.0",
+      "herkunft": "Hugging Face, Repository Qwen/Qwen2.5-0.5B-Instruct-GGUF",
+      "url": "https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/main/qwen2.5-0.5b-instruct-q4_k_m.gguf",
+      "datei": "qwen2.5-0.5b-instruct-q4_k_m.gguf",
+      "groesse_gb": 0.4,
+      "min_ram_gb": 2,
+      "hinweis": "Nur zum Ausprobieren und fuer den Bauablauf. Die fachliche Qualitaet reicht fuer Buchhaltungsfragen NICHT aus - Antworten sind hier nicht belastbar.",
+      "produktiv": false,
+      "pruefung": {}
+    },
+    {
+      "id": "qwen2.5-3b",
+      "profil": "light",
+      "name": "Qwen2.5-3B-Instruct (Q4_K_M)",
+      "lizenz": "Qwen Research License (nicht-kommerziell) - vor betrieblichem Einsatz pruefen",
+      "herkunft": "Hugging Face, Repository Qwen/Qwen2.5-3B-Instruct-GGUF",
+      "url": "https://huggingface.co/Qwen/Qwen2.5-3B-Instruct-GGUF/resolve/main/qwen2.5-3b-instruct-q4_k_m.gguf",
+      "datei": "qwen2.5-3b-instruct-q4_k_m.gguf",
+      "groesse_gb": 2.0,
+      "min_ram_gb": 6,
+      "hinweis": "Fuer aeltere Buerorechner. Die Lizenz dieses Modells ist NICHT Apache-2.0 - fuer den betrieblichen Einsatz bitte pruefen oder ein anderes Profil waehlen.",
+      "produktiv": true,
+      "pruefung": {}
+    },
+    {
+      "id": "qwen2.5-7b",
+      "profil": "standard",
+      "name": "Qwen2.5-7B-Instruct (Q4_K_M)",
+      "lizenz": "Apache-2.0",
+      "herkunft": "Hugging Face, Repository Qwen/Qwen2.5-7B-Instruct-GGUF",
+      "url": "https://huggingface.co/Qwen/Qwen2.5-7B-Instruct-GGUF/resolve/main/qwen2.5-7b-instruct-q4_k_m.gguf",
+      "datei": "qwen2.5-7b-instruct-q4_k_m.gguf",
+      "groesse_gb": 4.7,
+      "min_ram_gb": 12,
+      "hinweis": "Empfohlener Standard: brauchbare deutsche Sprachqualitaet bei vertretbarem Speicherbedarf.",
+      "produktiv": true,
+      "pruefung": {}
+    },
+    {
+      "id": "qwen2.5-14b",
+      "profil": "high",
+      "name": "Qwen2.5-14B-Instruct (Q4_K_M)",
+      "lizenz": "Apache-2.0",
+      "herkunft": "Hugging Face, Repository Qwen/Qwen2.5-14B-Instruct-GGUF",
+      "url": "https://huggingface.co/Qwen/Qwen2.5-14B-Instruct-GGUF/resolve/main/qwen2.5-14b-instruct-q4_k_m.gguf",
+      "datei": "qwen2.5-14b-instruct-q4_k_m.gguf",
+      "groesse_gb": 9.0,
+      "min_ram_gb": 24,
+      "hinweis": "Beste Fachqualitaet dieser Auswahl. Auf reiner CPU deutlich langsamer - eine Antwort kann Minuten dauern.",
+      "produktiv": true,
+      "pruefung": {}
+    }
+  ],
+  "dienst": {
+    "hinweis": "Der Modelldienst (llama.cpp) wird mit der Windows-Fassung ausgeliefert und liegt unter runtime/llama. Er muss nicht bezogen werden.",
+    "projekt": "ggml-org/llama.cpp",
+    "lizenz": "MIT"
+  }
+}

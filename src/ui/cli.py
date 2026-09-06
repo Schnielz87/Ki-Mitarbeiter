@@ -379,98 +379,147 @@ def cmd_plugin(args) -> int:
 
 
 def cmd_modell(args) -> int:
-    """Sprachmodell einrichten und pruefen (Abschnitt 14).
+    """Sprachmodell einrichten und pruefen (Erweiterung E6, Abschnitt 13/14).
 
-    Bisher gab es dafuer nur ein Werkzeug neben der Anwendung. Fuer den
-    Anwender, der nur die EXE hat, war es damit unerreichbar.
+    Ohne Sprachmodell recherchiert die Anwendung nur - sie formuliert keine
+    Fachantwort. Das ist laut Auftrag ausdruecklich **kein** annehmbarer
+    Endzustand, also gehoert der Weg zum Modell in die Anwendung selbst und
+    nicht in eine Anleitung daneben.
     """
     controller = _controller(args)
     try:
-        from pkc.hardware import detect, recommend_profile
-        from pkc.llm.manager import RECOMMENDED_MODELS, discover_models
-
-        verzeichnis = controller.paths.get("models")
-        vorhanden = discover_models(verzeichnis)
+        controller.bootstrap(build_embeddings=False)
+        lage = controller.modell_lage()
 
         if args.aktion == "status":
-            print(f"Modellverzeichnis: {verzeichnis}")
-            if not vorhanden:
-                print("Es ist kein Sprachmodell eingerichtet.")
-                print("\nOhne Modell recherchiert der Buchhalter zwar und zeigt "
-                      "Fundstellen,\nformuliert aber keine fachliche Antwort.")
-                print("\nNaechster Schritt:  modell empfehlen")
+            print(f"Modellverzeichnis: {lage['modellverzeichnis']}")
+            if lage["modelle"]:
+                for modell in lage["modelle"]:
+                    print(f"  {modell['name']}  ({modell['groesse_gb']} GB)")
+            else:
+                print("  (keine Modelldatei)")
+            print(f"Modelldienst     : {lage['dienst']}")
+            print(f"Anbieter         : {lage['anbieter'].get('anbieter', '?')}")
+            print(f"Bereit           : {'ja' if lage['bereit'] else 'nein'}")
+            print(f"  {lage['hinweis']}")
+            if lage["fehlt"]:
+                print("\nEs fehlt: " + ", ".join(lage["fehlt"]))
+                print("Naechster Schritt:  modell einrichten")
                 return 2
-            for modell in vorhanden:
-                print(f"  {modell.name}  ({modell.size_bytes // (1024*1024)} MB)")
-            print()
-            for schluessel, wert in controller.llm.status().items():
-                print(f"  {schluessel:16}: {wert}")
             return 0
 
         if args.aktion == "empfehlen":
-            hardware = detect()
-            profil = recommend_profile(hardware)
+            hardware = lage["hardware"]
             print("Erkannte Hardware")
-            print(f"  Arbeitsspeicher : {hardware.total_ram_gb:.1f} GB")
-            print(f"  Prozessorkerne  : {hardware.cpu_count}")
-            print(f"  Empfehlung      : {profil.name}\n")
-            print("Geeignete Modelle:")
-            for eintrag in RECOMMENDED_MODELS.get(profil.key, []):
-                print(f"  {eintrag['name']}")
-                print(f"      Groesse   : {eintrag.get('size_hint','?')}")
-                print(f"      Bezug     : {eintrag.get('source','siehe Anbieter')}")
-            print("\nHerunterladen:")
-            print("  modell laden --url <Adresse> [--pruefsumme <sha256>]")
-            print("\nEs wird nichts ohne ausdrueckliche Angabe einer Adresse "
-                  "geladen:\ndie Bezugsquelle und ihre Lizenzbedingungen waehlen "
-                  "Sie bewusst selbst.")
+            print(f"  Arbeitsspeicher : {hardware['arbeitsspeicher_gb'] or 'unbekannt'} GB")
+            print(f"  Prozessorkerne  : {hardware['kerne'] or 'unbekannt'}")
+            print(f"  Grafikkarte     : {hardware['grafik'] or 'keine erkannt'}")
+            print(f"  Freier Platz    : {hardware['freier_platz_gb'] or '?'} GB")
+            print(f"\nEmpfohlen: {lage['empfohlenes_profil_text']}\n")
+
+            if lage["katalogfehler"]:
+                print(lage["katalogfehler"], file=sys.stderr)
+                return 1
+            print("Hinterlegte Bezugsquellen:")
+            for eintrag in lage["katalog"]:
+                marke = ">>" if (lage["empfehlung"] and
+                                 eintrag["id"] == lage["empfehlung"]["id"]) else "  "
+                print(f"{marke} {eintrag['id']:16s} {eintrag['name']}")
+                print(f"     etwa {eintrag['groesse_gb']} GB · mindestens "
+                      f"{eintrag['min_ram_gb']} GB RAM · Lizenz {eintrag['lizenz']}")
+                print(f"     Bezugsquelle: {eintrag['pruefstand']}")
+                if not eintrag["produktiv"]:
+                    print("     NUR ZUM AUSPROBIEREN - fuer Fachfragen nicht geeignet")
+                if eintrag["hinweis"]:
+                    print(f"     {eintrag['hinweis']}")
+            print("\nEinrichten:  modell einrichten [--profil standard] --bestaetigen")
             return 0
+
+        if args.aktion == "einrichten":
+            if lage["fehlt"] and not lage["dienst_vorhanden"]:
+                print("Hinweis: Der Modelldienst (runtime/llama) fehlt in diesem "
+                      "Ordner.\nEr wird mit der Windows-Fassung ausgeliefert; ohne "
+                      "ihn kann ein\nheruntergeladenes Modell nicht antworten.\n",
+                      file=sys.stderr)
+            wunsch = args.profil or args.modell_id
+            try:
+                ergebnis = controller.modell_beziehen(
+                    wunsch, bestaetigt=args.bestaetigen,
+                    ueberschreiben=args.ueberschreiben, fortschritt=_fortschritt,
+                )
+            except ValueError as fehler:
+                print(str(fehler), file=sys.stderr)
+                if not args.bestaetigen:
+                    print("\nWenn das so gewollt ist:  modell einrichten "
+                          "--bestaetigen", file=sys.stderr)
+                return 1
+            print()
+            print(ergebnis["meldung"])
+            if not ergebnis["ok"]:
+                return 1
+            print(f"SHA-256: {ergebnis['pruefsumme']}")
+            if not ergebnis["pruefsumme_vergleichbar"]:
+                print("Hinweis: fuer diese Bezugsquelle liegt keine hinterlegte "
+                      "Pruefsumme vor.\nDie Datei wurde daher nicht auf "
+                      "Unversehrtheit geprueft.")
+            print("\nModell wird eingebunden ...")
+            controller.modell_neu_laden()
+            return _probe_ausgeben(controller)
 
         if args.aktion == "laden":
             if not args.url:
                 print("Es wird --url benoetigt.", file=sys.stderr)
                 return 2
-            if controller.mode is Mode.OFFLINE:
-                print("Betriebsart OFFLINE - es wird nichts geladen.")
+            if not controller.lage.online_moeglich:
+                print(f"Betriebsart {controller.mode.value} - es wird nichts geladen.",
+                      file=sys.stderr)
                 return 2
             from pkc.llm.bezug import laden
 
-            def zeige(geladen, gesamt, tempo):
-                if gesamt:
-                    print(f"\r  {geladen*100/gesamt:5.1f} %  "
-                          f"{geladen/1024**3:5.2f} von {gesamt/1024**3:5.2f} GB  "
-                          f"{tempo/1024**2:5.1f} MB/s", end="", flush=True)
-
-            print(f"Lade nach {verzeichnis}")
-            ergebnis = laden(args.url, verzeichnis, args.pruefsumme, args.name,
-                             fortschritt=zeige)
+            print(f"Lade nach {lage['modellverzeichnis']}")
+            ergebnis = laden(args.url, controller.paths.get("models"), args.pruefsumme,
+                             args.name, ueberschreiben=args.ueberschreiben,
+                             fortschritt=_fortschritt)
             print()
             print(ergebnis.meldung)
-            if ergebnis.ok:
-                print(f"SHA-256: {ergebnis.pruefsumme}")
-                print("\nNaechster Schritt:  modell pruefen")
-            return 0 if ergebnis.ok else 1
+            if not ergebnis.ok:
+                return 1
+            print(f"SHA-256: {ergebnis.pruefsumme}")
+            controller.modell_neu_laden()
+            return _probe_ausgeben(controller)
 
         if args.aktion == "pruefen":
-            if not vorhanden:
-                print("Es ist kein Modell vorhanden, das geprueft werden koennte.")
-                return 2
-            print("Sende eine Testfrage an das Modell ...")
-            from pkc.llm.base import ChatMessage
+            return _probe_ausgeben(controller)
 
-            antwort = controller.llm.generate(
-                [ChatMessage("user", "Antworte mit genau einem Satz: Was ist eine Rechnung?")],
-                max_tokens=120)
-            if not antwort.is_generated:
-                print("Das Modell hat nicht geantwortet.")
-                print(f"  Grund: {antwort.meta.get('reason','unbekannt')}")
-                return 1
-            print(f"\nAntwort des Modells:\n  {antwort.text.strip()[:400]}")
-            print(f"\nDauer: {antwort.elapsed:.1f} s - das Modell arbeitet.")
-            return 0
+        print(f"Unbekannte Aktion: {args.aktion}", file=sys.stderr)
         return 2
     finally:
         controller.shutdown()
+
+
+def _fortschritt(geladen: int, gesamt: int, tempo: float) -> None:
+    if gesamt:
+        print(f"\r  {geladen * 100 / gesamt:5.1f} %  "
+              f"{geladen / 1024**3:5.2f} von {gesamt / 1024**3:5.2f} GB  "
+              f"{tempo / 1024**2:5.1f} MB/s", end="", flush=True)
+    else:
+        print(f"\r  {geladen / 1024**3:5.2f} GB", end="", flush=True)
+
+
+def _probe_ausgeben(controller) -> int:
+    """Stellt dem Modell eine Frage und sagt, was tatsaechlich passiert ist."""
+    print("\nProbe: eine kleine Frage an das Modell ...")
+    ergebnis = controller.modell_probe()
+    if not ergebnis["ok"]:
+        print(f"Das Modell hat NICHT geantwortet: {ergebnis['grund']}", file=sys.stderr)
+        return 1
+    print(f"\nAntwort nach {ergebnis['dauer_s']} s ({ergebnis['anbieter']}, "
+          f"{ergebnis['modell']}):")
+    print(f"  {ergebnis['text']}")
+    if ergebnis["token_je_sekunde"]:
+        print(f"\nGeschwindigkeit: etwa {ergebnis['token_je_sekunde']} Token je Sekunde")
+    print("\nDas Sprachmodell ist einsatzbereit.")
+    return 0
 
 
 def cmd_modus(args) -> int:
@@ -865,7 +914,14 @@ def build_parser() -> argparse.ArgumentParser:
 
     modell = neu("modell", "Sprachmodell einrichten und pruefen")
     modell.add_argument("aktion", nargs="?", default="status",
-                        choices=["status", "empfehlen", "laden", "pruefen"])
+                        choices=["status", "empfehlen", "einrichten", "laden", "pruefen"])
+    modell.add_argument("--profil", default="",
+                        help="probe, light, standard oder high")
+    modell.add_argument("--modell-id", dest="modell_id", default="",
+                        help="Kennung aus dem Katalog, z.B. qwen2.5-7b")
+    modell.add_argument("--bestaetigen", action="store_true",
+                        help="den Bezug ausdruecklich bestaetigen")
+    modell.add_argument("--ueberschreiben", action="store_true")
     modell.add_argument("--url", default="", help="Bezugsadresse der Modelldatei")
     modell.add_argument("--pruefsumme", default="", help="erwartete SHA-256")
     modell.add_argument("--name", default="", help="Dateiname im Modellordner")

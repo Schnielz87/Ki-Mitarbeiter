@@ -17,6 +17,7 @@ from typing import Any, Callable, Iterable, Sequence
 from ..logging_setup import get_logger
 from .base import ChatMessage, LlmError, LlmProvider, LlmResponse
 from .providers import (
+    MitgelieferterServerProvider,
     LlamaCppProvider, OpenAICompatibleProvider, RetrievalOnlyProvider,
 )
 
@@ -188,8 +189,28 @@ class LlmManager:
                 RetrievalOnlyProvider(f"kein GGUF-Modell in {models_dir}"),
                 f"Es liegt kein Sprachmodell in {models_dir}. "
                 "Die Anwendung laeuft im Notbetrieb (Recherche ohne Modellantwort). "
-                "Siehe docs/MODELL_EINRICHTEN.md.",
+                "Einrichten mit: modell einrichten",
             )
+
+        # Bevorzugt der mitgelieferte llama.cpp-Server: er braucht keine
+        # Uebersetzung auf dem Rechner des Kunden. Fuer llama-cpp-python gibt
+        # es keine fertigen Pakete - das waere fuer eine portable Anwendung
+        # der falsche Weg.
+        from .server import Llamaserver, finde_server
+
+        programm = finde_server(paths.get("runtime"))
+        if programm is not None:
+            server = Llamaserver(
+                programm=programm, modell=model_path,
+                kontext=int(config.get("llm.context_tokens", 8192)),
+                threads=int(config.get("llm.threads", 0)),
+                gpu_layers=int(config.get("llm.gpu_layers", 0)),
+            )
+            anbieter = MitgelieferterServerProvider(server, protokollordner=paths.get("logs"))
+            bereit, hinweis = anbieter.available()
+            if bereit:
+                return anbieter, ""
+            return RetrievalOnlyProvider(hinweis), hinweis
 
         provider = LlamaCppProvider(
             model_path,
@@ -200,9 +221,27 @@ class LlmManager:
         usable, detail = provider.available()
         if usable:
             return provider, ""
-        return RetrievalOnlyProvider(detail), detail
+        hinweis = (
+            f"{detail} Ausserdem fehlt der mitgelieferte Modelldienst in "
+            f"{paths.relative(paths.get('runtime'))}. Einrichten mit: modell einrichten"
+        )
+        return RetrievalOnlyProvider(hinweis), hinweis
 
     # -- Betrieb -------------------------------------------------------
+    def beenden(self) -> None:
+        """Faehrt einen selbst gestarteten Modelldienst wieder herunter.
+
+        Ohne das liefe der Dienst nach dem Schliessen der Anwendung weiter
+        und hielte den Arbeitsspeicher des Modells belegt.
+        """
+        for anbieter in (self.primary, self.online):
+            aufraeumen = getattr(anbieter, "beenden", None)
+            if callable(aufraeumen):
+                try:
+                    aufraeumen()
+                except Exception as fehler:      # pragma: no cover - defensiv
+                    log.debug("Modelldienst liess sich nicht beenden: %s", fehler)
+
     @property
     def active(self) -> LlmProvider:
         if self.allow_online and self.online is not None:

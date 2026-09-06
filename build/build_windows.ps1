@@ -72,6 +72,9 @@ New-Item -ItemType Directory -Force -Path "$Ziel\src" | Out-Null
 Copy-Item "src\profiles" -Destination "$Ziel\src\profiles" -Recurse -Force
 New-Item -ItemType Directory -Force -Path "$Ziel\config" | Out-Null
 Copy-Item "config\source_registry.json" -Destination "$Ziel\config\" -Force
+if (Test-Path "config\model_catalog.json") {
+    Copy-Item "config\model_catalog.json" -Destination "$Ziel\config\" -Force
+}
 if (Test-Path "config\brand.json") {
     Copy-Item "config\brand.json" -Destination "$Ziel\config\" -Force
 }
@@ -85,6 +88,18 @@ if (Test-Path "config\brand.json") {
 if (Test-Path "assets") {
     Copy-Item "assets" -Destination "$Ziel\assets" -Recurse -Force
 }
+# Der Modelldienst (llama.cpp). Ohne ihn kann ein heruntergeladenes Modell
+# nicht antworten - fuer llama-cpp-python gibt es keine fertigen Pakete, der
+# Kunde muesste sonst einen Compiler einrichten. Liegt der Ordner nicht vor,
+# wird trotzdem gebaut: die Anwendung sagt dann ehrlich, dass er fehlt.
+if (Test-Path "runtime\llama") {
+    New-Item -ItemType Directory -Force -Path "$Ziel\runtime" | Out-Null
+    Copy-Item "runtime\llama" -Destination "$Ziel\runtime\llama" -Recurse -Force
+    Write-Host "Modelldienst uebernommen: runtime\llama"
+} else {
+    Write-Host "HINWEIS: runtime\llama fehlt - das Paket enthaelt keinen Modelldienst."
+}
+
 New-Item -ItemType Directory -Force -Path "$Ziel\docs" | Out-Null
 Copy-Item "docs\*" -Destination "$Ziel\docs\" -Recurse -Force -ErrorAction SilentlyContinue
 foreach ($datei in @("START_HIER.md","README.md","ARCHITEKTUR.md","PROJEKTSTATUS.md",
