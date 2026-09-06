@@ -208,3 +208,20 @@ def test_fenstersymbol_wird_gesetzt(gui):
 def test_fenstertitel_traegt_marke_und_profil(gui):
     window, controller, _, _ = gui
     assert window.brand.titel(window.profil) == "PORTIVA - Buchhalter"
+
+
+def test_antwort_erscheint_ohne_markdown_rohzeichen(gui):
+    """Abschnitt 7: ** und # duerfen nicht roh im Fenster stehen."""
+    window, controller, _, _ = gui
+    window._append_chat("Buchhalter", "**ERGEBNIS**\n\n## Titel\n- Punkt")
+    inhalt = window.chat.buffer
+    assert "ERGEBNIS" in inhalt and "Titel" in inhalt and "Punkt" in inhalt
+    assert "**" not in inhalt
+    assert "## " not in inhalt
+
+
+def test_systemhinweise_bleiben_unveraendert(gui):
+    """Bei ausdruecklichem Stil wird nichts umgewandelt."""
+    window, controller, _, _ = gui
+    window._append_chat("System", "Ein Hinweis mit ** darin", "system")
+    assert "** darin" in window.chat.buffer

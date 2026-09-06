@@ -67,7 +67,11 @@ def cmd_ask(args) -> int:
         except LicenseRequired as exc:
             print(str(exc), file=sys.stderr)
             return 4
-        print(outcome.answer.text)
+        # Auch hier keine Markdown-Rohzeichen: in der Eingabeaufforderung
+        # gibt es keinen Fettdruck, ** waere nur Zeichensalat.
+        from ui.markdown import als_klartext
+
+        print(als_klartext(outcome.answer.text))
         if outcome.capture_candidates:
             print("\n--- Moegliche dauerhafte Unternehmensinformation ---")
             for candidate in outcome.capture_candidates:

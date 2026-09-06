@@ -23,6 +23,7 @@ from tkinter import filedialog, messagebox, scrolledtext, ttk
 from app.controller import AppController, AskOutcome, StartupReport
 from pkc.branding import load_brand, profilname
 from pkc.netstate import Mode
+from ui.markdown import zerlegen
 from pkc.audit import ApprovalState
 from pkc.memory.schema_keys import CATEGORIES
 
@@ -366,6 +367,17 @@ class MainWindow:
         self.chat.tag_configure("wer", font=("Segoe UI", 10, "bold"))
         self.chat.tag_configure("system", foreground="#555555")
         self.chat.tag_configure("hinweis", foreground="#8a4b00")
+        # Stile fuer die Markdown-Darstellung (Abschnitt 7). Ohne sie
+        # stuenden **, # und - roh im Fenster.
+        self.chat.tag_configure("ueberschrift1", font=("Segoe UI", 12, "bold"),
+                                foreground="#1f4e79", spacing1=8, spacing3=3)
+        self.chat.tag_configure("ueberschrift2", font=("Segoe UI", 11, "bold"),
+                                spacing1=6, spacing3=2)
+        self.chat.tag_configure("fett", font=("Segoe UI", 10, "bold"))
+        self.chat.tag_configure("kursiv", font=("Segoe UI", 10, "italic"))
+        self.chat.tag_configure("code", font=FONT_MONO, foreground="#33691e")
+        self.chat.tag_configure("aufzaehlung", foreground="#1f4e79")
+        self.chat.tag_configure("tabelle", font=FONT_MONO)
 
         entry_frame = ttk.Frame(left)
         entry_frame.pack(fill="x", pady=(PAD, 0))
@@ -592,9 +604,21 @@ class MainWindow:
 
     # -- Chat ----------------------------------------------------------
     def _append_chat(self, who: str, text: str, tag: str = "") -> None:
+        """Fuegt einen Beitrag ein - Markdown wird dabei ausgewertet.
+
+        Ohne das stuenden ``**`` und ``#`` roh im Fenster (Abschnitt 7). Bei
+        einem ausdruecklich gesetzten Stil (etwa Systemhinweise) bleibt der
+        Text unveraendert; dort gibt es kein Markdown.
+        """
         self.chat.configure(state="normal")
         self.chat.insert("end", f"\n{who}\n", "wer")
-        self.chat.insert("end", f"{text}\n", tag or ())
+        if tag:
+            self.chat.insert("end", f"{text}\n", tag)
+        else:
+            for stueck in zerlegen(text):
+                self.chat.insert("end", stueck.text,
+                                 stueck.stil if stueck.stil != "normal" else ())
+            self.chat.insert("end", "\n")
         self.chat.configure(state="disabled")
         self.chat.see("end")
 
