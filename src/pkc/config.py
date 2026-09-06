@@ -23,7 +23,7 @@ DEFAULTS: dict[str, Any] = {
         "name": "Portabler Buchhalter",
         "profile": "buchhalter",
         "language": "de",
-        "version": "0.1.0",
+        "version": "0.3.0",
     },
     "llm": {
         # "auto" waehlt das erste gefundene Modell in ./models
@@ -86,7 +86,7 @@ DEFAULTS: dict[str, Any] = {
         "product": "portabler-ki-mitarbeiter",
     },
     "product": {
-        "version": "0.1.0",
+        "version": "0.3.0",
         "stage": "pilot",              # pilot | commercial
         "knowledge_package": "buchhaltung 1.0",
     },

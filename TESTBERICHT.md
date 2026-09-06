@@ -1,11 +1,11 @@
 # Testbericht
 
-Stand: 05.09.2026 · Branch `claude/portable-ki-buchhalter-xr1qlj`
+Stand: 06.09.2026 · Branch `claude/portable-ki-buchhalter-xr1qlj`
 
 ## Zusammenfassung
 
-**219 automatische Tests bestanden, 1 uebersprungen** (unter Windows einer mehr uebersprungen). Ausfuehrungszeit rund
-10 Sekunden. Reproduzierbar mit:
+**425 automatische Tests bestanden, 1 uebersprungen** (unter Windows einer
+mehr uebersprungen). Ausfuehrungszeit rund 25 Sekunden. Reproduzierbar mit:
 
 ```
 python -m pytest tests -q
@@ -13,21 +13,31 @@ python -m pytest tests -q
 
 | Testdatei | Ergebnis | Gegenstand |
 |---|---|---|
-| `test_updater_pipeline.py` | 13 bestanden | Wissensupdate gegen einen echten lokalen HTTP-Server |
+| `test_updater_pipeline.py` | 18 bestanden | Wissensupdate gegen einen echten lokalen HTTP-Server |
 | `test_controller.py` | 10 bestanden | Anwendungssteuerung von Ende zu Ende |
 | `test_portability.py` | 17 bestanden, 1 uebersprungen |
 | `test_checkpoints.py` | 5 bestanden | Checkpoints nach Masterprompt 44: beide Orte, Wiedereinstiegszeiger, Pruefsummen | Portabilitaet und Robustheit |
-| `test_gui_logic.py` | 10 bestanden | Oberflaechenlogik gegen ein Tkinter-Doppel |
-| `test_llm_providers.py` | 8 bestanden | Sprachmodellanbindung gegen einen echten lokalen Modelldienst |
+| `test_gui_logic.py` | 26 bestanden | Oberflaechenlogik gegen ein Tkinter-Doppel |
+| `test_llm_providers.py` | 14 bestanden | Sprachmodellanbindung gegen einen echten lokalen Modelldienst |
 | `test_sicherheit_freigaben.py` | 17 bestanden | Tresor, Freigaben, Protokoll, Connectoren, Pfadgrenzen |
 | `test_fachliche_faelle.py` | 48 bestanden | 22 fachliche Sachverhalte nach Masterprompt 47 |
 | `test_abnahme_kette.py` | 3 bestanden | Die vollstaendige Nutzungskette aus Masterprompt 49 |
-| `test_cli.py` | 12 bestanden | Kommandozeile: alle allgemeinen Schalter an allen Unterbefehlen |
+| `test_cli.py` | 16 bestanden | Kommandozeile: alle allgemeinen Schalter an allen Unterbefehlen |
 | `test_start.py` | 14 bestanden | Startfehler bleiben nicht stumm, ohne den Lauf anzuhalten |
 | `test_lizenzierung.py` | 22 bestanden | Lizenzierung und Kopierschutz, alle sieben Faelle aus § 96 |
 | `test_kundentrennung.py` | 15 bestanden | Kundentrennung, Datenexport, Loeschung, Sicherungsziel |
 | `test_softwareupdate.py` | 11 bestanden | Softwareupdates getrennt vom Wissensupdate |
-| `test_produktreife.py` | 14 bestanden | Telemetriefreiheit, Lizenzregister, SBOM, Reifegrad, Schluesselschutz |
+| `test_produktreife.py` | 15 bestanden | Telemetriefreiheit, Lizenzregister, SBOM, Reifegrad, Schluesselschutz |
+| `test_branding.py` | 19 bestanden | Marke PORTIVA: Pfade, Titel, Symbole, Ableitung der Varianten |
+| `test_betriebsmodi.py` | 14 bestanden | HYBRID, OFFLINE, ONLINE; Dauerhaftigkeit, Protokoll, Modellrouting |
+| `test_wissenszeitplan.py` | 19 bestanden | Faelligkeit, Pausieren im Offlinebetrieb, Ueberfaelligkeit |
+| `test_fragetyp.py` | 25 bestanden | Einstufung der Nachricht vor der Recherche |
+| `test_markdown.py` | 18 bestanden | Umwandlung der Auszeichnungen fuer Fenster und Konsole |
+| `test_antwortdarstellung.py` | 19 bestanden | Antwort und Rohtreffer getrennt, keine technischen Angaben |
+| `test_antwortqualitaet.py` | 14 bestanden | Die zehn Pruefaufgaben aus E6.25, Regressionsschutz, Fachfrage ohne Firmendaten |
+| `test_artefakte.py` | 20 bestanden | Acht Ausgabeformate, gegengeprueft mit fremden Lesebibliotheken |
+| `test_plugins.py` | 22 bestanden | Paket, Signatur, Berechtigungen, Kundentrennung |
+| `test_anleitung.py` | 4 bestanden | Die Anleitung nennt nur Befehle, die es wirklich gibt |
 
 Uebersprungen werden Tests, die das jeweilige Betriebssystem nicht
 zulaesst: das schreibgeschuetzte Verzeichnis (als `root` sind Dateirechte
@@ -300,6 +310,14 @@ Ehrlich und vollstaendig:
    der Connector meldet das korrekt.
 8. **PDF-Belege mit echtem Inhalt** - die Extraktion ist umgesetzt und der
    Fehlerfall geprueft, ein echtes PDF wurde nicht ausgewertet.
+9. **Erzeugte Office-Dateien in Microsoft Office** - die Dateien werden von
+   python-docx, openpyxl, python-pptx und pypdf wieder eingelesen; ob Word,
+   Excel und PowerPoint sie anzeigen, gehoert zur Abnahme (Punkt K).
+10. **Plugin-Isolation** - geprueft ist die Rechtepruefung der vermittelten
+    Schnittstelle. Eine Trennung auf Prozessebene gibt es nicht und wird
+    auch nicht behauptet (`PLUGIN_KONZEPT.md` 9.1).
+11. **Schrittweise Ausgabe mit einem echten GGUF-Modell** - geprueft gegen
+    einen echten HTTP-Ereignisstrom und ein Doppel des lokalen Modells.
 
 Fuer die Punkte 1 bis 6 fuehrt `docs/ABNAHME.md` Schritt fuer Schritt durch
 die Pruefung.

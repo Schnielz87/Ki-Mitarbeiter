@@ -18,6 +18,7 @@ neu erzeugen muss es nur, wer die Oberflaeche aendert.
 """
 from __future__ import annotations
 
+import datetime as _dt
 import json
 import sys
 from pathlib import Path
@@ -30,7 +31,17 @@ from docx.shared import Pt, RGBColor, Cm
 REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO / "src"))
 
+from pkc.config import DEFAULTS  # noqa: E402
 from pkc.memory.schema_keys import WELL_KNOWN_KEYS  # noqa: E402
+
+#: Zwei getrennte Angaben: die Fassung des Programms und die des Fachmoduls.
+#: Frueher stand hier die Fachmodulfassung unter der Ueberschrift
+#: "Programmfassung" - das war schlicht falsch.
+PRODUKTFASSUNG = DEFAULTS["product"]["version"]
+
+#: Marke und Profilname wie im Fenstertitel - damit die Anleitung dasselbe
+#: nennt, was der Benutzer vor sich sieht.
+from pkc.branding import MARKE  # noqa: E402
 
 profil = json.loads((REPO / "src/profiles/buchhalter/profile.json").read_text(encoding="utf-8"))
 
@@ -118,7 +129,7 @@ def tabelle_mit(kopf, zeilen, breiten=None):
 # ================================================================ Titelseite
 titel = doc.add_paragraph()
 titel.alignment = WD_ALIGN_PARAGRAPH.CENTER
-lauf = titel.add_run("Portabler KI-Buchhalter")
+lauf = titel.add_run(f"{MARKE} - {profil.get('short_name') or 'Buchhalter'}")
 lauf.bold = True
 lauf.font.size = Pt(30)
 lauf.font.color.rgb = AKZENT
@@ -132,7 +143,10 @@ lauf.font.color.rgb = GRAU
 doc.add_paragraph()
 info = doc.add_paragraph()
 info.alignment = WD_ALIGN_PARAGRAPH.CENTER
-lauf = info.add_run(f"Programmfassung {profil['version']}  ·  Stand 05.09.2026")
+lauf = info.add_run(
+    f"Programmfassung {PRODUKTFASSUNG}  ·  Fachmodul {profil['version']}"
+    f"  ·  Stand {_dt.date.today().strftime('%d.%m.%Y')}"
+)
 lauf.font.size = Pt(10)
 lauf.font.color.rgb = GRAU
 
@@ -1395,9 +1409,9 @@ doc.add_paragraph()
 schluss = doc.add_paragraph()
 schluss.alignment = WD_ALIGN_PARAGRAPH.CENTER
 lauf = schluss.add_run(
-    "Diese Anleitung beschreibt Programmfassung "
-    f"{profil['version']}. Aendert sich die Oberflaeche, aendert sich auch "
-    "dieses Dokument."
+    f"Diese Anleitung beschreibt Programmfassung {PRODUKTFASSUNG} mit dem "
+    f"Fachmodul {profil['name']} {profil['version']}. Aendert sich die "
+    "Oberflaeche, aendert sich auch dieses Dokument."
 )
 lauf.italic = True
 lauf.font.size = Pt(9)

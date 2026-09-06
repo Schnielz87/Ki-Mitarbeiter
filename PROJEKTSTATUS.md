@@ -3,18 +3,20 @@
 > **Diese Datei ist die massgebliche Quelle des Projektstands, nicht der Chat.**
 > Sie wird nach jedem abgeschlossenen Task aktualisiert (Masterprompt 44/45).
 
-Stand: 05.09.2026 · Branch `claude/portable-ki-buchhalter-xr1qlj` ·
-Version 0.1.0
+Stand: 06.09.2026 · Branch `claude/portable-ki-buchhalter-xr1qlj` ·
+Version 0.3.0
 
 ---
 
 ## 1. Kurzfassung
 
-Der portable KI-Mitarbeiter ist als **lauffaehige Anwendung** umgesetzt:
-Offline-Kern, hybrider Betrieb, persistentes Unternehmensgedaechtnis, lokale
+Der portable KI-Mitarbeiter - Produktname **PORTIVA** - ist als
+**lauffaehige Anwendung** umgesetzt: Offline-Kern, hybrider Betrieb mit
+waehlbarer Betriebsart, persistentes Unternehmensgedaechtnis, lokale
 Fachwissensbasis mit Quellenbelegen, Wissensupdate mit Ruecknahme,
-Geheimnistresor, Freigabepflicht, Connector-Rahmen, grafische Oberflaeche und
-Kommandozeile - abgesichert durch **219 automatische Tests**.
+Geheimnistresor, Freigabepflicht, Connector-Rahmen, Dateiausgabe in acht
+Formaten, Plugin-System, grafische Oberflaeche und Kommandozeile -
+abgesichert durch **425 automatische Tests**.
 
 **Noch nicht abgenommen** sind die Schritte, die zwingend Windows, eine
 echte grafische Oberflaeche, ein echtes Sprachmodell oder Zugriff auf die
@@ -69,10 +71,22 @@ Er lautet: **fertig zur Abnahme**. Der Weg dorthin steht in
 | 22 | Softwareupdates getrennt vom Wissensupdate | GETESTET | 11 Tests; fehlerhaftes Update setzt automatisch zurueck |
 | 23 | Produktversionierung, gefuehrte Einrichtung, zweites Sicherungsziel | GETESTET | Befehle `version`, `einrichten`, `sicherung --ziel` |
 | 24 | Commercial-Readiness-Gate | GETESTET | `reife`; COMMERCIAL READY wird nie automatisch vergeben |
+| 25 | Windows-Ablauf wieder gruen | GETESTET | alle Schritte des Bauablaufs bestanden |
+
+### Erweiterung: nachgereichte Anforderungen (Masterprompt Teil 4, E1 bis E6)
+
+| Task | Inhalt | Status | Nachweis |
+|---|---|---|---|
+| 26 | E1 Marke und Erscheinungsbild PORTIVA | GETESTET | 14 Tests; Logo, Symbole, Titel, eigener Schritt im Windows-Ablauf |
+| 27 | E2 Betriebsmodi und Wissenssynchronisierung | GETESTET | 14 Tests; Modus bleibt ueber Neustart, OFFLINE prueft das Netz nicht |
+| 28 | E3 Fachfragen ohne Unternehmensdaten | GETESTET | 3 Tests; Antwort mit Fundstellen bei leerem Gedaechtnis |
+| 29 | E6 Qualitative Antworten und Darstellung | GETESTET | 14 Tests der zehn Pruefaufgaben; Markdown, Abbruch, schrittweise Ausgabe |
+| 30 | E4 Datei- und Artefakterzeugung | GETESTET | 20 Tests; acht Formate, von fremden Lesebibliotheken gegengeprueft |
+| 31 | E5 Plugin- und Erweiterungssystem | TEILWEISE | 22 Tests; Isolation, Katalog und Lizenzierung offen (`PLUGIN_KONZEPT.md`) |
 
 ## 4. Was tatsaechlich geprueft ist
 
-**219 Tests bestanden, 1 uebersprungen** (`python -m pytest tests -q`).
+**425 Tests bestanden, 1 uebersprungen** (`python -m pytest tests -q`).
 Auf einem echten Windows-Rechner sind alle 13 Schritte des Bauablaufs
 bestanden - zuletzt
 https://github.com/Schnielz87/Ki-Mitarbeiter/actions/runs/33973618581
@@ -101,7 +115,10 @@ und mit stark eingeschraenktem Netzzugang** statt.
 | Lokales Sprachmodell | Modellquellen waren gesperrt. Die Anbindung ist gegen einen echten lokalen Modelldienst geprueft, **nicht mit einem echten GGUF-Modell**. | C |
 | Amtliche Quellen | `gesetze-im-internet.de`, `bundesfinanzministerium.de` und weitere waren durch die Netzrichtlinie gesperrt (403 des Proxys). Die Abrufkette ist gegen einen lokalen Server vollstaendig geprueft, **nicht gegen die echten Quellen**. Alle Registereintraege tragen `verified: false`. | G |
 | Zweiter PC, echter Laufwerkswechsel | Der **Laufwerkswechsel ist auf echtem Windows geprueft** (`subst`, Zielpfad mit Leerzeichen) - das Unternehmenswissen war dort vorhanden. Ein physisch zweiter Rechner und ein echter USB-Datentraeger standen nicht zur Verfuegung. | F |
-| Fachliche Qualitaet der Antworten | Haengt vom eingesetzten Sprachmodell ab. Geprueft ist, dass das **richtige Material** gefunden wird. | D |
+| Fachliche Qualitaet der Antworten | Haengt vom eingesetzten Sprachmodell ab. Geprueft ist, dass das **richtige Material** gefunden wird **und dass es das Modell erreicht** (ein Testdoppel zeichnet den Kontext auf). | D |
+| Erzeugte Office-Dateien | Word-, Excel-, PowerPoint- und PDF-Dateien werden von den ueblichen Lesebibliotheken (python-docx, openpyxl, python-pptx, pypdf) wieder eingelesen. **Ob Microsoft Office sie anzeigt**, laesst sich nur auf einem Windows-Rechner feststellen. | K |
+| Plugin-Isolation | Ein Plugin laeuft im selben Prozess mit den Rechten der Anwendung. Die Rechtepruefung ist eine vermittelte Schnittstelle, **kein Sandkasten**. Fuer Plugins Dritter ist der Stand nicht freigabereif. | `PLUGIN_KONZEPT.md` 9.1 |
+| Schrittweise Ausgabe mit echtem Modell | Gegen einen echten HTTP-Ereignisstrom und ein Doppel des lokalen Modells geprueft, **nicht mit einem echten GGUF-Modell**. | C |
 
 ## 5a. Stand der kommerziellen Anforderungen
 
@@ -121,6 +138,8 @@ vergeben. Die wichtigsten offenen Punkte:
 3. Externe Sicherheitspruefung und Datenschutzkonzept (§ 70, 71)
 4. Pruefschluessel des Herausgebers und Code-Signing (§ 86, 92)
 5. Klaerung der Weitergabe des Sprachmodells (§ 63)
+6. Plugin-Isolation, Plugin-Katalog und Plugin-Lizenzierung (E5.108, 116,
+   119) - fuer Plugins Dritter zwingend, fuer mitgelieferte Plugins nicht
 
 ## 6. Naechste Schritte
 
@@ -134,6 +153,9 @@ vergeben. Die wichtigsten offenen Punkte:
    Programmaenderung.
 3. **Ergebnis eintragen** - die tatsaechlich beobachteten Ergebnisse in
    `TESTBERICHT.md` und hier vermerken.
+4. **Erzeugte Dateien in Office oeffnen** - je eine XLSX-, DOCX-, PPTX- und
+   PDF-Datei aus der Anwendung heraus erzeugen und in Word, Excel und
+   PowerPoint oeffnen (Abnahmepunkt K).
 
 Erst danach darf der Status lauten: **PORTABLER BUCHHALTER MVP FERTIG**.
 

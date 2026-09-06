@@ -3,6 +3,72 @@
 Format angelehnt an „Keep a Changelog". Versionierung nach Bedeutung, nicht
 nach Zeitplan.
 
+## [0.3.0] - 2026-09-06
+
+Umsetzung der nachgereichten Erweiterungen E1 bis E6 (Masterprompt Teil 4).
+
+### Antwortqualitaet (E6)
+
+* Jede Nachricht wird zuerst eingestuft: Konversation, kurze Wissensfrage,
+  Fachfrage oder geschilderter Einzelfall. Danach richtet sich, ob
+  recherchiert wird und wie ausfuehrlich geantwortet wird - auf "Guten
+  Morgen" folgt keine Trefferliste aus dem Umsatzsteuerrecht
+* Die gefundenen Fundstellen erreichen nachweislich das Modell; ein
+  Testdoppel zeichnet auf, was es tatsaechlich bekommen hat
+* Antwort und Quellen sind getrennt. Rohe Treffer erscheinen nur noch auf
+  ausdruecklichen Abruf (Befehl `recherche`)
+* Markdown wird dargestellt statt roh angezeigt - in der Oberflaeche mit
+  Stilen, in der Konsole ohne Auszeichnungszeichen
+* Warnung, wenn zu einer Fachaussage nur Sekundaerquellen vorliegen
+* Keine Modellpfade, Bewertungen oder internen Kennungen mehr in der Antwort
+* Antwort erscheint waehrend der Erzeugung Stueck fuer Stueck; ein
+  abgerissener Ereignisstrom gilt als Ausfall und nicht als fertige Antwort
+* "Generierung stoppen" bricht ab, ohne einen halben Satz stehenzulassen
+* Gespraechsdarstellung: BENUTZER und PORTIVA - <Profil> als Sprecher,
+  Quellen und Wissensstand ruhiger darunter
+* Modellrouting nach Betriebsart: OFFLINE ausschliesslich lokal, ONLINE darf
+  ein freigegebenes Online-Modell bevorzugen
+
+### Dateiausgabe (E4)
+
+* Acht Formate: XLSX, CSV, DOCX, PPTX, PDF, TXT, Markdown, JSON - erzeugt
+  mit der Standardbibliothek, ohne installiertes Office und ohne Internet
+* Artefakt-Engine mit Dateiname, Ablage, Versionierung, Metadaten,
+  Ueberschreibschutz und Fehlerbehandlung
+* Erzeugte Dateien liegen im Kundenbereich (`workspace/artefakte`)
+* Neue Formate koennen ueber Dateihandler ergaenzt werden
+
+### Plugins (E5)
+
+* Paketformat `.kimplug` mit Manifest, Pruefsummen aller Dateien und
+  Ed25519-Signatur des Herausgebers
+* Zwoelf einzeln zu erteilende Berechtigungen; ein Plugin erhaelt nur einen
+  vermittelten Kontext, nicht die Anwendung
+* Installieren erst nach Anzeige der Berechtigungen und Bestaetigung;
+  Aktivieren ist ein zweiter Schritt
+* Plugindaten liegen im Kundenbereich; ein fehlerhaftes Plugin schaltet sich
+  ab, ohne den Start zu verhindern
+* Beispielplugin `examples/plugin_html`
+* **Nicht** enthalten: Trennung auf Prozessebene, Katalog,
+  Plugin-Lizenzierung - siehe `PLUGIN_KONZEPT.md`
+
+### Marke und Betrieb (E1, E2)
+
+* PORTIVA als feste Marke, Profilname dynamisch: Logo, Fenstersymbol,
+  Taskleiste, EXE-Symbol, Titelzeile
+* Betriebsart HYBRID, OFFLINE, ONLINE frei waehlbar und dauerhaft;
+  Betriebsart und Internetstatus sind streng getrennt
+* Wissenssynchronisierung mit Zeitplan, Faelligkeitsanzeige und Ruecknahme
+
+### Unterlagen
+
+* Masterprompt um Teil 4 (E1 bis E6) ergaenzt - der Auftrag ist ohne den
+  Chat vollstaendig
+* Anforderungsnachweis um alle Abschnitte der Erweiterungen ergaenzt,
+  einschliesslich der nicht erfuellten
+* Bedienungsanleitung auf 18 Kapitel erweitert
+* `PLUGIN_KONZEPT.md` neu
+
 ## [0.2.0] - 2026-09-05
 
 Erweiterung um die kommerzielle Produktperspektive und die Lizenzierung

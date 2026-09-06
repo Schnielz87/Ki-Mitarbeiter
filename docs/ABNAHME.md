@@ -260,6 +260,47 @@ Hintergrunddienst.
 
 ---
 
+## K. Erzeugte Dateien in Office oeffnen (Erweiterung E4)
+
+Die Anwendung erzeugt Word-, Excel-, PowerPoint- und PDF-Dateien ohne
+installiertes Office. Dass sie **gueltig** sind, ist automatisch geprueft -
+dass Microsoft Office sie **anzeigt**, laesst sich nur hier feststellen.
+
+Eine Frage stellen, dann fuer jedes Format speichern:
+
+```
+PORTABLE_BUCHHALTER_KONSOLE.exe datei antwort --format xlsx
+PORTABLE_BUCHHALTER_KONSOLE.exe datei antwort --format docx
+PORTABLE_BUCHHALTER_KONSOLE.exe datei antwort --format pptx
+PORTABLE_BUCHHALTER_KONSOLE.exe datei antwort --format pdf
+```
+
+Die Dateien liegen in `workspace\artefakte`. Jede einmal per Doppelklick
+oeffnen.
+
+- [ ] K1 Excel oeffnet die XLSX-Datei ohne Reparaturhinweis
+- [ ] K2 Word oeffnet die DOCX-Datei; Ueberschriften und Tabelle sind da
+- [ ] K3 PowerPoint oeffnet die PPTX-Datei; je Abschnitt eine Folie
+- [ ] K4 Der PDF-Betrachter zeigt den Bericht, Umlaute stimmen
+- [ ] K5 Zweimal speichern erzeugt `..._v2`, die erste Datei bleibt unveraendert
+
+---
+
+## L. Plugin installieren (Erweiterung E5)
+
+```
+PORTABLE_BUCHHALTER_KONSOLE.exe plugin pruefen examples\plugin_html
+PORTABLE_BUCHHALTER_KONSOLE.exe plugin installieren <Paket> --bestaetigen --aktivieren
+PORTABLE_BUCHHALTER_KONSOLE.exe datei formate
+```
+
+- [ ] L1 Vor der Installation werden die verlangten Berechtigungen angezeigt
+- [ ] L2 Ohne `--bestaetigen` wird nichts installiert
+- [ ] L3 Nach dem Aktivieren steht `html` in der Formatliste
+- [ ] L4 `plugin entfernen` entfernt das Plugin, die Daten bleiben
+
+---
+
 ## Ergebnis
 
 Erst wenn **alle** Haken gesetzt sind, gilt:
