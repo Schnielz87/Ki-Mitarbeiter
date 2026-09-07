@@ -219,3 +219,50 @@ def test_anleitung_verweist_fuer_die_wartezeit_auf_die_messung():
     assert "Wartezeit messen" in abschnitt, (
         "Der Abschnitt nennt keinen Weg, die eigene Wartezeit zu messen."
     )
+
+
+def test_die_anleitung_nennt_dieselben_bereiche_wie_das_fenster(portable_root):
+    """Anleitung und Oberflaeche duerfen nicht auseinanderlaufen.
+
+    Eine Anleitung, die sechs Registerkarten beschreibt, waehrend das
+    Fenster zehn Bereiche hat, ist schlimmer als keine: sie schickt den
+    Leser an Stellen, die es nicht gibt.
+    """
+    import sys
+
+    import tk_double
+    from test_controller import make_controller
+
+    tk_double.install()
+    for modul in [m for m in sys.modules if m.startswith("ui.")]:
+        del sys.modules[modul]
+    from ui import tk_app
+
+    controller = make_controller(portable_root)
+    bericht = controller.bootstrap()
+    try:
+        window = tk_app.MainWindow(controller, bericht)
+        titel = [window.schale.bereiche[k].titel for k in window.schale.reihenfolge]
+    finally:
+        controller.shutdown()
+
+    assert len(titel) == 10, f"das Fenster hat {len(titel)} Bereiche"
+    for name in titel:
+        # Der Anleitungstext nennt den Bereich - notfalls ohne Zusatz
+        # ("Aufgaben & Automationen" steht dort als "Aufgaben").
+        kern = name.split(" & ")[0].split(" (")[0]
+        assert kern in QUELLE, f"Die Anleitung nennt den Bereich nicht: {name}"
+
+
+def test_die_anleitung_nennt_die_tastenkuerzel_die_es_gibt():
+    """Auftrag Abschnitt 33 - und die Belegung hat sich geaendert."""
+    for taste in ("Umschalt + Eingabe", "Strg + N", "Escape"):
+        assert taste in QUELLE, f"{taste} fehlt in der Anleitung"
+    # Die alte Belegung darf nicht mehr als Sendetaste beschrieben werden.
+    assert "Strg+Eingabe sendet" not in QUELLE
+
+
+def test_die_anleitung_erklaert_das_begruessungsbild():
+    assert "--kein-startbild" in QUELLE, (
+        "der Schalter zum Abschalten muss dokumentiert sein")
+    assert "drei Sekunden" in QUELLE

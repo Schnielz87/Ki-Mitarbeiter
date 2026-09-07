@@ -171,7 +171,7 @@ for nummer, kapitel in enumerate([
     "In fuenf Minuten startklar",
     "Das Sprachmodell einrichten - damit die KI antwortet",
     "Der Startbildschirm - was er Ihnen sagt",
-    "Der Bildschirm: sechs Registerkarten",
+    "Der Bildschirm: zehn Bereiche",
     "Fachfragen ohne Unternehmensdaten - geht sofort",
     "Ihr Unternehmen einrichten - empfohlen, nicht Pflicht",
     "Fragen stellen",
@@ -740,36 +740,79 @@ absatz("Ein echter Fehler wuerde die Zeile mit FEHLER kennzeichnen und die "
        "Schaltflaeche BUCHHALTER STARTEN gesperrt lassen.")
 
 # ================================================================ 3
-doc.add_heading("4.  Der Bildschirm: sechs Registerkarten", level=1)
-absatz("Nach dem Start sehen Sie oben eine Zeile mit sechs Registerkarten. "
-       "Alles, was Sie tun, geschieht in einer davon.")
+doc.add_heading("4.  Der Bildschirm: zehn Bereiche", level=1)
 
-tabelle_mit(
-    ["Registerkarte", "Wofuer", "Was Sie dort eingeben"],
-    [
-        ["Unterhaltung", "Fragen stellen und Antworten lesen",
-         "Ihre Frage in das grosse Eingabefeld unten links"],
-        ["Unternehmenswissen", "Angaben zu Ihrem Betrieb dauerhaft speichern",
-         "Suchbegriffe oben; Angaben ueber \"Neu / Aendern\" oder \"Onboarding fortsetzen\""],
-        ["Belege", "Eigene Dokumente einlesen",
-         "Keine Eingabe - Sie waehlen ueber \"Beleg hinzufuegen\" eine Datei aus"],
-        ["Sprachmodell", "Das Modell einmalig einrichten und ausprobieren",
-         "Auswahlliste mit dem Modell; sonst nur Schaltflaechen"],
-        ["Wissen aktualisieren", "Amtliche Quellen nachladen (braucht Internet)",
-         "Keine Eingabe - nur Schaltflaechen"],
-        ["Einstellungen und Status", "Verhalten einstellen, Zustand pruefen",
-         "Auswahllisten und Haekchen"],
-    ],
-    breiten=[3.6, 5.4, 7.0],
+kasten(
+    "Beim Start",
+    "Zuerst erscheint fuer drei Sekunden das PORTIVA-Logo. In dieser Zeit "
+    "faehrt die Anwendung im Hintergrund hoch und laedt das Sprachmodell "
+    "vor - die drei Sekunden kosten Sie also nichts, sie ueberbruecken "
+    "eine Wartezeit, die es ohnehin gibt.\n\n"
+    "Wer es eilig hat, klickt das Bild weg oder drueckt eine Taste. Wer es "
+    "gar nicht sehen will, startet mit dem Zusatz --kein-startbild.",
 )
 
-absatz("Ganz oben rechts stehen zwei Angaben, die Sie im Blick behalten "
-       "sollten:")
-punkt("Betriebsart - OFFLINE oder HYBRID. HYBRID heisst nur, dass Internet "
-      "verfuegbar ist; gearbeitet wird trotzdem lokal.")
+absatz("Danach sehen Sie links eine dauerhafte Navigation mit zehn "
+       "Bereichen. Der Bereich, in dem Sie gerade sind, ist hervorgehoben. "
+       "Ueber \"Leiste einklappen\" wird die Navigation schmal - die "
+       "Bereiche bleiben dabei anklickbar.")
+
+tabelle_mit(
+    ["Bereich", "Wofuer", "Was Sie dort tun"],
+    [
+        ["1. Unterhaltung", "Fragen stellen und Antworten lesen",
+         "Frage unten eintippen, Eingabetaste sendet"],
+        ["2. Unternehmenswissen", "Angaben zu Ihrem Betrieb dauerhaft speichern",
+         "Kachel anklicken filtert; \"Neu / Aendern\" legt an"],
+        ["3. Belege & Dokumente", "Eigene Dokumente einlesen und analysieren",
+         "Datei auswaehlen oder hereinziehen"],
+        ["4. Arbeitsergebnisse", "Erzeugte Dateien finden und weitergeben",
+         "Oeffnen, Exportieren, Umbenennen, Loeschen"],
+        ["5. Wissen & Quellen", "Wissensstand und amtliche Quellen",
+         "\"Jetzt aktualisieren\" (braucht Internet)"],
+        ["6. Vorlagen", "Wiederverwendbare Word-, Excel- und PDF-Vorlagen",
+         "Noch nicht verfuegbar - der Bereich sagt das auch"],
+        ["7. Aufgaben", "Geplante und wiederkehrende Arbeiten",
+         "Noch nicht verfuegbar - der Bereich sagt das auch"],
+        ["8. Plugins", "Zusatzfaehigkeiten installieren und verwalten",
+         "Aus Datei installieren, aktivieren, Rechte pruefen"],
+        ["9. Verbundene Dienste", "Externe Systeme anbinden",
+         "Verbindung testen, trennen"],
+        ["10. Einstellungen & Status", "Verhalten einstellen, Zustand pruefen",
+         "Gruppen links, Systemstatus rechts"],
+    ],
+    breiten=[3.4, 5.4, 7.2],
+)
+
+absatz("Zwei der zehn Bereiche gibt es noch nicht: Vorlagen und Aufgaben. "
+       "Sie stehen trotzdem in der Liste und erklaeren, was sie koennen "
+       "werden und was heute stattdessen hilft. Ein Knopf, der nichts tut, "
+       "steht dort nicht - das waere schlimmer als ein fehlender Bereich.")
+
+absatz("Oben rechts stehen drei Angaben, die Sie im Blick behalten sollten:")
 punkt("Wissensstand - das Datum, auf dem die gespeicherten Fachquellen stehen.")
-absatz("Ganz unten laeuft eine Statuszeile mit, die auch den Pfad Ihres "
-       "Datentraegers nennt.")
+punkt("Betriebsmodus - OFFLINE, HYBRID oder ONLINE. Daneben laesst er sich "
+      "sofort umstellen.")
+punkt("Internet - ob eine Verbindung besteht. Das ist etwas anderes als der "
+      "Betriebsmodus: \"OFFLINE gewaehlt, Internet verfuegbar\" ist ein "
+      "gueltiger Zustand.")
+absatz("Unten links in der Navigation stehen dauerhaft Ihr Profil und die "
+       "Lage. Ganz unten laeuft eine Statuszeile mit, die auch den Pfad "
+       "Ihres Datentraegers nennt - und waehrend einer Frage, worauf gerade "
+       "gewartet wird und seit wann.")
+
+doc.add_heading("Tastenkuerzel", level=2)
+tabelle_mit(
+    ["Taste", "Wirkung"],
+    [
+        ["Eingabe", "Nachricht senden"],
+        ["Umschalt + Eingabe", "Zeilenumbruch, ohne zu senden"],
+        ["Strg + N", "Neue Unterhaltung beginnen"],
+        ["Escape", "Laufende Antwort abbrechen"],
+        ["Doppelklick", "In Listen: Eintrag oeffnen"],
+    ],
+    breiten=[4.0, 11.0],
+)
 
 # ================================================================ 3
 doc.add_heading("5.  Fachfragen ohne Unternehmensdaten - geht sofort", level=1)
