@@ -433,10 +433,14 @@ class MainWindow:
         self._build_documents_tab()
         self._build_results_tab()
         self._build_update_tab()
-        self._build_model_tab()
+        self._build_templates_tab()
+        self._build_tasks_tab()
         self._build_plugins_tab()
         self._build_services_tab()
+        # Die Einstellungen zuerst: sie legen die Gruppe an, in die der
+        # Modellbereich einzieht.
         self._build_settings_tab()
+        self._build_model_tab()
 
     def _sichtbare_bereiche(self) -> list[str] | None:
         """Welche Bereiche dieses Profil zeigt.
@@ -946,15 +950,10 @@ class MainWindow:
         Wer die Anwendung per Doppelklick oeffnet, hat keine Konsole offen -
         und liest die Meldung als "geht nicht", nicht als "fehlt noch".
         """
-        # Vorlaeufig ein eigener Bereich. Nach dem Zielentwurf gehoert er
-        # unter "Einstellungen & Status" in die Gruppe "KI & Modelle"; das
-        # geschieht in Schritt 6, wenn die Einstellungen ihre acht Gruppen
-        # bekommen. Bis dahin bleibt er sichtbar - eine Funktion
-        # zwischendurch unerreichbar zu machen waere der schlechtere Weg.
-        frame = self.schale.bereich_anlegen(
-            "sprachmodell", "Sprachmodell",
-            "Das lokale Modell einrichten, ausprobieren und messen.",
-            "\u25d1")
+        # Kein eigener Hauptbereich mehr, sondern die Gruppe "KI & Modelle"
+        # unter "Einstellungen & Status" - so sieht es der Zielentwurf vor,
+        # und so sind es genau zehn Bereiche in der Navigation.
+        frame = self.gruppe_modelle
 
         ttk.Label(
             frame,
@@ -1507,6 +1506,91 @@ class MainWindow:
 
         BackgroundTask(self.root).run(self.controller.modell_probe, done)
 
+    # -- Bereiche in Vorbereitung ---------------------------------------
+    def _build_pending_tab(self, kennung: str, titel: str, untertitel: str,
+                           zeichen: str, zweck: list[str], heute: str,
+                           weg=None) -> None:
+        """Ein Bereich, den es noch nicht gibt - ehrlich gekennzeichnet.
+
+        Auftrag Abschnitt 34 laesst genau zwei Moeglichkeiten: eine Aktion
+        funktioniert, oder sie ist eindeutig als nicht verfuegbar
+        gekennzeichnet. Hier gilt die zweite. Es gibt deshalb **keinen**
+        Knopf, der nichts tut - sondern eine Erklaerung, was der Bereich
+        koennen wird, und den Weg, der heute stattdessen zum Ziel fuehrt.
+
+        Den Bereich ganz wegzulassen waere die schlechtere Loesung: der
+        Zielentwurf nennt zehn Bereiche, und wer nur acht sieht, sucht die
+        beiden anderen.
+        """
+        frame = self.schale.bereich_anlegen(kennung, titel, untertitel, zeichen)
+
+        karte = tk.Frame(frame, bg="#ffffff", highlightbackground="#dfe5ec",
+                         highlightthickness=1)
+        karte.pack(fill="x", pady=(0, PAD))
+        innen = tk.Frame(karte, bg="#ffffff")
+        innen.pack(fill="x", padx=20, pady=18)
+
+        tk.Label(innen, text="Dieser Bereich ist noch nicht verfuegbar.",
+                 bg="#ffffff", fg="#9a6512", anchor="w",
+                 font=("Segoe UI", 11, "bold")).pack(anchor="w")
+        tk.Label(innen, bg="#ffffff", fg="#5b6b80", anchor="w", justify="left",
+                 wraplength=760, font=("Segoe UI", 9),
+                 text="Er ist geplant und beauftragt, aber noch nicht gebaut. "
+                      "Damit hier nichts steht, was nicht funktioniert, gibt "
+                      "es vorerst keine Schaltflaechen.").pack(anchor="w",
+                                                               pady=(6, 0))
+
+        tk.Label(innen, text="Was der Bereich koennen wird:", bg="#ffffff",
+                 fg="#14243c", anchor="w",
+                 font=("Segoe UI", 9, "bold")).pack(anchor="w", pady=(16, 4))
+        for punkt in zweck:
+            tk.Label(innen, text=f"   \u2022  {punkt}", bg="#ffffff",
+                     fg="#42556e", anchor="w", justify="left", wraplength=740,
+                     font=("Segoe UI", 9)).pack(anchor="w", pady=1)
+
+        tk.Label(innen, text="Was heute schon geht:", bg="#ffffff",
+                 fg="#14243c", anchor="w",
+                 font=("Segoe UI", 9, "bold")).pack(anchor="w", pady=(16, 4))
+        tk.Label(innen, text=heute, bg="#ffffff", fg="#42556e", anchor="w",
+                 justify="left", wraplength=740,
+                 font=("Segoe UI", 9)).pack(anchor="w")
+
+        if weg is not None:
+            kennung_ziel, beschriftung = weg
+            ttk.Button(innen, text=beschriftung,
+                       command=lambda k=kennung_ziel: self.schale.zeigen(k)
+                       ).pack(anchor="w", pady=(14, 0))
+
+    def _build_templates_tab(self) -> None:
+        self._build_pending_tab(
+            "vorlagen", "Vorlagen",
+            "Wiederverwendbare Word-, Excel-, PowerPoint- und Fachvorlagen.",
+            "\u25a7",
+            ["Vorlagen durchsuchen und nach Kategorien ordnen",
+             "Eine Vorlage mit Unternehmens- und Profildaten fuellen lassen",
+             "Vorschau vor dem Erzeugen",
+             "Eigene Unternehmensvorlagen aufnehmen"],
+            "PORTIVA erzeugt Dateien bereits in neun Formaten - aus einer "
+            "Antwort heraus ueber \u201eAntwort speichern\u201c in der "
+            "Unterhaltung. Was fehlt, ist die Verwaltung wiederverwendbarer "
+            "Vorlagen.",
+            weg=("arbeitsergebnisse", "Zu den Arbeitsergebnissen"))
+
+    def _build_tasks_tab(self) -> None:
+        self._build_pending_tab(
+            "aufgaben", "Aufgaben & Automationen",
+            "Geplante Pruefungen, wiederkehrende Arbeiten und Freigaben im "
+            "Blick behalten.", "\u25f7",
+            ["Aufgaben fuer heute, geplant und wiederkehrend",
+             "Zeitpunkt, Ausloeser, Profil und Aktion festlegen",
+             "Aktivieren, pausieren, sofort ausfuehren",
+             "Letzte und naechste Ausfuehrung mit Ergebnis"],
+            "Die Wissensaktualisierung hat bereits einen Zeitplan mit "
+            "Faelligkeit und Intervall - zu finden unter "
+            "\u201eWissen & Quellen\u201c. Ein allgemeiner Aufgabenplaner "
+            "fehlt noch.",
+            weg=("wissen_quellen", "Zu Wissen & Quellen"))
+
     # -- Bereich: Plugins ----------------------------------------------
     def _build_plugins_tab(self) -> None:
         """Faehigkeiten installieren, Berechtigungen pruefen, sicher verwalten.
@@ -1786,8 +1870,18 @@ class MainWindow:
             "Betriebsmodus, Modelle, Speicher, Sicherheit und Systemstatus.",
             "\u2699")
 
-        left = ttk.Frame(frame)
-        left.pack(side="left", fill="both", expand=True)
+        # Gruppen statt einer langen Spalte (Auftrag Abschnitt 30). Das
+        # Sprachmodell zieht hier ein - es ist kein eigener Hauptbereich,
+        # sondern eine Einstellung. Damit sind es genau die zehn Bereiche
+        # des Zielentwurfs.
+        self.einstellungsgruppen = ttk.Notebook(frame)
+        self.einstellungsgruppen.pack(side="left", fill="both", expand=True)
+
+        left = ttk.Frame(self.einstellungsgruppen)
+        self.einstellungsgruppen.add(left, text="Allgemein")
+
+        self.gruppe_modelle = ttk.Frame(self.einstellungsgruppen)
+        self.einstellungsgruppen.add(self.gruppe_modelle, text="KI & Modelle")
 
         ttk.Label(left, text="Einstellungen", font=("Segoe UI", 11, "bold")).pack(anchor="w")
         self.setting_vars: dict[str, tk.Variable] = {}
@@ -1858,16 +1952,97 @@ class MainWindow:
             anchor="w", pady=PAD
         )
 
-        right = ttk.Frame(frame)
+        # -- Systemstatus als Ampelliste --------------------------------
+        right = tk.Frame(frame, bg="#ffffff", highlightbackground="#dfe5ec",
+                         highlightthickness=1)
         right.pack(side="right", fill="both", expand=True, padx=(PAD * 2, 0))
-        ttk.Label(right, text="Status", font=("Segoe UI", 11, "bold")).pack(anchor="w")
+        innen = tk.Frame(right, bg="#ffffff")
+        innen.pack(fill="both", expand=True, padx=18, pady=16)
+        tk.Label(innen, text="Systemstatus", bg="#ffffff", fg="#14243c",
+                 font=("Segoe UI", 12, "bold"), anchor="w").pack(fill="x")
+        tk.Label(innen, text="Aktueller PORTIVA-Zustand", bg="#ffffff",
+                 fg="#5b6b80", font=("Segoe UI", 8), anchor="w").pack(fill="x")
+
+        self.statusliste = tk.Frame(innen, bg="#ffffff")
+        self.statusliste.pack(fill="x", pady=(12, 0))
+        self._statuszeilen: dict[str, tuple] = {}
+
+        ttk.Button(innen, text="Status aktualisieren",
+                   command=self._refresh_status).pack(anchor="w", pady=(14, 0))
+
+        # Der vollstaendige Zustand als Text bleibt erhalten - er ist das,
+        # was bei einer Stoerung kopiert und weitergegeben wird. Nur steht
+        # er jetzt darunter statt an erster Stelle.
+        ttk.Label(innen, text="Vollstaendiger Zustand zum Kopieren:",
+                  foreground="#5b6b80").pack(anchor="w", pady=(14, 2))
         self.status_text = scrolledtext.ScrolledText(
-            right, wrap="word", font=FONT_MONO, height=26, state="disabled"
-        )
+            innen, wrap="word", font=FONT_MONO, height=12, state="disabled")
         self.status_text.pack(fill="both", expand=True)
-        ttk.Button(right, text="Status aktualisieren", command=self._refresh_status).pack(
-            anchor="w", pady=PAD
-        )
+
+    #: Wie ein Statuswert eingefaerbt wird. Alles, was nicht hier steht,
+    #: gilt als neutral - lieber keine Farbe als eine falsche.
+    STATUSFARBEN = {
+        "gut": ("#e6f4ec", "#1c7a45"),
+        "warnung": ("#fdf3e3", "#9a6512"),
+        "fehler": ("#fdecec", "#a32626"),
+        "neutral": ("#eef2f7", "#42556e"),
+    }
+
+    def _statuszeile(self, name: str, wert: str, art: str) -> None:
+        """Eine Zeile der Ampelliste - beim ersten Mal anlegen, danach nur
+        noch aendern. Sonst waechst die Liste bei jeder Aktualisierung."""
+        grund, schrift = self.STATUSFARBEN.get(art, self.STATUSFARBEN["neutral"])
+        if name in self._statuszeilen:
+            _, wertlabel = self._statuszeilen[name]
+            wertlabel.configure(text=wert, bg=grund, fg=schrift)
+            return
+        zeile = tk.Frame(self.statusliste, bg="#ffffff")
+        zeile.pack(fill="x", pady=3)
+        namelabel = tk.Label(zeile, text=name, bg="#ffffff", fg="#14243c",
+                             anchor="w", font=("Segoe UI", 9, "bold"))
+        namelabel.pack(side="left")
+        wertlabel = tk.Label(zeile, text=wert, bg=grund, fg=schrift,
+                             font=("Segoe UI", 9, "bold"), padx=10, pady=3)
+        wertlabel.pack(side="right")
+        self._statuszeilen[name] = (namelabel, wertlabel)
+
+    def _refresh_statusliste(self, status: dict) -> None:
+        """Fuellt die Ampelliste aus dem Zustandsbericht.
+
+        Die Bewertung ist bewusst zurueckhaltend: nur was eindeutig gut
+        oder eindeutig fehlerhaft ist, bekommt Farbe. Eine gruene Ampel,
+        die nichts bedeutet, ist schlimmer als gar keine.
+        """
+        if not hasattr(self, "statusliste"):
+            return
+        modell = status.get("lokales_modell") or {}
+        modell_ok = bool(modell.get("verfuegbar") if isinstance(modell, dict)
+                         else modell)
+        wissen = status.get("wissensstand")
+        plugins = status.get("plugins") or {}
+        lizenz = str(status.get("lizenz", {}).get("status", "")
+                     if isinstance(status.get("lizenz"), dict)
+                     else status.get("lizenz", ""))
+
+        self._statuszeile("PORTIVA Core", "OK", "gut")
+        self._statuszeile(
+            "Lokales Modell",
+            "verfuegbar" if modell_ok else "nicht eingerichtet",
+            "gut" if modell_ok else "warnung")
+        self._statuszeile("Wissensindex", str(wissen)[:10] if wissen else "unbekannt",
+                          "gut" if wissen else "warnung")
+        self._statuszeile("Unternehmensgedaechtnis",
+                          f"{status.get('gedaechtnis_eintraege', 0)} Eintraege",
+                          "neutral")
+        self._statuszeile("Arbeitsergebnisse",
+                          f"{len(self.controller.artefakt_liste(limit=999))} Dateien",
+                          "neutral")
+        anzahl_plugins = plugins.get("aktiv", 0) if isinstance(plugins, dict) \
+            else len(plugins or [])
+        self._statuszeile("Plugins", f"{anzahl_plugins} aktiv", "neutral")
+        self._statuszeile("Lizenz", lizenz or "keine Angabe",
+                          "gut" if lizenz.lower() in ("gueltig", "valid", "ok")
+                          else "neutral")
 
     def _build_statusbar(self) -> None:
         self.statusbar = ttk.Label(self.root, text="", relief="sunken", anchor="w")
@@ -2361,6 +2536,7 @@ class MainWindow:
         import json
 
         status = self.controller.status()
+        self._refresh_statusliste(status)
         self.status_text.configure(state="normal")
         self.status_text.delete("1.0", "end")
         self.status_text.insert("1.0", json.dumps(status, indent=2, ensure_ascii=False))

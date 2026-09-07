@@ -255,3 +255,106 @@ def test_trennen_entfernt_das_geheimnis(fenster):
     dialoge.answers = [True]
     window._dienst_trennen()
     assert controller.vault.get_quiet("connector.datev") is None
+
+
+# ------------------------------------------------- Zielentwurf gesamt
+def test_die_navigation_zeigt_genau_die_zehn_bereiche(fenster):
+    """Der Zielentwurf nennt zehn Hauptbereiche in fester Reihenfolge.
+
+    Elf waeren einer zu viel, neun einer zu wenig - und die Reihenfolge
+    ist Teil der Vorgabe, nicht Geschmackssache.
+    """
+    window, _, _ = fenster
+    assert window.schale.reihenfolge == [
+        "unterhaltung", "unternehmenswissen", "belege", "arbeitsergebnisse",
+        "wissen_quellen", "vorlagen", "aufgaben", "plugins", "dienste",
+        "einstellungen",
+    ]
+
+
+def test_das_sprachmodell_ist_kein_eigener_bereich_mehr(fenster):
+    """Es ist eine Einstellung, kein Hauptbereich - und muss trotzdem
+    vollstaendig erreichbar bleiben."""
+    window, _, _ = fenster
+    assert "sprachmodell" not in window.schale.bereiche
+    # Die Bedienelemente muss es weiterhin geben, sonst waere die Funktion
+    # beim Umbau verlorengegangen.
+    # Die Beschriftung wechselt je nachdem, ob schon ein Modell da ist -
+    # geprueft wird, dass der Knopf existiert und einen Vorgang hat.
+    assert "Modell einrichten" in window.modell_button.options["text"]
+    assert window.modell_button.commands.get("command") is not None
+    assert hasattr(window, "modell_lage_label")
+    assert hasattr(window, "gruppe_modelle")
+
+
+def test_noch_nicht_gebaute_bereiche_haben_keine_toten_knoepfe(fenster):
+    """Auftrag Abschnitt 34 laesst zwei Moeglichkeiten: es funktioniert,
+    oder es ist eindeutig als nicht verfuegbar gekennzeichnet.
+
+    Der einzige Knopf in diesen Bereichen fuehrt zu dem Bereich, der heute
+    schon hilft - und der funktioniert."""
+    window, _, _ = fenster
+    for kennung in ("vorlagen", "aufgaben"):
+        flaeche = window.schale.bereiche[kennung].rahmen
+        texte = _alle_texte(flaeche)
+        assert any("nicht verfuegbar" in t for t in texte), (
+            f"{kennung} muss sagen, dass es den Bereich noch nicht gibt")
+        assert any("Was heute schon geht" in t for t in texte), (
+            f"{kennung} muss den heutigen Weg nennen")
+        for knopf in _alle_knoepfe(flaeche):
+            assert knopf.commands.get("command") is not None, (
+                f"toter Knopf in {kennung}: {knopf.options.get('text')}")
+
+
+def test_der_verweis_aus_einem_leeren_bereich_fuehrt_wirklich_hin(fenster):
+    window, _, _ = fenster
+    window.schale.zeigen("vorlagen")
+    knoepfe = _alle_knoepfe(window.schale.bereiche["vorlagen"].rahmen)
+    assert knoepfe, "es muss einen Weg heraus geben"
+    knoepfe[0].invoke()
+    assert window.schale.aktiv == "arbeitsergebnisse"
+
+
+def test_der_systemstatus_ist_eine_ampelliste(fenster):
+    """Ein JSON-Block ist kein Systemstatus fuer einen Buchhalter."""
+    window, _, _ = fenster
+    window._refresh_status()
+    assert "PORTIVA Core" in window._statuszeilen
+    assert "Lokales Modell" in window._statuszeilen
+    _, wert = window._statuszeilen["Lokales Modell"]
+    assert wert.options["text"] in ("verfuegbar", "nicht eingerichtet")
+    # Der vollstaendige Zustand bleibt kopierbar - er ist das, was bei
+    # einer Stoerung weitergegeben wird.
+    assert window.status_text.buffer
+
+
+def test_die_statusliste_waechst_nicht_bei_jeder_aktualisierung(fenster):
+    """Gezaehlt werden die sichtbaren Zeilen, nicht der Merkspeicher.
+
+    Der Merkspeicher ist ein Verzeichnis nach Namen - er bleibt gleich
+    gross, auch wenn bei jedem Aufruf neue Zeilen darunter entstehen. Eine
+    Gegenprobe, die genau das tat, lief unbemerkt durch.
+    """
+    window, _, _ = fenster
+    window._refresh_status()
+    zeilen = len(window.statusliste.children)
+    assert zeilen >= 5, "es muessen Statuszeilen entstanden sein"
+
+    for _ in range(3):
+        window._refresh_status()
+    assert len(window.statusliste.children) == zeilen, (
+        "die Liste darf bei jeder Aktualisierung nicht neu wachsen")
+
+
+def _alle_texte(widget) -> list[str]:
+    texte = [str(widget.options.get("text", ""))]
+    for kind in widget.children:
+        texte += _alle_texte(kind)
+    return [t for t in texte if t]
+
+
+def _alle_knoepfe(widget) -> list:
+    knoepfe = [widget] if widget.commands.get("command") else []
+    for kind in widget.children:
+        knoepfe += _alle_knoepfe(kind)
+    return knoepfe
