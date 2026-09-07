@@ -1,0 +1,621 @@
+# PORTIVA - Action Contract Registry (ENTWURF)
+#
+# Abschnitt 36 des UI/UX-Auftrags. Jede sichtbare produktive Aktion steht
+# hier mit dem Dienst, der sie wirklich ausfuehrt.
+#
+# Der Sinn dieser Datei ist nicht Dokumentation, sondern Beweisbarkeit:
+# ein Test loest jede Kennung unter "backend_service" auf. Was sich nicht
+# aufloesen laesst, laesst den Test fallen. Ein toter Knopf kann damit gar
+# nicht erst entstehen (Abschnitt 34).
+#
+# Zustand je Eintrag:
+#   dienst_vorhanden  - der Dienst existiert heute
+#   adapter_noetig    - Dienst existiert, braucht eine duenne Anbindung
+#   neu               - Fachlogik existiert noch nicht
+#
+# ENTWURF: die Felder validation / success_result / error_result /
+# test_id werden mit der Umsetzung je Aktion gefuellt. Sie hier vorab
+# auszufuellen hiesse, Tests zu benennen, die es nicht gibt.
+
+fassung: "0.1-entwurf"
+stand: "2026-09-07"
+
+aktionen:
+
+  # ---------------------------------------------------------------- 1
+  - action_id: chat.senden
+    screen: unterhaltung
+    control: senden_button
+    label: "Senden"
+    backend_service: app.controller.Controller.ask
+    zustand: dienst_vorhanden
+    offline_supported: true
+    online_required: false
+    audit_required: false
+
+  - action_id: chat.stoppen
+    screen: unterhaltung
+    control: stop_button
+    label: "Generierung stoppen"
+    backend_service: ui.tk_app.BackgroundTask.abbrechen
+    zustand: dienst_vorhanden
+    offline_supported: true
+
+  - action_id: chat.neue_unterhaltung
+    screen: unterhaltung
+    control: neu_button
+    label: "Neue Unterhaltung"
+    backend_service: app.controller.Controller.new_conversation
+    zustand: dienst_vorhanden
+    offline_supported: true
+
+  - action_id: chat.verlauf_oeffnen
+    screen: unterhaltung
+    control: verlauf_liste
+    label: "Unterhaltung oeffnen"
+    backend_service: app.controller.Controller.open_conversation
+    zustand: dienst_vorhanden
+    offline_supported: true
+
+  - action_id: chat.exportieren
+    screen: unterhaltung
+    control: export_button
+    label: "Unterhaltung exportieren"
+    backend_service: app.controller.Controller.export_conversation
+    zustand: dienst_vorhanden
+    offline_supported: true
+
+  - action_id: chat.datei_anhaengen
+    screen: unterhaltung
+    control: anhang_button
+    label: "Datei anhaengen"
+    backend_service: app.controller.Controller.add_document
+    zustand: dienst_vorhanden
+    offline_supported: true
+
+  - action_id: chat.quellen_anzeigen
+    screen: unterhaltung
+    control: quellenpanel
+    label: "Quellen der Antwort"
+    backend_service: pkc.rag.engine.AnswerResult.references
+    zustand: dienst_vorhanden
+    offline_supported: true
+
+  - action_id: chat.recherche_details
+    screen: unterhaltung
+    control: details_ausklapper
+    label: "Recherche-Details anzeigen"
+    backend_service: app.controller.Controller.recherche_details
+    zustand: adapter_noetig
+    offline_supported: true
+
+  - action_id: chat.antwort_speichern
+    screen: unterhaltung
+    control: speichern_button
+    label: "Antwort speichern"
+    backend_service: app.controller.Controller.antwort_speichern
+    zustand: dienst_vorhanden
+    offline_supported: true
+
+  # ---------------------------------------------------------------- 2
+  - action_id: wissen.suchen
+    screen: unternehmenswissen
+    control: suchfeld
+    label: "Unternehmenswissen durchsuchen"
+    backend_service: pkc.memory.store.MemoryStore.search
+    zustand: dienst_vorhanden
+    offline_supported: true
+
+  - action_id: wissen.eintrag_oeffnen
+    screen: unternehmenswissen
+    control: eintrag_zeile
+    label: "Oeffnen"
+    backend_service: pkc.memory.store.MemoryStore.get
+    zustand: dienst_vorhanden
+    offline_supported: true
+
+  - action_id: wissen.eintrag_bearbeiten
+    screen: unternehmenswissen
+    control: bearbeiten_button
+    label: "Bearbeiten"
+    backend_service: app.controller.Controller.remember
+    zustand: dienst_vorhanden
+    audit_required: true
+    offline_supported: true
+
+  - action_id: wissen.eintrag_archivieren
+    screen: unternehmenswissen
+    control: archivieren_button
+    label: "Archivieren"
+    backend_service: pkc.memory.store.MemoryStore.archivieren
+    zustand: neu
+    audit_required: true
+    offline_supported: true
+
+  - action_id: wissen.eintrag_loeschen
+    screen: unternehmenswissen
+    control: loeschen_button
+    label: "Loeschen"
+    backend_service: app.controller.Controller.forget
+    zustand: dienst_vorhanden
+    audit_required: true
+    human_approval_required: true
+    offline_supported: true
+
+  - action_id: wissen.neuer_eintrag
+    screen: unternehmenswissen
+    control: neu_button
+    label: "Neuer Eintrag"
+    backend_service: app.controller.Controller.remember
+    zustand: dienst_vorhanden
+    audit_required: true
+    offline_supported: true
+
+  - action_id: wissen.versionen
+    screen: unternehmenswissen
+    control: versionen_button
+    label: "Versionen"
+    backend_service: pkc.memory.store.MemoryStore.history
+    zustand: dienst_vorhanden
+    offline_supported: true
+
+  - action_id: wissen.kategorien
+    screen: unternehmenswissen
+    control: kategorie_kacheln
+    label: "Kategorien"
+    backend_service: app.controller.Controller.wissenskategorien
+    zustand: adapter_noetig
+    offline_supported: true
+
+  # ---------------------------------------------------------------- 3
+  - action_id: belege.datei_waehlen
+    screen: belege
+    control: datei_button
+    label: "Datei auswaehlen"
+    backend_service: app.controller.Controller.add_document
+    zustand: dienst_vorhanden
+    offline_supported: true
+
+  - action_id: belege.drag_drop
+    screen: belege
+    control: ablageflaeche
+    label: "Drag & Drop"
+    backend_service: app.controller.Controller.add_document
+    zustand: adapter_noetig
+    offline_supported: true
+    hinweis: "Tkinter kann Drag & Drop nicht von sich aus - siehe Risiko R3"
+
+  - action_id: belege.liste
+    screen: belege
+    control: dokumentliste
+    label: "Zuletzt bearbeitet"
+    backend_service: app.controller.Controller.documents
+    zustand: dienst_vorhanden
+    offline_supported: true
+
+  - action_id: belege.analysieren
+    screen: belege
+    control: analysieren_button
+    label: "Analysieren"
+    backend_service: pkc.knowledge.extract.extract
+    zustand: dienst_vorhanden
+    offline_supported: true
+
+  - action_id: belege.erneut_analysieren
+    screen: belege
+    control: erneut_button
+    label: "Erneut analysieren"
+    backend_service: app.controller.Controller.dokument_erneut_analysieren
+    zustand: adapter_noetig
+    offline_supported: true
+
+  - action_id: belege.oeffnen
+    screen: belege
+    control: oeffnen_button
+    label: "Oeffnen"
+    backend_service: app.controller.Controller.datei_oeffnen
+    zustand: adapter_noetig
+    offline_supported: true
+
+  - action_id: belege.in_unterhaltung
+    screen: belege
+    control: uebernehmen_button
+    label: "In Unterhaltung uebernehmen"
+    backend_service: app.controller.Controller.dokument_in_unterhaltung
+    zustand: adapter_noetig
+    offline_supported: true
+
+  - action_id: belege.loeschen
+    screen: belege
+    control: loeschen_button
+    label: "Loeschen"
+    backend_service: app.controller.Controller.delete_document
+    zustand: dienst_vorhanden
+    human_approval_required: true
+    audit_required: true
+    offline_supported: true
+
+  # ---------------------------------------------------------------- 4
+  - action_id: ergebnisse.liste
+    screen: arbeitsergebnisse
+    control: ergebnisliste
+    label: "Arbeitsergebnisse"
+    backend_service: app.controller.Controller.artefakt_liste
+    zustand: dienst_vorhanden
+    offline_supported: true
+
+  - action_id: ergebnisse.neu
+    screen: arbeitsergebnisse
+    control: neu_button
+    label: "Neues Arbeitsergebnis"
+    backend_service: app.controller.Controller.datei_erzeugen
+    zustand: dienst_vorhanden
+    offline_supported: true
+
+  - action_id: ergebnisse.oeffnen
+    screen: arbeitsergebnisse
+    control: oeffnen_button
+    label: "Oeffnen"
+    backend_service: app.controller.Controller.datei_oeffnen
+    zustand: adapter_noetig
+    offline_supported: true
+
+  - action_id: ergebnisse.exportieren
+    screen: arbeitsergebnisse
+    control: export_button
+    label: "Exportieren"
+    backend_service: app.controller.Controller.artefakt_exportieren
+    zustand: adapter_noetig
+    offline_supported: true
+
+  - action_id: ergebnisse.umbenennen
+    screen: arbeitsergebnisse
+    control: umbenennen_eintrag
+    label: "Umbenennen"
+    backend_service: pkc.artefakte.werk.Artefaktwerk.umbenennen
+    zustand: neu
+    offline_supported: true
+
+  - action_id: ergebnisse.versionen
+    screen: arbeitsergebnisse
+    control: versionen_eintrag
+    label: "Versionen"
+    backend_service: app.controller.Controller.artefakt_liste
+    zustand: dienst_vorhanden
+    offline_supported: true
+
+  - action_id: ergebnisse.loeschen
+    screen: arbeitsergebnisse
+    control: loeschen_eintrag
+    label: "Loeschen"
+    backend_service: pkc.artefakte.werk.Artefaktwerk.loeschen
+    zustand: neu
+    human_approval_required: true
+    audit_required: true
+    offline_supported: true
+
+  # ---------------------------------------------------------------- 5
+  - action_id: wissensquellen.jetzt_aktualisieren
+    screen: wissen_quellen
+    control: update_button
+    label: "Jetzt aktualisieren"
+    backend_service: app.controller.Controller.update_now
+    zustand: dienst_vorhanden
+    offline_supported: false
+    online_required: true
+    audit_required: true
+
+  - action_id: wissensquellen.faelligkeit
+    screen: wissen_quellen
+    control: kennzahlen
+    label: "Letzte / naechste Pruefung"
+    backend_service: app.controller.Controller.update_faelligkeit
+    zustand: dienst_vorhanden
+    offline_supported: true
+
+  - action_id: wissensquellen.verlauf
+    screen: wissen_quellen
+    control: verlaufsliste
+    label: "Updateverlauf"
+    backend_service: app.controller.Controller.update_runs
+    zustand: dienst_vorhanden
+    offline_supported: true
+
+  - action_id: wissensquellen.rollback
+    screen: wissen_quellen
+    control: rollback_button
+    label: "Ruecknahme"
+    backend_service: app.controller.Controller.rollback_update
+    zustand: dienst_vorhanden
+    human_approval_required: true
+    audit_required: true
+    offline_supported: true
+
+  - action_id: wissensquellen.register
+    screen: wissen_quellen
+    control: quellenregister
+    label: "Quellenregister"
+    backend_service: pkc.updater.registry.load_registry
+    zustand: dienst_vorhanden
+    offline_supported: true
+
+  - action_id: wissensquellen.quelle_oeffnen
+    screen: wissen_quellen
+    control: quelle_oeffnen
+    label: "Quelle oeffnen"
+    backend_service: app.controller.Controller.quelle_oeffnen
+    zustand: adapter_noetig
+    offline_supported: true
+
+  - action_id: wissensquellen.quelle_deaktivieren
+    screen: wissen_quellen
+    control: quelle_deaktivieren
+    label: "Quelle deaktivieren"
+    backend_service: app.controller.Controller.quelle_deaktivieren
+    zustand: neu
+    audit_required: true
+    offline_supported: true
+
+  # ---------------------------------------------------------------- 6
+  - action_id: vorlagen.liste
+    screen: vorlagen
+    control: vorlagenraster
+    label: "Vorlagen"
+    backend_service: pkc.vorlagen.verwaltung.Vorlagenverwaltung.liste
+    zustand: neu
+    offline_supported: true
+
+  - action_id: vorlagen.verwenden
+    screen: vorlagen
+    control: verwenden_button
+    label: "Verwenden"
+    backend_service: pkc.vorlagen.verwaltung.Vorlagenverwaltung.verwenden
+    zustand: neu
+    offline_supported: true
+
+  - action_id: vorlagen.vorschau
+    screen: vorlagen
+    control: vorschau_button
+    label: "Vorschau"
+    backend_service: pkc.vorlagen.verwaltung.Vorlagenverwaltung.vorschau
+    zustand: neu
+    offline_supported: true
+
+  - action_id: vorlagen.neu
+    screen: vorlagen
+    control: neu_button
+    label: "+ Vorlage"
+    backend_service: pkc.vorlagen.verwaltung.Vorlagenverwaltung.importieren
+    zustand: neu
+    offline_supported: true
+
+  # ---------------------------------------------------------------- 7
+  - action_id: aufgaben.liste
+    screen: aufgaben
+    control: aufgabenspalten
+    label: "Heute / Geplant / Wiederkehrend"
+    backend_service: pkc.aufgaben.planer.Aufgabenplaner.liste
+    zustand: neu
+    offline_supported: true
+
+  - action_id: aufgaben.neu
+    screen: aufgaben
+    control: neu_button
+    label: "+ Neue Aufgabe"
+    backend_service: pkc.aufgaben.planer.Aufgabenplaner.anlegen
+    zustand: neu
+    audit_required: true
+    offline_supported: true
+
+  - action_id: aufgaben.aktivieren
+    screen: aufgaben
+    control: aktiv_schalter
+    label: "Aktivieren / Pausieren"
+    backend_service: pkc.aufgaben.planer.Aufgabenplaner.schalten
+    zustand: neu
+    offline_supported: true
+
+  - action_id: aufgaben.ausfuehren
+    screen: aufgaben
+    control: ausfuehren_button
+    label: "Jetzt ausfuehren"
+    backend_service: pkc.aufgaben.planer.Aufgabenplaner.ausfuehren
+    zustand: neu
+    audit_required: true
+    offline_supported: true
+
+  - action_id: aufgaben.details
+    screen: aufgaben
+    control: details_button
+    label: "Details"
+    backend_service: pkc.aufgaben.planer.Aufgabenplaner.details
+    zustand: neu
+    offline_supported: true
+
+  # ---------------------------------------------------------------- 8
+  - action_id: plugins.liste
+    screen: plugins
+    control: pluginraster
+    label: "Installiert"
+    backend_service: pkc.plugins.verwaltung.Pluginverwaltung.liste
+    zustand: dienst_vorhanden
+    offline_supported: true
+
+  - action_id: plugins.pruefen
+    screen: plugins
+    control: pruefen_button
+    label: "Paket pruefen"
+    backend_service: pkc.plugins.verwaltung.Pluginverwaltung.pruefen
+    zustand: dienst_vorhanden
+    offline_supported: true
+
+  - action_id: plugins.installieren
+    screen: plugins
+    control: installieren_button
+    label: "Aus Datei installieren"
+    backend_service: pkc.plugins.verwaltung.Pluginverwaltung.installieren
+    zustand: dienst_vorhanden
+    human_approval_required: true
+    audit_required: true
+    offline_supported: true
+
+  - action_id: plugins.aktivieren
+    screen: plugins
+    control: aktivieren_button
+    label: "Aktivieren"
+    backend_service: pkc.plugins.verwaltung.Pluginverwaltung.aktivieren
+    zustand: dienst_vorhanden
+    audit_required: true
+    offline_supported: true
+
+  - action_id: plugins.deaktivieren
+    screen: plugins
+    control: deaktivieren_button
+    label: "Deaktivieren"
+    backend_service: pkc.plugins.verwaltung.Pluginverwaltung.deaktivieren
+    zustand: dienst_vorhanden
+    audit_required: true
+    offline_supported: true
+
+  - action_id: plugins.deinstallieren
+    screen: plugins
+    control: entfernen_button
+    label: "Deinstallieren"
+    backend_service: pkc.plugins.verwaltung.Pluginverwaltung.entfernen
+    zustand: dienst_vorhanden
+    human_approval_required: true
+    audit_required: true
+    offline_supported: true
+
+  - action_id: plugins.rechte
+    screen: plugins
+    control: details_button
+    label: "Berechtigungen"
+    backend_service: pkc.plugins.verwaltung.Pluginverwaltung.rechtebeschreibung
+    zustand: dienst_vorhanden
+    offline_supported: true
+
+  - action_id: plugins.katalog
+    screen: plugins
+    control: katalog_reiter
+    label: "Katalog"
+    backend_service: pkc.plugins.katalog.laden
+    zustand: neu
+    offline_supported: true
+
+  # ---------------------------------------------------------------- 9
+  - action_id: dienste.liste
+    screen: dienste
+    control: diensteraster
+    label: "Verbundene Dienste"
+    backend_service: pkc.connectors.registry.ConnectorRegistry.info
+    zustand: dienst_vorhanden
+    offline_supported: true
+
+  - action_id: dienste.verbinden
+    screen: dienste
+    control: verbinden_button
+    label: "Verbinden"
+    backend_service: app.controller.Controller.dienst_verbinden
+    zustand: adapter_noetig
+    online_required: true
+    human_approval_required: true
+    audit_required: true
+
+  - action_id: dienste.testen
+    screen: dienste
+    control: testen_button
+    label: "Verbindung testen"
+    backend_service: app.controller.Controller.dienst_testen
+    zustand: adapter_noetig
+    online_required: true
+
+  - action_id: dienste.trennen
+    screen: dienste
+    control: trennen_button
+    label: "Trennen"
+    backend_service: app.controller.Controller.dienst_trennen
+    zustand: adapter_noetig
+    human_approval_required: true
+    audit_required: true
+    offline_supported: true
+
+  # --------------------------------------------------------------- 10
+  - action_id: einstellungen.speichern
+    screen: einstellungen
+    control: speichern_button
+    label: "Speichern"
+    backend_service: app.controller.Controller.save_settings
+    zustand: dienst_vorhanden
+    offline_supported: true
+
+  - action_id: einstellungen.betriebsmodus
+    screen: einstellungen
+    control: modus_auswahl
+    label: "Betriebsmodus"
+    backend_service: app.controller.Controller.set_mode
+    zustand: dienst_vorhanden
+    human_approval_required: true
+    audit_required: true
+    offline_supported: true
+
+  - action_id: einstellungen.systemstatus
+    screen: einstellungen
+    control: statusliste
+    label: "Systemstatus"
+    backend_service: app.controller.Controller.status
+    zustand: dienst_vorhanden
+    offline_supported: true
+
+  - action_id: einstellungen.modell_einrichten
+    screen: einstellungen
+    control: modell_button
+    label: "Sprachmodell einrichten"
+    backend_service: app.controller.Controller.modell_beziehen
+    zustand: dienst_vorhanden
+    online_required: true
+    human_approval_required: true
+
+  - action_id: einstellungen.modell_uebernehmen
+    screen: einstellungen
+    control: uebernehmen_button
+    label: "Vorhandene Modelldatei uebernehmen"
+    backend_service: app.controller.Controller.modell_uebernehmen
+    zustand: dienst_vorhanden
+    offline_supported: true
+
+  - action_id: einstellungen.modell_pruefen
+    screen: einstellungen
+    control: probe_button
+    label: "Modell ausprobieren"
+    backend_service: app.controller.Controller.modell_probe
+    zustand: dienst_vorhanden
+    offline_supported: true
+
+  - action_id: einstellungen.wartezeit_messen
+    screen: einstellungen
+    control: messen_button
+    label: "Wartezeit messen"
+    backend_service: app.controller.Controller.modell_messen
+    zustand: dienst_vorhanden
+    offline_supported: true
+
+  - action_id: einstellungen.backup
+    screen: einstellungen
+    control: backup_button
+    label: "Sicherung erstellen"
+    backend_service: app.controller.Controller.backup
+    zustand: dienst_vorhanden
+    audit_required: true
+    offline_supported: true
+
+  - action_id: einstellungen.restore
+    screen: einstellungen
+    control: restore_button
+    label: "Sicherung wiederherstellen"
+    backend_service: app.controller.Controller.restore
+    zustand: neu
+    human_approval_required: true
+    audit_required: true
+    offline_supported: true
+    hinweis: "heute nur restore_info (lesen) - siehe Risiko R8"

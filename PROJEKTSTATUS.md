@@ -3,8 +3,16 @@
 > **Diese Datei ist die massgebliche Quelle des Projektstands, nicht der Chat.**
 > Sie wird nach jedem abgeschlossenen Task aktualisiert (Masterprompt 44/45).
 
-Stand: 06.09.2026 · Branch `claude/portable-ki-buchhalter-xr1qlj` ·
+Stand: 07.09.2026 · Branch `claude/portable-ki-buchhalter-xr1qlj` ·
 Version 0.4.0
+
+> **Laufender Vorgang:** UI/UX-Umbau auf zehn Hauptbereiche mit linker
+> Navigation. Die GAP-Analyse und der Integrationsplan liegen vor
+> (`UI_GAP_ANALYSE.md`, `BASELINE_VOR_UI_UMBAU.md`,
+> `config/ui_action_registry.yaml`). **Die Umsetzung ist noch nicht
+> begonnen und wartet auf die Freigabe des Auftraggebers.**
+> Ebenfalls neu: `ANTWORTZEIT_KONZEPT.md` mit der gemessenen Ursache der
+> Wartezeit und vier Vorschlägen.
 
 ---
 
