@@ -367,6 +367,17 @@ class _Dialogs:
 DIALOGS = _Dialogs()
 
 
+class _Button(_Widget):
+    """Ein Knopf - und zwar als solcher erkennbar.
+
+    Warum eine eigene Klasse: ohne sie ist ein Knopf im Doppel nicht von
+    einem Rahmen zu unterscheiden. Ein Test, der tote Knoepfe suchen soll,
+    findet dann nur die Knoepfe MIT Rueckruf - und uebersieht ausgerechnet
+    die, um die es geht. Genau daran ist eine Gegenprobe vorbeigelaufen,
+    die einen Knopf ohne Rueckruf einbaute.
+    """
+
+
 class _Toplevel(_Widget):
     """Ein eigenstaendiges Fenster - mitgezaehlt.
 
@@ -393,7 +404,7 @@ def install() -> _Dialogs:
     tk.Toplevel = _Toplevel
     tk.Frame = _Widget
     tk.Label = _Widget
-    tk.Button = _Widget
+    tk.Button = _Button
     tk.Canvas = _Widget
     tk.Text = _TextWidget
     tk.Listbox = _ListboxWidget
@@ -406,16 +417,26 @@ def install() -> _Dialogs:
     tk.TclError = Exception
 
     ttk = types.ModuleType("tkinter.ttk")
-    for name in ("Frame", "Label", "Button", "Checkbutton", "Scrollbar", "Progressbar",
+    for name in ("Frame", "Label", "Checkbutton", "Scrollbar", "Progressbar",
                  "PanedWindow", "Notebook", "Separator", "LabelFrame"):
         setattr(ttk, name, _Widget)
+    ttk.Button = _Button
     ttk.Entry = _Entry
     ttk.Combobox = _Combobox
     tk.PhotoImage = _PhotoImage
     ttk.Treeview = _TreeviewWidget
 
     def _notebook_add(self, child, **kwargs):
-        self.children.append(child)
+        """Nimmt eine Flaeche auf - aber nur einmal.
+
+        Ein ``ttk.Frame(notebook)`` haengt sich schon beim Erzeugen bei
+        seinem Elternteil ein. Ein zweites Anhaengen durch ``add`` fuehrte
+        dazu, dass jedes Bedienelement in Auswertungen doppelt erschien -
+        aufgefallen bei der Button-Funktionsmatrix, die jeden Knopf zweimal
+        auflistete.
+        """
+        if child not in self.children:
+            self.children.append(child)
     ttk.Notebook = type("Notebook", (_Widget,), {"add": _notebook_add})
     ttk.PanedWindow = type("PanedWindow", (_Widget,), {"add": _notebook_add})
 
