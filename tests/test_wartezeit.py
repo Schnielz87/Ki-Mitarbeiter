@@ -1067,3 +1067,62 @@ def test_messung_nennt_die_stoppuhrzeit(portable_root):
             "die Gesamtdauer darf nicht kleiner sein als die Summe der Durchgaenge")
     finally:
         controller.shutdown()
+
+
+def test_tempoflags_nehmen_die_echten_kerne(tmp_path, monkeypatch):
+    """Hyperthreading mitzuzaehlen ist eine Bremse, kein Tempo.
+
+    Das Rechnen mit Matrizen wird durch Hyperthreading nicht schneller: die
+    Faeden teilen sich dieselben Recheneinheiten. Zwoelf Faeden auf sechs
+    Kernen kosten Zeit. Hier stand die logische Zahl.
+    """
+    from pkc.llm.server import Llamaserver
+
+    monkeypatch.setattr("pkc.llm.server.physische_kerne", lambda: 6)
+    monkeypatch.setattr("os.cpu_count", lambda: 12)
+    server = Llamaserver(programm=tmp_path / "llama-server",
+                         modell=tmp_path / "m.gguf")
+    befehl = server._befehl()
+    assert "-tb" in befehl
+    assert befehl[befehl.index("-tb") + 1] == "6", (
+        "es muessen die echten Kerne uebergeben werden, nicht die logischen")
+
+
+def test_ohne_erkennbare_kerne_wird_der_schalter_weggelassen(tmp_path, monkeypatch):
+    """Lieber keine Angabe als eine falsche - llama.cpp waehlt dann selbst."""
+    from pkc.llm.server import Llamaserver
+
+    monkeypatch.setattr("pkc.llm.server.physische_kerne", lambda: 0)
+    server = Llamaserver(programm=tmp_path / "llama-server",
+                         modell=tmp_path / "m.gguf")
+    assert "-tb" not in server._befehl()
+
+
+def test_die_zeit_wird_in_ihre_zwei_anteile_zerlegt(tmp_path):
+    """"Es dauert lange" ist keine Aufgabe - "wo geht die Zeit hin" schon.
+
+    llama.cpp schreibt nach jeder Anfrage, wie lange das Verarbeiten der
+    Frage und wie lange das Schreiben der Antwort gedauert hat. Beide
+    Anteile verlangen verschiedene Massnahmen.
+    """
+    from pkc.llm.server import Llamaserver
+
+    protokoll = tmp_path / "llama-server.log"
+    protokoll.write_text(
+        "prompt eval time =  120000.00 ms /  2400 tokens (   50.00 ms per token)\n"
+        "       eval time =   40000.00 ms /   160 runs   (  250.00 ms per token)\n",
+        encoding="utf-8")
+    server = Llamaserver(programm=tmp_path / "x", modell=tmp_path / "m.gguf")
+    server._protokoll = protokoll
+
+    aufteilung = server.zeitaufteilung()
+    assert aufteilung["verarbeiten"] == {"sekunden": 120.0, "tokens": 2400}
+    assert aufteilung["schreiben"] == {"sekunden": 40.0, "tokens": 160}
+
+
+def test_ohne_protokoll_wird_nichts_geschaetzt(tmp_path):
+    """Keine Zahl ist besser als eine erfundene."""
+    from pkc.llm.server import Llamaserver
+
+    server = Llamaserver(programm=tmp_path / "x", modell=tmp_path / "m.gguf")
+    assert server.zeitaufteilung() == {}

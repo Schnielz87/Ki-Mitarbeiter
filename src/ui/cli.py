@@ -532,6 +532,18 @@ def cmd_modell(args) -> int:
                 print(f"Dienst : {dienst['fassung']} (rechnet auf: {auf}"
                       + (", Zusatzschalter aktiv" if dienst.get("tempoflags") else "")
                       + ")")
+            aufteilung = dienst.get("zeitaufteilung") or {}
+            if aufteilung:
+                # Wohin die Zeit geht. Ohne diese Aufteilung ist "es dauert
+                # lange" nicht zu bearbeiten: viel Zeit im Verarbeiten
+                # heisst kuerzerer Kontext, viel Zeit im Schreiben heisst
+                # kleineres Modell.
+                for schluessel, beschriftung in (("verarbeiten", "Frage verarbeiten"),
+                                                 ("schreiben", "Antwort schreiben")):
+                    teil = aufteilung.get(schluessel)
+                    if teil:
+                        print(f"{beschriftung:22}: {teil['sekunden']:8.1f} s "
+                              f"fuer {teil['tokens']} Textbausteine")
             if ergebnis.get("bereit_nach_s"):
                 print(f"Warten auf die Bereitschaft der Anwendung: "
                       f"{ergebnis['bereit_nach_s']} s "
@@ -551,6 +563,9 @@ def cmd_modell(args) -> int:
                 return 1
             print(f"\nIm laufenden Betrieb: {ergebnis['im_betrieb_erstes_wort_s']} s "
                   f"bis zum ersten Wort, {ergebnis['im_betrieb_gesamt_s']} s bis zum Ende.")
+            # Die Zahl, die eine Stoppuhr daneben anzeigen wuerde. Ohne sie
+            # widerspricht die Ausgabe dem, was jemand tatsaechlich erlebt.
+            print(f"Gesamte Messdauer (Stoppuhr): {ergebnis.get('messdauer_s', 0)} s")
             return 0
 
         print(f"Unbekannte Aktion: {args.aktion}", file=sys.stderr)

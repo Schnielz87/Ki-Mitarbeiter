@@ -451,6 +451,11 @@ class MitgelieferterServerProvider(OpenAICompatibleProvider):
             "gpu_schichten": int(getattr(self.server, "gpu_layers", 0) or 0),
             "tempoflags": bool(getattr(self.server, "tempoflags_aktiv", False)),
             "laeuft": self.server.laeuft,
+            # Wo die Wartezeit geblieben ist. Ohne diese Aufteilung bleibt
+            # "es dauert lange" eine Beschreibung; mit ihr wird sie zu einer
+            # Aufgabe, die sich bearbeiten laesst.
+            "zeitaufteilung": (self.server.zeitaufteilung()
+                               if hasattr(self.server, "zeitaufteilung") else {}),
             "benoetigt_internet": False,
         }
 

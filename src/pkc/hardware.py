@@ -110,6 +110,67 @@ def _gpu() -> tuple[str | None, float | None]:
     return name, vram
 
 
+def physische_kerne() -> int:
+    """Zahl der ECHTEN Rechenkerne - nicht der logischen.
+
+    Der Unterschied ist fuer die Antwortzeit erheblich. ``os.cpu_count()``
+    zaehlt Hyperthreading mit: ein Rechner mit sechs Kernen meldet zwoelf.
+    Das Rechnen mit Matrizen, aus dem eine Modellantwort besteht, wird durch
+    Hyperthreading nicht schneller - es teilt sich dieselben Recheneinheiten.
+    Zwoelf Faeden auf sechs Kerne zu legen kostet Zeit, statt welche zu
+    sparen.
+
+    Laesst sich die Zahl nicht ermitteln, wird 0 zurueckgegeben. Dann setzt
+    die Anwendung den Schalter gar nicht erst und ueberlaesst die Wahl
+    llama.cpp - das seinerseits die echten Kerne ermittelt. Lieber keine
+    Angabe als eine falsche.
+    """
+    if os.name == "nt":                                  # pragma: no cover
+        try:
+            import ctypes
+
+            RELATION_PROCESSOR_CORE = 0
+            laenge = ctypes.c_ulong(0)
+            ctypes.windll.kernel32.GetLogicalProcessorInformationEx(
+                RELATION_PROCESSOR_CORE, None, ctypes.byref(laenge))
+            puffer = (ctypes.c_ubyte * laenge.value)()
+            if not ctypes.windll.kernel32.GetLogicalProcessorInformationEx(
+                    RELATION_PROCESSOR_CORE, puffer, ctypes.byref(laenge)):
+                return 0
+            # Der Puffer ist eine Folge von Saetzen verschiedener Laenge.
+            # Jeder Satz beschreibt genau einen physischen Kern; gezaehlt
+            # wird, indem man von Satz zu Satz springt.
+            kerne, versatz = 0, 0
+            while versatz + 8 <= laenge.value:
+                satzlaenge = int.from_bytes(
+                    bytes(puffer[versatz + 4:versatz + 8]), "little")
+                if satzlaenge <= 0:
+                    break
+                kerne += 1
+                versatz += satzlaenge
+            return kerne
+        except Exception:
+            return 0
+    try:
+        # Linux: je Prozessor stehen "physical id" und "core id" in
+        # /proc/cpuinfo. Verschiedene Paare sind verschiedene Kerne.
+        text = Path("/proc/cpuinfo").read_text(encoding="utf-8", errors="ignore")
+    except OSError:
+        return 0
+    paare, aktuell = set(), {}
+    for zeile in text.splitlines():
+        if ":" not in zeile:
+            if aktuell.get("physical id") is not None and aktuell.get("core id") is not None:
+                paare.add((aktuell["physical id"], aktuell["core id"]))
+            aktuell = {}
+            continue
+        schluessel, _, wert = zeile.partition(":")
+        aktuell[schluessel.strip()] = wert.strip()
+    if aktuell.get("physical id") is not None and aktuell.get("core id") is not None:
+        paare.add((aktuell["physical id"], aktuell["core id"]))
+    return len(paare)
+
+
 def detect(root: Path) -> HardwareInfo:
     gpu_name, vram = _gpu()
     try:

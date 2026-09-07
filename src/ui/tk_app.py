@@ -1077,6 +1077,21 @@ class MainWindow:
                 auf = "Grafikkarte" if dienst.get("gpu_schichten") else "Prozessor"
                 zeilen.append(f"  Modelldienst: {dienst['fassung']} "
                               f"(rechnet auf: {auf})")
+            aufteilung = dienst.get("zeitaufteilung") or {}
+            if aufteilung:
+                # Das Protokoll des Modelldienstes sagt, wohin die Zeit
+                # geht. Beide Anteile verlangen verschiedene Massnahmen -
+                # ohne die Aufteilung raet man.
+                verarbeiten = aufteilung.get("verarbeiten") or {}
+                schreiben = aufteilung.get("schreiben") or {}
+                if verarbeiten:
+                    zeilen.append(
+                        f"  Frage verarbeiten: {verarbeiten['sekunden']} s "
+                        f"fuer {verarbeiten['tokens']} Textbausteine")
+                if schreiben:
+                    zeilen.append(
+                        f"  Antwort schreiben: {schreiben['sekunden']} s "
+                        f"fuer {schreiben['tokens']} Textbausteine")
             if ergebnis.get("bereit_nach_s"):
                 zeilen.append(f"  Warten auf die Bereitschaft: "
                               f"{ergebnis['bereit_nach_s']} s "

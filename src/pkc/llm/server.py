@@ -23,6 +23,7 @@ Drei Festlegungen, die aus dem uebrigen Auftrag folgen:
 from __future__ import annotations
 
 import os
+import re
 import socket
 import subprocess
 import sys
@@ -32,6 +33,7 @@ import urllib.request
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from ..hardware import physische_kerne
 from ..logging_setup import get_logger
 
 log = get_logger(__name__)
@@ -191,7 +193,17 @@ class Llamaserver:
         Dienstes. Beim Fehlstart wird deshalb der naechste Satz versucht,
         zuletzt gar keiner. Lieber langsamer als gar nicht.
         """
-        kerne = self.threads or (os.cpu_count() or 0)
+        # Die ECHTEN Kerne, nicht die logischen. Hyperthreading zaehlt
+        # ``os.cpu_count()`` mit: ein Rechner mit sechs Kernen meldet
+        # zwoelf. Das Rechnen mit Matrizen wird davon nicht schneller - die
+        # Faeden teilen sich dieselben Recheneinheiten -, und zwoelf Faeden
+        # auf sechs Kernen kosten Zeit statt welche zu sparen. Hier stand
+        # bisher die logische Zahl; das war also eine Bremse, kein Tempo.
+        #
+        # Laesst sich die echte Zahl nicht ermitteln, wird der Schalter
+        # weggelassen: llama.cpp ermittelt sie dann selbst. Lieber keine
+        # Angabe als eine falsche.
+        kerne = self.threads or physische_kerne()
         kern = ["-tb", str(kerne)] if kerne else []
         kontext = ["--cache-type-k", "q8_0", "--cache-type-v", "q8_0"]
         # Absteigend nach Wirkung. Der Bauablauf hat gezeigt, warum es eine
@@ -320,6 +332,40 @@ class Llamaserver:
         except OSError:
             return ""
         return " | ".join(text.strip().splitlines()[-zeilen:])
+
+    #: Zeilen, die llama.cpp nach jeder Anfrage schreibt. Sie trennen die
+    #: beiden Anteile der Wartezeit: das Verarbeiten der Frage samt
+    #: Vorgeschichte ("prompt eval") und das Schreiben der Antwort ("eval").
+    _ZEITZEILE = re.compile(
+        r"^\s*(prompt eval time|eval time)\s*=\s*([\d.]+)\s*ms\s*/\s*(\d+)\s*"
+        r"(?:tokens|runs)", re.IGNORECASE | re.MULTILINE)
+
+    def zeitaufteilung(self) -> dict:
+        """Wo die Wartezeit geblieben ist - aus dem Protokoll des Dienstes.
+
+        Ohne diese Aufteilung ist "es dauert lange" nicht zu behandeln. Die
+        beiden Anteile verlangen verschiedene Massnahmen: viel Zeit im
+        Verarbeiten heisst kuerzerer Kontext oder gemerkter Prompt, viel
+        Zeit im Schreiben heisst kleineres Modell oder kuerzere Antwort.
+
+        Gelesen wird nur, was llama.cpp selbst geschrieben hat. Findet sich
+        nichts, kommt ein leeres Ergebnis zurueck - nicht eine Schaetzung.
+        """
+        if self._protokoll is None or not self._protokoll.is_file():
+            return {}
+        try:
+            text = self._protokoll.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            return {}
+        letzte: dict = {}
+        for art, millisekunden, anzahl in self._ZEITZEILE.findall(text):
+            schluessel = ("verarbeiten" if art.lower().startswith("prompt")
+                          else "schreiben")
+            letzte[schluessel] = {
+                "sekunden": round(float(millisekunden) / 1000.0, 1),
+                "tokens": int(anzahl),
+            }
+        return letzte
 
     # -- Ende ----------------------------------------------------------
     def beenden(self, frist: float = 10.0) -> None:
