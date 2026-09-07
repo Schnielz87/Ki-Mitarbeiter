@@ -4,7 +4,7 @@ Stand: 06.09.2026 · Branch `claude/portable-ki-buchhalter-xr1qlj`
 
 ## Zusammenfassung
 
-**608 automatische Tests bestanden, 1 uebersprungen** (unter Windows einer
+**610 automatische Tests bestanden, 1 uebersprungen** (unter Windows einer
 mehr uebersprungen). Ausfuehrungszeit rund 25 Sekunden. Reproduzierbar mit:
 
 ```
@@ -288,6 +288,7 @@ aufgefuehrt, weil ein Testbericht ohne Fundstellen wenig wert ist.
 | „Lokales Modell: OK" trotz fehlendem Modell | Der Notbetrieb meldete sich als verfuegbar | Systempruefung meldet HINWEIS und beschreibt den Notbetrieb |
 | HTML-Titel wurde falsch erkannt | `<title>` liegt in `<head>`, das uebersprungen wurde | Titel wird vor der Bereichspruefung ausgewertet |
 | Deutsche Abkuerzungen zerteilten Saetze | „GmbH & Co. KG" wurde als Satzende gelesen | Abkuerzungsliste in der Satztrennung |
+| Die Wartezeitmessung gab es nur in der Konsole | Auf die Frage "was muss ich tun?" habe ich einen Konsolenbefehl genannt. Die Rueckfrage kam prompt: "Ich verstehe nicht, was ich machen soll." Wer die Anwendung per Doppelklick oeffnet, hat keine Konsole - genau derselbe Fehler wie beim Einrichten des Modells, nur an anderer Stelle | Schaltflaeche **Wartezeit messen** in der Registerkarte Sprachmodell, mit Rueckfrage vor dem Start und dem Ergebnis im Textbereich zum Markieren und Kopieren. Zwei Tests; der Anleitungswaechter prueft die Schaltflaeche mit |
 | "Keine Internetverbindung", waehrend der Benutzer surfte | Die Netzpruefung fragte **zwei** amtliche Seiten mit **HEAD** ab, darunter gesetze-im-internet.de - genau die Adresse, die schon im Bauablauf nicht antwortete. Antwortete keine, galt das Netz als tot, und der Modellbezug wurde verweigert. Aus dem Betrieb gemeldet: Internet an, Anwendung sagt nein | Drei Aenderungen. Die Pruefung versucht nach erfolglosem HEAD auch GET. Geprueft werden mehrere Adressen, angefuehrt von der Bezugsquelle der Modelle - und ausschliesslich solche, die die Anwendung ohnehin braucht (kein fremder Grossanbieter). Und der Modellbezug fragt jetzt die **Bezugsquelle selbst**: antwortet sie, wird geladen, ganz gleich was eine andere Seite gerade tut. Zehn neue Tests, zwei Gegenproben |
 | Die Zeitgrenze der Netzpruefung war zu knapp | Vier Sekunden melden auf einer langsamen Leitung "kein Netz", wo nur Geduld gefehlt haette | Acht Sekunden, eigene Einstellung `network.probe_timeout_seconds` |
 | Die eigene Wartezeitmessung war geschoent | Der zweite Durchgang stellte dieselbe Frage wie der erste. Der Modelldienst hatte den gesamten Prompt gemerkt und antwortete in 0,1 Sekunden - eine Zahl, die im Betrieb niemand erlebt, denn dort ist jede Frage neu. Sie stand kurz davor, als Alltagszahl berichtet zu werden | Die Messung stellt jetzt zwei **verschiedene** Fachfragen. Damit ist nur der unveraenderliche Kopf gemerkt - genau wie im Betrieb. Ein Test faellt, sobald wieder zweimal dieselbe Frage gestellt wird |

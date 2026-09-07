@@ -368,6 +368,10 @@ tabelle_mit(
         ["Modell ausprobieren",
          "Stellt dem Modell eine kleine Frage und zeigt Antwortzeit und "
          "Geschwindigkeit. Der Nachweis, dass es wirklich laeuft."],
+        ["Wartezeit messen",
+         "Stellt zwei echte Fachfragen und zeigt, wie lange es bis zum "
+         "ersten Wort dauert - einmal als erste Frage, einmal im laufenden "
+         "Betrieb. Dauert ein bis zwei Minuten."],
         ["Textbereich unten",
          "Vor dem Einrichten: Ihre Hardware und die Bezugsquellen mit "
          "Lizenz und Pruefstand. Danach: das Ergebnis samt Probeantwort."],
@@ -419,17 +423,21 @@ tabelle_mit(
 )
 
 absatz("Die Anwendung misst das auf Ihrem Rechner selbst: Registerkarte "
-       "Sprachmodell, Schaltflaeche \"Modell ausprobieren\". Sie nennt die "
-       "gemessene Geschwindigkeit und ordnet sie ein.")
+       "Sprachmodell, Schaltflaeche \"Modell ausprobieren\" fuer eine "
+       "schnelle Auskunft, oder \"Wartezeit messen\" fuer die genaue - "
+       "dort werden zwei echte Fachfragen gestellt und beide Zeiten "
+       "getrennt ausgewiesen.")
 absatz("Wichtig ist dabei nicht die Gesamtzeit, sondern die Zeit bis zum "
        "ERSTEN Wort. Danach laeuft die Antwort sichtbar weiter - man liest "
        "mit, statt zu warten. Genau so verhalten sich auch die grossen "
        "Onlinedienste.")
-absatz("Wer es genau wissen will, misst in der Konsole mit "
-       "\"modell messen\": dort wird dieselbe Fachfrage zweimal im selben "
-       "Vorgang gestellt. Der erste Durchgang enthaelt das Laden des "
-       "Modells, der zweite ist der Alltag - genau ihn erleben Sie, solange "
-       "die Anwendung geoeffnet bleibt.")
+absatz("\"Wartezeit messen\" stellt zwei VERSCHIEDENE Fachfragen. Der erste "
+       "Durchgang ist die erste Frage nach dem Start, der zweite der "
+       "Alltag - genau ihn erleben Sie, solange die Anwendung geoeffnet "
+       "bleibt. Zweimal dieselbe Frage waere geschoent: das Modell merkt "
+       "sich, was es schon gerechnet hat, und antwortete dann in einer "
+       "Zehntelsekunde. So arbeitet aber niemand.")
+absatz("Dasselbe in der Konsole: \"modell messen\".")
 
 doc.add_heading("Der wirksamste Regler: das Antworttempo", level=3)
 absatz("Unter \"Einstellungen und Status\" steht ganz oben bei "

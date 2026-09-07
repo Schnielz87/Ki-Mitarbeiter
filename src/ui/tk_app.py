@@ -677,6 +677,11 @@ class MainWindow:
                    command=self._refresh_modell).pack(side="left")
         ttk.Button(buttons, text="Modell ausprobieren",
                    command=self._modell_probe).pack(side="left", padx=PAD)
+        # Die Wartezeit gehoert ins Fenster, nicht in eine Konsole. Wer die
+        # Anwendung per Doppelklick oeffnet, hat keine offen - und soll fuer
+        # eine Auskunft ueber sein eigenes Programm keine oeffnen muessen.
+        ttk.Button(buttons, text="Wartezeit messen",
+                   command=self._modell_messen).pack(side="left")
 
         self.modell_progress = ttk.Progressbar(frame, mode="determinate")
         self.modell_progress.pack(fill="x", pady=PAD)
@@ -1011,6 +1016,80 @@ class MainWindow:
             if hardware.get("grafik"):
                 zeilen.append(f"      Erkannt wurde: {hardware['grafik']}")
         return zeilen
+
+    def _modell_messen(self) -> None:
+        """Misst die Wartezeit an zwei echten Fachfragen.
+
+        Dauert ein bis zwei Minuten und sagt mehr als "Modell ausprobieren":
+        dort geht eine kurze Frage an das Modell, hier zwei richtige - mit
+        Recherche, Fundstellen und allem, was eine echte Antwort kostet.
+        """
+        if self.busy:
+            return
+        if not messagebox.askyesno(
+            "Wartezeit messen",
+            "Es werden zwei echte Fachfragen gestellt und die Zeiten "
+            "gemessen.\n\n"
+            "Das dauert ein bis zwei Minuten. Vorher wartet die Messung ab, "
+            "bis das Sprachmodell geladen ist - genau wie Sie es im Alltag "
+            "erleben.\n\nJetzt messen?",
+            parent=self.root,
+        ):
+            return
+
+        self._set_busy(True, "Die Wartezeit wird gemessen ...")
+
+        def done(ergebnis: dict | None, error: Exception | None) -> None:
+            self._set_busy(False)
+            if error is not None:
+                messagebox.showerror("Wartezeit messen", str(error), parent=self.root)
+                return
+            zeilen = ["Wartezeit - gemessen auf diesem Rechner", ""]
+            for nummer, gestellt in enumerate(ergebnis["fragen"], start=1):
+                zeilen.append(f"  Frage {nummer}: {gestellt}")
+            zeilen.append(f"  Tempostufe: {ergebnis['tempo']}")
+            dienst = ergebnis.get("dienst", {})
+            if dienst.get("fassung"):
+                auf = "Grafikkarte" if dienst.get("gpu_schichten") else "Prozessor"
+                zeilen.append(f"  Modelldienst: {dienst['fassung']} "
+                              f"(rechnet auf: {auf})")
+            if ergebnis.get("bereit_nach_s"):
+                zeilen.append(f"  Warten auf die Bereitschaft: "
+                              f"{ergebnis['bereit_nach_s']} s "
+                              "(beim Start laeuft das nebenher)")
+            zeilen += ["", f"  {'Durchgang':11}{'1. Wort':>10}{'gesamt':>10}   Bemerkung"]
+            for lauf in ergebnis["laeufe"]:
+                if not lauf.get("ok"):
+                    zeilen.append(f"  {lauf['nummer']:<11}{'-':>10}{'-':>10}   "
+                                  + str(lauf.get("grund", "")))
+                    continue
+                bemerkung = ("erste Frage, Anwendung bereit" if lauf["nummer"] == 1
+                             else "andere Frage, im laufenden Betrieb")
+                zeilen.append(f"  {lauf['nummer']:<11}{lauf['erstes_wort_s']:>9.1f}s"
+                              f"{lauf['gesamt_s']:>9.1f}s   {bemerkung}")
+
+            if ergebnis["ok"]:
+                zeilen += [
+                    "",
+                    "Massgeblich ist die Zeit bis zum ersten Wort: danach laeuft",
+                    "die Antwort sichtbar weiter, man liest mit statt zu warten.",
+                    "",
+                    f"Im laufenden Betrieb: {ergebnis['im_betrieb_erstes_wort_s']} s "
+                    "bis zum ersten Wort.",
+                ]
+            else:
+                zeilen += ["", "Es hat kein Sprachmodell geantwortet."]
+            self._write_modell_log("\n".join(zeilen))
+            (messagebox.showinfo if ergebnis["ok"] else messagebox.showwarning)(
+                "Wartezeit messen",
+                (f"Im laufenden Betrieb: "
+                 f"{ergebnis['im_betrieb_erstes_wort_s']} s bis zum ersten Wort.\n\n"
+                 "Die Einzelheiten stehen unten im Textbereich - Sie koennen "
+                 "sie mit der Maus markieren und kopieren.")
+                if ergebnis["ok"] else "Es hat kein Sprachmodell geantwortet.",
+                parent=self.root)
+
+        BackgroundTask(self.root).run(self.controller.modell_messen, done)
 
     def _modell_probe(self) -> None:
         """Stellt dem Modell eine Frage - der Nachweis, nicht die Behauptung."""

@@ -69,6 +69,17 @@ oeffnet, hat keine Konsole offen und liest das als "geht nicht", nicht als
   stand dort ein Kasten mit drei Klicks und darunter weiter Konsolentext.
   Ein Test vergleicht die genannten Schaltflaechen mit denen im Fenster
 
+### Wartezeit messen - jetzt im Fenster
+
+Auf die Frage "was muss ich tun?" habe ich einen Konsolenbefehl genannt.
+Die Rueckfrage kam prompt: "Ich verstehe nicht, was ich machen soll."
+
+Derselbe Fehler wie beim Einrichten des Modells, nur an anderer Stelle: das
+Werkzeug entstand fuer die Kommandozeile, und wer die Anwendung per
+Doppelklick oeffnet, hat keine. Neue Schaltflaeche **Wartezeit messen** in
+der Registerkarte Sprachmodell - mit Rueckfrage vor dem Start, weil es ein
+bis zwei Minuten dauert, und dem Ergebnis im Textbereich zum Kopieren.
+
 ### "Keine Internetverbindung" - obwohl Internet da war
 
 Aus dem Betrieb gemeldet, mit Bild: Betriebsmodus HYBRID, Internet an, und

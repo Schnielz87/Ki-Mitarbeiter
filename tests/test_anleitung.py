@@ -142,7 +142,8 @@ def test_anleitung_nennt_nur_schaltflaechen_die_es_gibt():
     """Sonst sucht jemand einen Knopf, den niemand gebaut hat."""
     oberflaeche = (ROOT / "src" / "ui" / "tk_app.py").read_text(encoding="utf-8")
     for schaltflaeche in ("Sprachmodell einrichten", "Vorhandene Modelldatei uebernehmen",
-                          "Lage neu pruefen", "Modell ausprobieren"):
+                          "Lage neu pruefen", "Modell ausprobieren",
+                          "Wartezeit messen"):
         assert f'text="{schaltflaeche}"' in oberflaeche, (
             f"Die Anleitung nennt '{schaltflaeche}' - im Fenster gibt es das nicht.")
 

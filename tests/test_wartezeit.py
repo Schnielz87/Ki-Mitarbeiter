@@ -945,3 +945,87 @@ def test_auskunft_folgt_der_tatsaechlich_gestarteten_datei(tmp_path):
     # Der Rueckfall hat gegriffen - die Auskunft muss das zeigen.
     server.benutzt = tmp_path / "llama" / "cpu" / name
     assert MitgelieferterServerProvider(server).describe()["fassung"] == "cpu"
+
+
+# -- Die Messung im Fenster ----------------------------------------------
+
+def test_wartezeit_laesst_sich_im_fenster_messen(portable_root):
+    """Wer im Fenster sitzt, soll dafuer keine Konsole oeffnen muessen.
+
+    Derselbe Fehler wie beim Einrichten des Modells: das Werkzeug entstand
+    zuerst nur fuer die Kommandozeile. Wer die Anwendung per Doppelklick
+    oeffnet, hat keine Konsole - und versteht die Anweisung nicht, weil sie
+    aus seiner Welt herausfuehrt.
+    """
+    import sys
+
+    import tk_double
+
+    dialoge = tk_double.install()
+    for modul in [m for m in sys.modules if m.startswith("ui.")]:
+        del sys.modules[modul]
+    from ui import tk_app
+
+    controller = make_controller(portable_root)
+
+    class Stroemend:
+        name = "s"
+        model = "x"
+
+        def available(self):
+            return True, ""
+
+        def describe(self):
+            return {"anbieter": "s", "modell": "x", "fassung": "cpu",
+                    "gpu_schichten": 0}
+
+        def generate(self, messages, max_tokens=1024, temperature=0.2, stop=None,
+                     on_token=None):
+            if on_token:
+                on_token("**ERGEBNIS**\nBelegt in [1].")
+            return LlmResponse(text="**ERGEBNIS**\nBelegt in [1].", provider="s",
+                               model="x", completion_tokens=9)
+
+    controller.llm = LlmManager(Stroemend())
+    controller.rag.llm = controller.llm
+    bericht = controller.bootstrap()
+    window = tk_app.MainWindow(controller, bericht)
+    try:
+        assert hasattr(window, "_modell_messen"), "die Messung fehlt im Fenster"
+        dialoge.answers = [True]
+        window._modell_messen()
+
+        protokoll = window.modell_log.buffer
+        assert "Wartezeit" in protokoll
+        assert "erste Frage, Anwendung bereit" in protokoll
+        assert "andere Frage, im laufenden Betrieb" in protokoll
+        assert "bis zum ersten Wort" in protokoll
+        assert any(m[0] == "info" for m in dialoge.messages)
+    finally:
+        controller.shutdown()
+
+
+def test_messung_im_fenster_fragt_vorher(portable_root):
+    """Ein bis zwei Minuten Rechnen beginnen nicht ohne Rueckfrage."""
+    import sys
+
+    import tk_double
+
+    dialoge = tk_double.install()
+    for modul in [m for m in sys.modules if m.startswith("ui.")]:
+        del sys.modules[modul]
+    from ui import tk_app
+
+    controller = make_controller(portable_root)
+    bericht = controller.bootstrap()
+    window = tk_app.MainWindow(controller, bericht)
+    try:
+        gemessen = []
+        controller.modell_messen = lambda *a, **k: gemessen.append(True)
+        dialoge.answers = [False]
+        window._modell_messen()
+        assert not gemessen, "ohne Zustimmung darf nicht gemessen werden"
+        assert any(m[0] == "frage" and "ein bis zwei Minuten" in m[2]
+                   for m in dialoge.messages)
+    finally:
+        controller.shutdown()
