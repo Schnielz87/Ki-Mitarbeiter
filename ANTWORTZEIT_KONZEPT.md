@@ -141,6 +141,47 @@ wird, wäre eine Täuschung.
 - **Grafikkarte**: die Vulkan-Fassung liegt bei und wird automatisch
   gewählt. Auf einem Rechner ohne Karte hilft sie nicht.
 
+## 4a. Umgesetzt am 2026-09-07 — Hebel 1 und 2, gemessen
+
+Freigegeben und umgesetzt. Hebel 1 wurde dabei **korrigiert**: der erste
+Entwurf nahm Begriffsfragen ganz von der Recherche aus. Ein bestehender
+Test hat das gestoppt — „Was ist Reverse Charge?" ist ein Rechtsbegriff,
+und seine Erklärung gehört mit §13b UStG belegt. Tempo zu gewinnen, indem
+man den Beleg weglässt, wäre kein Gewinn.
+
+Die Umsetzung recherchiert deshalb **schlank statt gar nicht**: neue
+Einstufung `BEGRIFF` mit einer Recherchetiefe von 0,3. Zwei Fundstellen
+statt acht, kein Fachschema, eigene Antwortanweisung. Der Beleg bleibt,
+der Ballast fällt weg.
+
+Gemessen mit dem ausgelieferten Wissensbestand:
+
+| Frage | Typ | vorher | nachher |
+|---|---|---|---|
+| **Was ist Buchhaltung?** | BEGRIFF | ~2910 | **~1190** |
+| Was ist Reverse Charge? | BEGRIFF | ~2900 | ~1090 |
+| Was bedeutet Skonto? | BEGRIFF | ~2900 | ~1300 |
+| Welche Pflichtangaben braucht eine Rechnung? | FACHLICH | ~2910 | ~2490 |
+| Wie buche ich eine Eingangsrechnung aus Frankreich? | FACHLICH | ~2900 | ~2430 |
+| Wir haben eine Rechnung aus Frankreich … | KOMPLEX | ~3090 | ~3090 |
+
+**Faktor 2,4 auf genau die Frage, die gemeldet wurde.** Der verwickelte
+Einzelfall behält alles — dort ist nichts überflüssig.
+
+Was dabei ausdrücklich **nicht** kleiner wird: das Unternehmenswissen. Es
+ist klein und es ist das, was PORTIVA von einem allgemeinen Sprachmodell
+unterscheidet. Ein Test hält das fest.
+
+Was das für die gemeldeten 4 min 20 s bedeutet: rechnerisch rund 1 min 50 s.
+Das ist **keine Zusage** — die Verarbeitungsdauer wächst nicht exakt
+linear, und die Zahl ist auf diesem Rechner nicht nachgemessen. Nachmessen
+lässt sie sich mit „Wartezeit messen".
+
+Hebel 3 (Prompt-Anfang wiederverwenden) und Hebel 4 (Antwortspeicher)
+sind **nicht** umgesetzt und weiterhin offen.
+
+---
+
 ## 5. Was das zusammen bedeutet
 
 | Frageart | heute | mit Hebel 1+2 | zusätzlich mit Hebel 3 |

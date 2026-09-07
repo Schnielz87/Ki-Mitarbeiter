@@ -620,14 +620,27 @@ def test_begruessung_bekommt_kein_fachschema(portable_root):
         controller.ask("Hallo, wie geht es dir?")
         gruss = gemessen["kopf"]
         controller.ask("Welche Pflichtangaben braucht eine Rechnung nach dem UStG?")
+        einfache_fachfrage = gemessen["kopf"]
+        controller.ask("Wir haben eine Rechnung aus Frankreich von einem "
+                       "Unternehmer erhalten, wie buchen wir das mit der "
+                       "Umsatzsteuer und was ist mit der Vorsteuer?")
         fach = gemessen["kopf"]
     finally:
         controller.shutdown()
 
-    assert "BUCHUNGSVORSCHLAG" in fach, "die Fachfrage braucht das Schema"
+    assert "BUCHUNGSVORSCHLAG" in fach, (
+        "der geschilderte Einzelfall braucht das volle Schema")
     assert "BUCHUNGSVORSCHLAG" not in gruss, (
         "eine Begruessung braucht kein Antwortschema")
+    # Neu und der eigentliche Punkt: auch eine einfache Fachfrage bekommt
+    # das volle Schema nicht mehr. Auftrag Abschnitt 15 - "keine starre
+    # Vollstruktur bei einfachen Fragen". Rund 330 Textbausteine, die bei
+    # jeder Frage mitliefen und dort nichts beitrugen.
+    assert "BUCHUNGSVORSCHLAG" not in einfache_fachfrage, (
+        "eine einfache Fachfrage braucht die Vollstruktur nicht")
     assert len(gruss) < len(fach), "der Kopf muss dabei tatsaechlich kuerzer werden"
+    assert len(einfache_fachfrage) < len(fach), (
+        "der Kopf der einfachen Fachfrage muss kuerzer sein als der des Einzelfalls")
 
 
 def test_der_kern_des_systemtextes_verliert_keine_regel():
@@ -1321,3 +1334,96 @@ def test_ein_paar_textbausteine_weniger_sind_keine_wiederverwendung(portable_roo
         assert wieder["rueckgang_prozent"] > 80
     finally:
         controller.shutdown()
+
+
+def test_begriffsfrage_kostet_deutlich_weniger_als_eine_fachfrage(portable_root):
+    """Der gemessene Hebel, an dem die Wartezeit des Anwenders haengt.
+
+    Gemeldet: "Was ist Buchhaltung" brauchte 4 min 20 s bis zum ersten
+    Wort. Rund 95 Prozent davon entfallen auf das Verarbeiten des Prompts,
+    und dessen Dauer haengt fast linear an seiner Groesse. Vorher rund
+    2900 Textbausteine, danach rund 1200.
+
+    Der Test misst nicht Sekunden - die haengen vom Rechner ab -, sondern
+    das, was die Sekunden verursacht: die Groesse des Prompts.
+    """
+    from pkc.rag.fragetyp import einstufen
+
+    controller = make_controller(portable_root)
+    controller.bootstrap(build_embeddings=True)
+
+    def prompt_groesse(frage: str) -> int:
+        einstufung = einstufen(frage)
+        if einstufung.braucht_recherche:
+            hits, entries = controller.rag.retrieve(
+                frage, tiefe=einstufung.recherchetiefe)
+        else:
+            hits, entries = [], []
+        bundle = controller.rag.builder.build(
+            hits, entries, tiefe=einstufung.recherchetiefe)
+        nachrichten = controller.rag.build_messages(
+            frage, bundle, [], "OFFLINE", "2026-01-01", einstufung)
+        return sum(len(m.content) for m in nachrichten)
+
+    try:
+        begriff = prompt_groesse("Was ist Buchhaltung?")
+        fachlich = prompt_groesse(
+            "Wie buche ich eine Eingangsrechnung aus Frankreich?")
+        einzelfall = prompt_groesse(
+            "Wir haben eine Rechnung aus Frankreich von einem Unternehmer "
+            "erhalten, wie buchen wir das mit der Umsatzsteuer?")
+    finally:
+        controller.shutdown()
+
+    assert begriff * 2 < fachlich, (
+        f"die Begriffsfrage muss weniger als die Haelfte kosten "
+        f"(gemessen: {begriff} gegen {fachlich} Zeichen)")
+    assert fachlich < einzelfall, (
+        "der geschilderte Einzelfall bekommt mehr als die einfache Fachfrage")
+
+
+def test_die_begriffsfrage_bekommt_ihre_eigene_anweisung(portable_root):
+    """Ohne sie antwortet das Modell auf "Was ist Buchhaltung" mit einem
+    Buchungsvorschlag - es kennt den Unterschied sonst nicht."""
+    from pkc.rag.fragetyp import einstufen
+
+    controller = make_controller(portable_root)
+    controller.bootstrap(build_embeddings=True)
+    try:
+        frage = "Was ist Buchhaltung?"
+        einstufung = einstufen(frage)
+        bundle = controller.rag.builder.build([], [])
+        text = "\n".join(
+            m.content for m in controller.rag.build_messages(
+                frage, bundle, einstufung=einstufung) if m.role == "system")
+        assert "Begriffsfrage" in text
+        assert "BUCHUNGSVORSCHLAG" not in text, "kein Fachschema bei einer Erklaerung"
+        assert "erfinde keinen" in text, (
+            "die Anweisung muss das Erfinden von Fundstellen ausdruecklich "
+            "ausschliessen")
+    finally:
+        controller.shutdown()
+
+
+def test_die_recherchetiefe_verkleinert_nicht_das_unternehmenswissen():
+    """Am Unternehmenswissen wird nicht gespart.
+
+    Es ist klein, und es ist genau das, was PORTIVA von einem allgemeinen
+    Sprachmodell unterscheidet. Es zu kuerzen, um Zeit zu sparen, waere am
+    falschen Ende gespart.
+    """
+    from pkc.memory.store import MemoryEntry
+    from pkc.rag.context import ContextBuilder
+
+    eintraege = [
+        MemoryEntry(mem_key=f"company.regel{i}", category="rule",
+                    title=f"Regel {i}", content=f"Regel {i} " + "x" * 60)
+        for i in range(8)
+    ]
+    builder = ContextBuilder(max_context_tokens=1600, max_company_tokens=500)
+
+    voll = builder.build([], eintraege, tiefe=1.0)
+    schlank = builder.build([], eintraege, tiefe=0.3)
+
+    assert schlank.company_block == voll.company_block, (
+        "das Unternehmenswissen darf durch die Recherchetiefe nicht schrumpfen")

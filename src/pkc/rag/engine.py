@@ -78,9 +78,18 @@ class RagEngine:
         self.vector_candidates = int(vector_candidates)
 
     # -- Kontext -------------------------------------------------------
-    def retrieve(self, question: str, as_of: str | None = None) -> tuple[list[Hit], list[MemoryEntry]]:
+    def retrieve(self, question: str, as_of: str | None = None,
+                 tiefe: float = 1.0) -> tuple[list[Hit], list[MemoryEntry]]:
+        """``tiefe`` verkleinert die Zahl der Fundstellen fuer diese Frage.
+
+        Mindestens zwei bleiben immer: mit einer einzigen Fundstelle
+        haengt die Antwort an einem einzigen Treffer, und wenn der
+        danebenliegt, gibt es keine zweite Meinung.
+        """
+        top_k = max(int(round(self.top_k * max(tiefe, 0.05))), 2) if tiefe < 1.0 \
+            else self.top_k
         hits = self.searcher.search(
-            question, top_k=self.top_k,
+            question, top_k=top_k,
             lexical_candidates=self.lexical_candidates,
             vector_candidates=self.vector_candidates,
             as_of=as_of,
@@ -134,7 +143,12 @@ class RagEngine:
         # das Modell verarbeiten musste, um sie zu verwerfen. Auf einem
         # Buerorechner ist das Wartezeit fuer nichts.
         typ = einstufung.typ if einstufung else Fragetyp.FACHLICH
-        if self.profile.fachschema and typ in (Fragetyp.FACHLICH, Fragetyp.KOMPLEX):
+        # Auftrag Abschnitt 15: die volle Struktur nur dort, wo sie fachlich
+        # sinnvoll ist. Das Schema ist rund 330 Textbausteine gross; eine
+        # einfache Fachfrage brauchte es nie und musste es trotzdem
+        # verarbeiten. Auf reiner Prozessorrechnung sind das Sekunden fuer
+        # nichts, bei jeder einzelnen Frage.
+        if self.profile.fachschema and typ.volle_struktur:
             header += ["", "---", "", self.profile.fachschema]
 
         # Antworttiefe an die Art der Frage anpassen. Eine Begruessung mit dem
@@ -166,11 +180,17 @@ class RagEngine:
         # Umsatzsteuerrecht - das sieht aus, als haette die Frage damit zu tun.
         einstufung = einstufen(question, hat_verlauf=bool(history))
 
+        # Die Tiefe entscheidet, wieviel Recherche diese eine Frage kostet.
+        # Eine Begriffserklaerung braucht ein bis zwei belegende Stellen,
+        # ein verwickelter Einzelfall acht. Bisher bekamen beide acht - und
+        # die Verarbeitung dieser Fundstellen ist der groesste Posten der
+        # Wartezeit, gemessen rund 95 Prozent.
+        tiefe = einstufung.recherchetiefe
         if einstufung.braucht_recherche:
-            hits, entries = self.retrieve(question, as_of=as_of)
+            hits, entries = self.retrieve(question, as_of=as_of, tiefe=tiefe)
         else:
             hits, entries = [], self.memory.list(limit=40) if self.memory else []
-        bundle = self.builder.build(hits, entries)
+        bundle = self.builder.build(hits, entries, tiefe=tiefe)
         messages = self.build_messages(question, bundle, history, mode,
                                        knowledge_date, einstufung)
 
@@ -205,8 +225,14 @@ class RagEngine:
         # steuerliche Bewertung. Das muss dastehen - sonst sieht eine
         # Antwort aus Fachmodulen genauso belegt aus wie eine aus dem
         # Gesetzestext.
-        if (einstufung.typ in (Fragetyp.FACHLICH, Fragetyp.KOMPLEX)
-                and bundle.references
+        # Die Warnung haengt an den Fundstellen, nicht an der Frageart. Der
+        # erste Entwurf der Begriffsfrage hat sie stillschweigend
+        # abgeschaltet: die Frage war neu eingestuft, die Bedingung nannte
+        # aber weiter nur FACHLICH und KOMPLEX. Wer belegte Fundstellen
+        # bekommt, muss erfahren, wenn es nur Sekundaerquellen sind - ganz
+        # gleich, wie die Frage eingestuft wurde. Bei Smalltalk gibt es
+        # keine Fundstellen, dort greift die Bedingung von selbst nicht.
+        if (bundle.references
                 and all(ref.priority >= 5 for ref in bundle.references)):
             warnings.append(
                 "Fuer diese Aussage liegen im lokalen Wissensbestand nur "
@@ -316,6 +342,18 @@ def _tiefenanweisung(typ: Fragetyp, profile) -> list[str]:
             "* Wird nach deinen Faehigkeiten gefragt, nenne konkrete Beispiele "
             "aus deinem Fachgebiet und weise darauf hin, dass du bei fehlenden "
             "Angaben nachfragst.",
+        ]
+    if typ is Fragetyp.BEGRIFF:
+        return [
+            "Eine Begriffsfrage - es wird eine Erklaerung gewuenscht, keine "
+            "Wuerdigung eines Einzelfalls.",
+            "",
+            "* Erklaere den Begriff verstaendlich und knapp, in drei bis "
+            "sechs Saetzen. Kein Fachschema, keine Abschnittsueberschriften.",
+            "* Traegt eine der Fundstellen den Begriff wirklich, belege ihn "
+            "mit [1]. Wenn nicht, erklaere ohne Beleg - erfinde keinen.",
+            "* Schliesse mit einem Satz, dass du fuer einen konkreten Fall "
+            "gern genauer nachsiehst.",
         ]
     if typ is Fragetyp.EINFACH:
         return [

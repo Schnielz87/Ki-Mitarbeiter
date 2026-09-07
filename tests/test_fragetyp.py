@@ -35,9 +35,19 @@ def test_smalltalk_loest_keine_recherche_aus(frage):
     "Auf welchen Buchungsbeleg gehoert das?",
 ])
 def test_fachfragen_loesen_recherche_aus(frage):
+    """Entscheidend ist die Recherche, nicht die Schublade.
+
+    "Was ist Reverse Charge?" wird als Begriffsfrage eingestuft und
+    trotzdem belegt: es ist ein Rechtsbegriff, und seine Erklaerung gehoert
+    mit der Fundstelle versehen. Ein frueherer Entwurf hatte
+    Begriffsfragen ganz von der Recherche ausgenommen - genau dieser Test
+    hat das gestoppt. Tempo zu gewinnen, indem man den Beleg weglaesst,
+    waere kein Gewinn.
+    """
     einstufung = einstufen(frage)
     assert einstufung.braucht_recherche is True
-    assert einstufung.typ in (Fragetyp.FACHLICH, Fragetyp.KOMPLEX)
+    assert einstufung.typ in (Fragetyp.BEGRIFF, Fragetyp.FACHLICH,
+                              Fragetyp.KOMPLEX)
 
 
 def test_deutsche_zusammensetzungen_werden_erkannt():
@@ -110,7 +120,12 @@ def test_antworttiefe_steht_im_modellkontext(portable_root):
 
         for frage, erwartet in [
             ("Hallo", "keine** Fachfrage"),
-            ("Was ist Reverse Charge?", "fachliche Frage"),
+            ("Was ist Reverse Charge?", "Begriffsfrage"),
+            # Die Fachfrage bleibt in der Liste - sonst waere nach der
+            # Einfuehrung der Begriffsfrage niemand mehr da, der die
+            # fachliche Antworttiefe prueft.
+            ("Wie buche ich eine Eingangsrechnung aus Frankreich?",
+             "fachliche Frage"),
         ]:
             bundle = controller.rag.builder.build([], [])
             nachrichten = controller.rag.build_messages(
@@ -134,3 +149,67 @@ def test_unternehmenswissen_bleibt_auch_bei_smalltalk(portable_root):
         assert "Muster GmbH" in ergebnis.answer.context.company_block
     finally:
         controller.shutdown()
+
+
+# ------------------------------------------------------- Begriffsfragen
+
+@pytest.mark.parametrize("frage", [
+    "Was ist Buchhaltung?",
+    "Was ist Buchhaltung",
+    "Was bedeutet Skonto?",
+    "Was versteht man unter einer Bilanz?",
+    "Erklaere mir Reverse Charge",
+    "Wofuer steht GoBD?",
+    "Definiere Abschreibung",
+])
+def test_begriffsfragen_werden_als_solche_erkannt(frage):
+    """Der teuerste Posten der Wartezeit, gemessen im Betrieb.
+
+    "Was ist Buchhaltung" erzeugte einen Prompt von rund 2900
+    Textbausteinen - genauso viel wie ein verwickelter Einzelfall mit
+    Reverse Charge. Zwei Drittel davon waren Fundstellen, die eine
+    Begriffserklaerung nicht traegt. Auf einem Rechner ohne Grafikkarte
+    kostete das den Anwender vier Minuten und zwanzig Sekunden bis zum
+    ersten Wort.
+    """
+    einstufung = einstufen(frage)
+    assert einstufung.typ is Fragetyp.BEGRIFF, f"{frage!r} -> {einstufung.typ}"
+    assert einstufung.recherchetiefe < 1.0, "die Recherche muss kleiner werden"
+
+
+def test_begriffsfrage_recherchiert_trotzdem():
+    """Kleiner ja - aus ja nein.
+
+    Ein frueherer Entwurf hatte die Recherche bei Begriffsfragen ganz
+    abgeschaltet. Dann haette "Was ist Reverse Charge?" keine Fundstelle
+    mehr genannt - und §13b UStG gehoert zu dieser Erklaerung dazu.
+    """
+    assert einstufen("Was ist Reverse Charge?").braucht_recherche is True
+
+
+@pytest.mark.parametrize("frage", [
+    # Bezug auf das eigene Unternehmen - das beantwortet das
+    # Unternehmensgedaechtnis, nicht eine allgemeine Erklaerung.
+    "Was ist unser Kontenrahmen?",
+    "Was bedeutet das fuer uns?",
+    "Was ist bei uns die Freigabegrenze?",
+    # Geschilderter Sachverhalt, auch wenn "was ist" darin vorkommt.
+    "Ich habe eine Rechnung erhalten, was ist damit zu tun?",
+    "Wir haben ein Fahrzeug geleast, was ist zu buchen?",
+])
+def test_keine_begriffsfrage_wo_es_um_den_eigenen_fall_geht(frage):
+    """Die Abkuerzung darf nur greifen, wo nichts verloren geht."""
+    einstufung = einstufen(frage)
+    assert einstufung.typ is not Fragetyp.BEGRIFF, f"{frage!r} -> {einstufung.typ}"
+    assert einstufung.recherchetiefe == 1.0, "hier ist volle Recherche noetig"
+
+
+def test_lange_erklaerbitte_ist_keine_begriffsfrage():
+    """Wer viel schreibt, schildert meist einen Fall.
+
+    "Was ist der Unterschied zwischen Soll und Haben und wie wirkt sich das
+    auf unsere Bilanz aus?" ist keine Begriffsfrage mehr.
+    """
+    lang = ("Was ist der Unterschied zwischen Soll und Haben und wie wirkt "
+            "sich das auf unsere Bilanz aus?")
+    assert einstufen(lang).typ is not Fragetyp.BEGRIFF

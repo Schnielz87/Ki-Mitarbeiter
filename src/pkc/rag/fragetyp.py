@@ -24,21 +24,54 @@ from enum import Enum
 
 
 class Fragetyp(str, Enum):
-    """Vier Arten, wie im Auftrag (Abschnitt 9) beschrieben."""
+    """Die Arten, in die eine Nachricht faellt."""
 
     SMALLTALK = "SMALLTALK"
+    #: Reine Begriffsfrage: "Was ist Buchhaltung?", "Was bedeutet Skonto?"
+    #: Sie will eine Erklaerung, keine Wuerdigung eines Falls - und braucht
+    #: dafuer keine Fundstelle aus dem Gesetz.
+    BEGRIFF = "BEGRIFF"
     EINFACH = "EINFACH"
     FACHLICH = "FACHLICH"
     KOMPLEX = "KOMPLEX"
 
     @property
     def braucht_recherche(self) -> bool:
-        """Nur bei Smalltalk wird nicht recherchiert."""
+        """Nur bei Smalltalk wird gar nicht recherchiert.
+
+        Eine Begriffsfrage recherchiert **schlank** statt gar nicht - siehe
+        ``recherchetiefe``. Der erste Entwurf hatte sie ganz von der
+        Recherche ausgenommen; ein bestehender Test hat das zu Recht
+        gestoppt: "Was ist Reverse Charge?" ist ein Rechtsbegriff, und
+        seine Erklaerung gehoert mit §13b UStG belegt. Tempo zu gewinnen,
+        indem man den Beleg weglaesst, waere kein Gewinn.
+        """
         return self is not Fragetyp.SMALLTALK
 
     @property
+    def recherchetiefe(self) -> float:
+        """Wieviel vom eingestellten Rechercheumfang diese Frage braucht.
+
+        Gemessen am Betrieb: "Was ist Buchhaltung?" erzeugte einen Prompt
+        von rund 2900 Textbausteinen - genauso viel wie ein verwickelter
+        Einzelfall. Rund zwei Drittel davon waren Fundstellen, die eine
+        Begriffserklaerung nicht traegt.
+
+        Eine Erklaerung braucht ein bis zwei belegende Stellen, keine acht.
+        Deshalb wird hier nicht abgeschaltet, sondern verkleinert: der
+        Beleg bleibt, der Ballast faellt weg.
+        """
+        return 0.3 if self is Fragetyp.BEGRIFF else 1.0
+
+    @property
     def volle_struktur(self) -> bool:
-        """Nur ein komplexer Fall bekommt das vollstaendige Fachschema."""
+        """Nur ein komplexer Fall bekommt das vollstaendige Fachschema.
+
+        Auftrag Abschnitt 15: "Diese Struktur nur dort einsetzen, wo sie
+        fachlich sinnvoll ist. Keine starre Vollstruktur bei einfachen
+        Fragen." Das Schema ist rund 330 Textbausteine gross und wurde
+        bisher auch an einfache Fachfragen geschickt.
+        """
         return self is Fragetyp.KOMPLEX
 
 
@@ -81,6 +114,30 @@ _FACHLICH = re.compile(
     re.IGNORECASE,
 )
 
+#: Reine Begriffsfrage. "Was ist X", "Was bedeutet X", "Erklaere mir X".
+#
+# Bewusst am Satzanfang verankert: "Ich habe eine Rechnung, was ist da zu
+# tun?" ist keine Begriffsfrage, sondern ein Sachverhalt. Das "was ist"
+# steht dort mitten im Satz.
+_BEGRIFF = re.compile(
+    r"^\s*(bitte\s+)?("
+    r"was\s+(ist|sind|bedeutet|bedeuten|versteht\s+man\s+unter|meint\s+man\s+mit)"
+    r"|wofuer\s+steht"
+    r"|erklaer(e|en\s+sie)?(\s+mir)?"
+    r"|definiere|definition\s+von"
+    r"|kannst\s+du\s+mir\s+erklaeren,?\s+was"
+    r")\b",
+    re.IGNORECASE,
+)
+
+#: Bezug auf das eigene Unternehmen. Dann ist es keine allgemeine
+#: Begriffsfrage mehr, sondern eine Frage an das Unternehmensgedaechtnis -
+#: und die darf nicht abgekuerzt werden.
+_EIGENBEZUG = re.compile(
+    r"\b(unser|unsere[mnrs]?|bei\s+uns|wir|uns|mein|meine[mnrs]?|ich)\b",
+    re.IGNORECASE,
+)
+
 #: Hinweise auf einen konkreten, zu wuerdigenden Einzelfall.
 _SACHVERHALT = re.compile(
     r"\b(wir\s+haben|ich\s+habe|unser\s+|uns\s+|erhalten|bekommen|gekauft"
@@ -100,9 +157,14 @@ class Einstufung:
     def braucht_recherche(self) -> bool:
         return self.typ.braucht_recherche
 
+    @property
+    def recherchetiefe(self) -> float:
+        return self.typ.recherchetiefe
+
     def as_dict(self) -> dict:
         return {"typ": self.typ.value, "grund": self.grund,
-                "recherche": self.braucht_recherche}
+                "recherche": self.braucht_recherche,
+                "recherchetiefe": self.recherchetiefe}
 
 
 def einstufen(frage: str, hat_verlauf: bool = False) -> Einstufung:
@@ -137,6 +199,24 @@ def einstufen(frage: str, hat_verlauf: bool = False) -> Einstufung:
     # Erst wenn ein konkreter Sachverhalt geschildert wird, ist es fachlich.
     if _FAEHIGKEIT.search(text) and not sachverhalt:
         return Einstufung(Fragetyp.SMALLTALK, "Frage nach den Faehigkeiten")
+
+    # Begriffsfrage - vor der Fachpruefung, denn "Was ist Buchhaltung?"
+    # enthaelt einen Fachbegriff und waere sonst eine Fachfrage mit acht
+    # Fundstellen. Drei Bedingungen muessen zusammenkommen, damit hier
+    # wirklich nur abgekuerzt wird, wo nichts verloren geht:
+    #
+    #   1. Die Frage beginnt mit einer Erklaerbitte.
+    #   2. Es wird kein Sachverhalt geschildert.
+    #   3. Es geht nicht um das eigene Unternehmen.
+    #
+    # Faellt eine davon weg, geht die Frage den normalen Weg. Im Zweifel
+    # lieber einmal zu viel recherchiert als eine Wuerdigung ohne Grundlage.
+    if (_BEGRIFF.match(text) and not sachverhalt
+            and not _EIGENBEZUG.search(text) and woerter <= 12):
+        return Einstufung(
+            Fragetyp.BEGRIFF,
+            "Begriffsfrage ohne Sachverhalt - allgemeine Erklaerung genuegt",
+        )
 
     if not fachlich and not sachverhalt:
         return Einstufung(Fragetyp.EINFACH, "kein fachlicher Anhaltspunkt erkennbar")

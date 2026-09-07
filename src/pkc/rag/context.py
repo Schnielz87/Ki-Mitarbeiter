@@ -124,8 +124,21 @@ class ContextBuilder:
         hits: Sequence[Hit],
         company_entries: Sequence[MemoryEntry] = (),
         document_hits: Sequence[dict] = (),
+        tiefe: float = 1.0,
     ) -> ContextBundle:
+        """``tiefe`` verkleinert den Fundstellenteil fuer diese eine Frage.
+
+        Warum je Aufruf und nicht als Einstellung: die Tempostufe gilt fuer
+        alle Fragen, dieser Wert nur fuer diese eine. Eine Begriffsfrage
+        braucht ein bis zwei belegende Stellen, ein verwickelter Einzelfall
+        acht - beides bei derselben Tempostufe.
+
+        Das Unternehmenswissen wird **nicht** verkleinert. Es ist klein und
+        es ist das, was PORTIVA von einem allgemeinen Sprachmodell
+        unterscheidet; daran zu sparen waere am falschen Ende gespart.
+        """
         bundle = ContextBundle()
+        max_context_tokens = max(int(self.max_context_tokens * max(tiefe, 0.05)), 120)
         number = 0
         used = 0
 
@@ -151,7 +164,7 @@ class ContextBuilder:
             text = str(item.get("text", ""))
             title = str(item.get("title", "Beleg"))
             cost = estimate_tokens(text) + 20
-            if used + cost > self.max_context_tokens:
+            if used + cost > max_context_tokens:
                 number -= 1
                 break
             document_lines.append(f"[{number}] Beleg „{title}“\n{text}")
@@ -169,7 +182,7 @@ class ContextBuilder:
         knowledge_lines: list[str] = []
         for hit in sorted(hits, key=lambda h: (h.priority, -h.score)):
             cost = estimate_tokens(hit.text) + 30
-            if used + cost > self.max_context_tokens:
+            if used + cost > max_context_tokens:
                 break
             number += 1
             header = f"[{number}] {hit.reference}"
