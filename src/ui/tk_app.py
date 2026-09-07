@@ -310,9 +310,13 @@ class MainWindow:
         self._sprecher_ich = "BENUTZER"
         self._sprecher_ki = self.brand.titel(self.profil)
 
-        self._build_header()
+        # Reihenfolge beachten: erst die Schale, dann die Kopfzeile. Die
+        # Statusanzeigen sitzen in der Kopfzeile der Schale, nicht mehr in
+        # einer eigenen Leiste ueber den Karteireitern.
         self._build_body()
+        self._build_header()
         self._build_statusbar()
+        self.schale.fertig("unterhaltung")
 
         controller.network.on_change(self._on_network_change)
         controller.start_network_monitor()
@@ -329,29 +333,54 @@ class MainWindow:
         )
 
     # -- Aufbau --------------------------------------------------------
-    def _build_header(self) -> None:
-        header = ttk.Frame(self.root)
-        header.pack(fill="x", padx=PAD, pady=(PAD, 0))
-        _BrandKopf(header, self.brand, self.profil, gross=False).frame.pack(side="left")
+    #: Farbpaare fuer die Statuschips: Hintergrund, Schrift.
+    CHIPFARBEN = {
+        "neutral": ("#eef2f7", "#42556e"),
+        "gut": ("#e6f4ec", "#1c7a45"),
+        "warnung": ("#fdf3e3", "#9a6512"),
+    }
 
-        # Moduswahl: gut sichtbar, jederzeit erreichbar. Der aktuelle Modus
-        # ist eine Entscheidung des Benutzers - er gehoert nicht in ein
-        # Untermenue, sondern nach vorn.
+    def _chip(self, eltern, art: str = "neutral", fett: bool = True):
+        """Eine kleine Statusanzeige in der Kopfzeile.
+
+        Bewusst ein einfaches ``tk.Label`` statt eines ttk-Widgets: nur dort
+        laesst sich die Hintergrundfarbe auf jedem System verbindlich
+        setzen, und ein Chip ohne Farbe ist kein Chip.
+        """
+        grund, schrift = self.CHIPFARBEN[art]
+        label = tk.Label(eltern, text="", bg=grund, fg=schrift, padx=12, pady=5,
+                         font=("Segoe UI", 9, "bold" if fett else "normal"))
+        label.pack(side="left", padx=(8, 0))
+        return label
+
+    @staticmethod
+    def _chip_faerben(label, art: str) -> None:
+        grund, schrift = MainWindow.CHIPFARBEN[art]
+        label.configure(bg=grund, fg=schrift)
+
+    def _build_header(self) -> None:
+        """Statusanzeigen oben rechts, Betriebsmodus daneben.
+
+        Die Marke steht jetzt in der Seitenleiste, nicht mehr hier - deshalb
+        traegt die Kopfzeile nur noch Zustand: Wissensstand, Betriebsmodus,
+        Internet. Auftrag Abschnitt 31: schnell erreichbar, aber die
+        Oberflaeche nicht beherrschend.
+        """
+        chips = self.schale.chips
+
+        self.knowledge_label = self._chip(chips, "neutral", fett=False)
+        self.mode_label = self._chip(chips, "neutral")
+        self.internet_label = self._chip(chips, "neutral")
+
+        # Moduswahl: eine Entscheidung des Benutzers. Sie gehoert nicht in
+        # ein Untermenue, sondern in Reichweite.
         self.mode_var = tk.StringVar(value=self.controller.mode.value)
         self.mode_box = ttk.Combobox(
-            header, textvariable=self.mode_var, state="readonly", width=10,
+            chips, textvariable=self.mode_var, state="readonly", width=9,
             values=[m.value for m in Mode],
         )
-        self.mode_box.pack(side="right")
+        self.mode_box.pack(side="left", padx=(10, 0))
         self.mode_box.bind("<<ComboboxSelected>>", self._on_mode_changed)
-        ttk.Label(header, text="Betriebsmodus:").pack(side="right", padx=(PAD * 2, 4))
-
-        self.internet_label = ttk.Label(header, text="", font=("Segoe UI", 9))
-        self.internet_label.pack(side="right", padx=(0, PAD * 2))
-        self.mode_label = ttk.Label(header, text="", font=("Segoe UI", 10, "bold"))
-        self.mode_label.pack(side="right", padx=(0, PAD))
-        self.knowledge_label = ttk.Label(header, text="")
-        self.knowledge_label.pack(side="right", padx=(0, PAD * 2))
 
     def _refresh_update_lage(self) -> None:
         """Zeigt Wissensstand, Faelligkeit und naechste Pruefung."""
@@ -386,19 +415,46 @@ class MainWindow:
         return "break"
 
     def _build_body(self) -> None:
-        self.notebook = ttk.Notebook(self.root)
-        self.notebook.pack(fill="both", expand=True, padx=PAD, pady=PAD)
+        """Baut die Schale und haengt die Ansichten hinein.
+
+        Die Ansichten selbst sind unveraendert: sie bekommen nur eine
+        andere Flaeche als Elternteil. Genau darin liegt der Sinn dieses
+        Schrittes - der Rahmen wechselt, der Inhalt nicht.
+        """
+        from ui.schale import Navigationsschale
+
+        self.schale = Navigationsschale(
+            self.root, self.brand, self.profil,
+            sichtbare=self._sichtbare_bereiche())
+        # Reihenfolge wie im Zielentwurf. Sie bestimmt die Navigation.
         self._build_chat_tab()
         self._build_memory_tab()
         self._build_documents_tab()
-        self._build_model_tab()
         self._build_update_tab()
+        self._build_model_tab()
         self._build_settings_tab()
+
+    def _sichtbare_bereiche(self) -> list[str] | None:
+        """Welche Bereiche dieses Profil zeigt.
+
+        Auftrag Abschnitt 9: die Navigation muss profilspezifisch
+        konfigurierbar bleiben - ein spaeteres Mitarbeiterprofil soll
+        Bereiche ausblenden oder ergaenzen koennen, ohne dass der Kern neu
+        gebaut werden muss. Steht nichts im Profil, werden alle gezeigt.
+        """
+        try:
+            roh = self.controller.profile.raw.get("navigation")
+        except Exception:               # pragma: no cover - defensiv
+            return None
+        if not isinstance(roh, list) or not roh:
+            return None
+        return [str(k) for k in roh]
 
     # -- Registerkarte: Unterhaltung -----------------------------------
     def _build_chat_tab(self) -> None:
-        frame = ttk.Frame(self.notebook)
-        self.notebook.add(frame, text="Unterhaltung")
+        frame = self.schale.bereich_anlegen(
+            "unterhaltung", "Unterhaltung",
+            "Natuerlich fragen, Quellen nur bei Bedarf einblenden.", "\u25c9")
 
         panes = ttk.PanedWindow(frame, orient="horizontal")
         panes.pack(fill="both", expand=True)
@@ -489,8 +545,10 @@ class MainWindow:
 
     # -- Registerkarte: Unternehmenswissen -----------------------------
     def _build_memory_tab(self) -> None:
-        frame = ttk.Frame(self.notebook)
-        self.notebook.add(frame, text="Unternehmenswissen")
+        frame = self.schale.bereich_anlegen(
+            "unternehmenswissen", "Unternehmenswissen",
+            "Dauerhafte Unternehmensinformationen verwalten, pruefen und "
+            "versionieren.", "\u25a4")
 
         top = ttk.Frame(frame)
         top.pack(fill="x", pady=(0, PAD))
@@ -531,8 +589,10 @@ class MainWindow:
 
     # -- Registerkarte: Belege -----------------------------------------
     def _build_documents_tab(self) -> None:
-        frame = ttk.Frame(self.notebook)
-        self.notebook.add(frame, text="Belege")
+        frame = self.schale.bereich_anlegen(
+            "belege", "Belege & Dokumente",
+            "Hochladen, analysieren, klassifizieren und mit Fachwissen "
+            "verknuepfen.", "\u25a5")
         ttk.Button(frame, text="Beleg hinzufuegen", command=self._add_document).pack(
             anchor="w", pady=(0, PAD)
         )
@@ -549,8 +609,10 @@ class MainWindow:
 
     # -- Registerkarte: Wissensupdate ----------------------------------
     def _build_update_tab(self) -> None:
-        frame = ttk.Frame(self.notebook)
-        self.notebook.add(frame, text="Wissen aktualisieren")
+        frame = self.schale.bereich_anlegen(
+            "wissen_quellen", "Wissen & Quellen",
+            "Lokalen Wissensstand, Quellen und Synchronisierung transparent "
+            "verwalten.", "\u25eb")
 
         info = ttk.Label(
             frame,
@@ -632,8 +694,15 @@ class MainWindow:
         Wer die Anwendung per Doppelklick oeffnet, hat keine Konsole offen -
         und liest die Meldung als "geht nicht", nicht als "fehlt noch".
         """
-        frame = ttk.Frame(self.notebook)
-        self.notebook.add(frame, text="Sprachmodell")
+        # Vorlaeufig ein eigener Bereich. Nach dem Zielentwurf gehoert er
+        # unter "Einstellungen & Status" in die Gruppe "KI & Modelle"; das
+        # geschieht in Schritt 6, wenn die Einstellungen ihre acht Gruppen
+        # bekommen. Bis dahin bleibt er sichtbar - eine Funktion
+        # zwischendurch unerreichbar zu machen waere der schlechtere Weg.
+        frame = self.schale.bereich_anlegen(
+            "sprachmodell", "Sprachmodell",
+            "Das lokale Modell einrichten, ausprobieren und messen.",
+            "\u25d1")
 
         ttk.Label(
             frame,
@@ -1188,8 +1257,10 @@ class MainWindow:
 
     # -- Registerkarte: Einstellungen ----------------------------------
     def _build_settings_tab(self) -> None:
-        frame = ttk.Frame(self.notebook)
-        self.notebook.add(frame, text="Einstellungen und Status")
+        frame = self.schale.bereich_anlegen(
+            "einstellungen", "Einstellungen & Status",
+            "Betriebsmodus, Modelle, Speicher, Sicherheit und Systemstatus.",
+            "\u2699")
 
         left = ttk.Frame(frame)
         left.pack(side="left", fill="both", expand=True)
@@ -1765,15 +1836,26 @@ class MainWindow:
         self._refresh_update_lage()
         lage = self.controller.lage
         self.mode_label.configure(text=f"Betriebsmodus: {lage.modus.value}")
+        self._chip_faerben(self.mode_label,
+                           "gut" if lage.online_moeglich else "neutral")
         # Internetstatus getrennt anzeigen: "OFFLINE gewaehlt, Internet
         # verfuegbar" ist ein gueltiger und wichtiger Zustand.
         self.internet_label.configure(text=f"Internet: {lage.internet_text}")
+        self._chip_faerben(self.internet_label,
+                           "gut" if lage.internet else "warnung")
         if self.mode_var.get() != lage.modus.value:
             self.mode_var.set(lage.modus.value)
         knowledge_date = status["wissensstand"]
         self.knowledge_label.configure(
             text=f"Wissensstand: {knowledge_date[:10] if knowledge_date else 'unbekannt'}"
         )
+        # Dieselbe Auskunft noch einmal unten in der Seitenleiste - dort
+        # steht sie dauerhaft im Blick, auch wenn oben gerade ein langer
+        # Ansichtstitel steht.
+        if hasattr(self, "schale"):
+            self.schale.lage_setzen(
+                f"Profil: {self.profil}" if self.profil else self.brand.name,
+                f"{lage.modus.value} \u00b7 Internet {lage.internet_text}")
         self.statusbar.configure(
             text=f"{self.controller.status_line()} · Datentraeger: {self.controller.paths.root}"
         )

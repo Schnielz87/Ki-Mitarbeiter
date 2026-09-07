@@ -32,13 +32,104 @@ def gui(portable_root):
     controller.shutdown()
 
 
-def test_main_window_builds_all_tabs(gui):
+def test_main_window_builds_all_areas(gui):
+    """Alle Hauptbereiche sind angelegt und ueber die Navigation erreichbar.
+
+    Frueher waren es Karteireiter, jetzt eine dauerhafte Navigation links
+    (Auftrag Abschnitt 9). Geprueft wird beides zusammen: dass die Bereiche
+    existieren und dass zu jedem ein Knopf fuehrt - ein Bereich ohne Knopf
+    waere unerreichbar, ein Knopf ohne Bereich waere ein toter Knopf.
+    """
     window, controller, _, _ = gui
-    assert window.notebook.children, "die Registerkarten muessen angelegt sein"
+    schale = window.schale
+    assert schale.reihenfolge, "es muss Bereiche in der Navigation geben"
+    for kennung in schale.reihenfolge:
+        bereich = schale.bereiche[kennung]
+        assert bereich.rahmen is not None, f"{kennung} hat keine Flaeche"
+        assert bereich.knopf is not None, f"{kennung} ist nicht erreichbar"
     assert window.chat.buffer, "die Begruessung muss im Chat stehen"
     assert "bereit" in window.chat.buffer
     assert "OFFLINE" in window.mode_label.options["text"]
     assert "Wissensstand" in window.knowledge_label.options["text"]
+
+
+def test_die_aktive_ansicht_ist_eindeutig_hervorgehoben(gui):
+    """Auftrag Abschnitt 9: die aktive Ansicht muss eindeutig zu erkennen
+    sein. Sonst weiss niemand, wo er gerade ist."""
+    window, _, _, _ = gui
+    schale = window.schale
+    from ui import schale as schalenmodul
+
+    def farben():
+        return {k: schale.bereiche[k].knopf.options["bg"]
+                for k in schale.reihenfolge}
+
+    assert schale.aktiv == "unterhaltung", "die Unterhaltung ist die Startansicht"
+    vorher = farben()
+    assert vorher["unterhaltung"] == schalenmodul.AKTIV
+    assert sum(1 for f in vorher.values() if f == schalenmodul.AKTIV) == 1
+
+    ziel = schale.reihenfolge[-1]
+    schale.bereiche[ziel].knopf.invoke()
+    nachher = farben()
+    assert schale.aktiv == ziel
+    assert nachher[ziel] == schalenmodul.AKTIV
+    assert sum(1 for f in nachher.values() if f == schalenmodul.AKTIV) == 1, \
+        "es darf immer genau eine Ansicht hervorgehoben sein"
+
+
+def test_jeder_navigationsknopf_fuehrt_zu_seinem_bereich(gui):
+    """Kein Knopf darf ins Leere fuehren (Auftrag Abschnitt 34)."""
+    window, _, _, _ = gui
+    schale = window.schale
+    for kennung in schale.reihenfolge:
+        schale.bereiche[kennung].knopf.invoke()
+        assert schale.aktiv == kennung, f"{kennung} wurde nicht geoeffnet"
+        assert schale.titel_label.options["text"] == schale.bereiche[kennung].titel
+
+
+def test_das_profil_kann_bereiche_ausblenden(portable_root):
+    """Auftrag Abschnitt 9 - und zwar im echten Fenster, nicht nur in der
+    Schale.
+
+    Ohne diesen Test bliebe unbemerkt, wenn die Profilangabe zwar gelesen,
+    aber nie an die Schale weitergereicht wird. Genau das hat eine
+    Gegenprobe gezeigt: die Schale konnte es, das Fenster nutzte es nicht.
+    """
+    tk_double.install()
+    for module in [m for m in sys.modules if m.startswith("ui.")]:
+        del sys.modules[module]
+    from ui import tk_app
+
+    controller = make_controller(portable_root)
+    report = controller.bootstrap()
+    controller.profile.raw["navigation"] = ["unterhaltung", "einstellungen"]
+    try:
+        window = tk_app.MainWindow(controller, report)
+        assert window.schale.reihenfolge == ["unterhaltung", "einstellungen"], (
+            "die Navigation muss der Profilangabe folgen")
+        # Ausgeblendet heisst nicht geloescht - die Flaeche gibt es weiter.
+        assert "belege" in window.schale.bereiche
+        assert window.schale.bereiche["belege"].knopf is None
+    finally:
+        controller.shutdown()
+
+
+def test_ohne_profilangabe_sind_alle_bereiche_da(portable_root):
+    """Die Vorgabe ist Vollstaendigkeit, nicht Leere."""
+    tk_double.install()
+    for module in [m for m in sys.modules if m.startswith("ui.")]:
+        del sys.modules[module]
+    from ui import tk_app
+
+    controller = make_controller(portable_root)
+    report = controller.bootstrap()
+    controller.profile.raw.pop("navigation", None)
+    try:
+        window = tk_app.MainWindow(controller, report)
+        assert set(window.schale.reihenfolge) == set(window.schale.bereiche)
+    finally:
+        controller.shutdown()
 
 
 def test_send_question_shows_answer_and_sources(gui):
