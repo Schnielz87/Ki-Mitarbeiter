@@ -138,8 +138,9 @@ def test_send_question_shows_answer_and_sources(gui):
     window._send()
     assert "Welche Pflichtangaben" in window.chat.buffer
     assert "QUELLEN" in window.chat.buffer
-    assert window.sources.buffer, "das Quellenfeld muss gefuellt sein"
-    assert "Fachmodul" in window.sources.buffer
+    # Die Quellen stehen jetzt als Karten im rechten Panel, nicht mehr als
+    # Fliesstext in einem Textfeld (Auftrag Abschnitt 18).
+    assert window.quellenpanel.anzahl > 0, "es muessen Quellenkarten entstehen"
     assert len(controller.messages()) == 2
 
 

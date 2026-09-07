@@ -31,18 +31,39 @@ class _Widget:
         self.bindings: dict[str, Callable] = {}
         self.after_jobs: list[tuple[int, Callable]] = []
         self.destroyed = False
+        #: Ob das Widget angezeigt wird. Erst ein pack/grid/place macht es
+        #: sichtbar - genau wie im echten Tk.
+        self.sichtbar = False
         if isinstance(master, _Widget):
             master.children.append(self)
         command = options.get("command")
         if callable(command):
             self.commands["command"] = command
 
-    # Geometrie ist fuer den Test bedeutungslos, muss aber existieren
-    def pack(self, *a, **k): return self
-    def grid(self, *a, **k): return self
-    def place(self, *a, **k): return self
-    def pack_forget(self, *a, **k): return self
-    def grid_forget(self, *a, **k): return self
+    # Geometrie ist fuer das Aussehen bedeutungslos - ob ein Widget
+    # ueberhaupt sichtbar ist, aber nicht. Ohne diese Buchfuehrung koennte
+    # ein Test nur ein Merkmal pruefen ("eingeklappt = True") statt die
+    # Wirkung ("das Feld ist weg"). Genau daran ist eine Gegenprobe zu den
+    # Recherche-Details vorbeigelaufen.
+    def pack(self, *a, **k):
+        self.sichtbar = True
+        return self
+
+    def grid(self, *a, **k):
+        self.sichtbar = True
+        return self
+
+    def place(self, *a, **k):
+        self.sichtbar = True
+        return self
+
+    def pack_forget(self, *a, **k):
+        self.sichtbar = False
+        return self
+
+    def grid_forget(self, *a, **k):
+        self.sichtbar = False
+        return self
     def columnconfigure(self, *a, **k): return self
     def rowconfigure(self, *a, **k): return self
     def title(self, *a, **k): return self

@@ -286,6 +286,7 @@ class MainWindow:
         self.report = report
         self.busy = False
         self.pending_candidates: list = []
+        self._letzte_quellen: list = []
 
         # Fehlt das Sprachmodell, nennt die Antwort den Weg dorthin. Aus dem
         # Fenster heraus ist das die Registerkarte - nicht ein Befehl fuer
@@ -495,56 +496,161 @@ class MainWindow:
         self.chat.tag_configure("aufzaehlung", foreground="#1f4e79")
         self.chat.tag_configure("tabelle", font=FONT_MONO)
 
+        # -- Eingabe: dauerhaft unten, Aktionen direkt daneben ----------
         entry_frame = ttk.Frame(left)
         entry_frame.pack(fill="x", pady=(PAD, 0))
-        self.entry = tk.Text(entry_frame, height=4, font=FONT_BASE, wrap="word")
+        self.entry = tk.Text(entry_frame, height=3, font=FONT_BASE, wrap="word")
         self.entry.pack(side="left", fill="both", expand=True)
-        self.entry.bind("<Control-Return>", lambda event: self._send())
+
+        # Auftrag Abschnitt 33: Eingabe sendet, Umschalt+Eingabe bricht die
+        # Zeile um. Bisher war es umgekehrt herum geloest (Strg+Eingabe) -
+        # das kennt aus anderen Anwendungen niemand.
+        #
+        # Die Reihenfolge der beiden Bindungen ist wichtig: Tk wertet die
+        # genauere zuerst. Ohne "break" wuerde ausserdem zusaetzlich zum
+        # Senden noch ein Zeilenumbruch eingefuegt.
+        self.entry.bind("<Shift-Return>", lambda _e: None)
+        self.entry.bind("<Return>", self._auf_eingabetaste)
+        self.entry.bind("<Control-Return>", lambda _e: self._send())
 
         buttons = ttk.Frame(entry_frame)
         buttons.pack(side="right", fill="y", padx=(PAD, 0))
-        self.send_button = ttk.Button(buttons, text="Absenden", command=self._send)
+        self.send_button = ttk.Button(buttons, text="Senden", command=self._send)
         self.send_button.pack(fill="x")
         # Abschnitt 22: waehrend einer laengeren Antwort abbrechen koennen.
-        self.stop_button = ttk.Button(buttons, text="Generierung stoppen",
+        self.stop_button = ttk.Button(buttons, text="Stoppen",
                                       command=self._abbrechen, state="disabled")
         self.stop_button.pack(fill="x", pady=(4, 0))
-        ttk.Button(buttons, text="Neue Unterhaltung", command=self._new_conversation).pack(
-            fill="x", pady=(4, 0)
-        )
-        ttk.Button(buttons, text="Dokument hinzufuegen", command=self._add_document).pack(
-            fill="x", pady=(4, 0)
-        )
+        ttk.Button(buttons, text="Datei anhaengen",
+                   command=self._add_document).pack(fill="x", pady=(4, 0))
+
+        # Ablageflaeche fuer Drag & Drop. Sie ist zugleich ein Klickziel -
+        # kommt die Ablage auf diesem System nicht zustande, bleibt der
+        # Bereich also benutzbar statt tot zu sein.
+        self.drop_hinweis = tk.Label(
+            left, text="Datei hierher ziehen oder \u201eDatei anhaengen\u201c",
+            bg="#eef2f7", fg="#5b6b80", font=("Segoe UI", 8), pady=6,
+            cursor="hand2")
+        self.drop_hinweis.pack(fill="x", pady=(6, 0))
+        self.drop_hinweis.bind("<Button-1>", lambda _e: self._add_document())
+        self._ablage_einrichten()
+
+        hinweise = ttk.Frame(left)
+        hinweise.pack(fill="x", pady=(4, 0))
+        ttk.Label(hinweise,
+                  text="Eingabe sendet  ·  Umschalt+Eingabe neue Zeile  ·  "
+                       "Strg+N neue Unterhaltung  ·  Esc bricht ab",
+                  foreground="#5b6b80", font=("Segoe UI", 8)).pack(side="left")
+
         # Erweiterung E4: das Ergebnis soll als Datei herausgehen koennen -
         # ohne installiertes Office und ohne Internet.
-        speichern = ttk.Frame(buttons)
-        speichern.pack(fill="x", pady=(4, 0))
         self.datei_format = tk.StringVar(value="pdf")
-        ttk.Combobox(speichern, textvariable=self.datei_format, state="readonly", width=6,
+        ttk.Combobox(hinweise, textvariable=self.datei_format, state="readonly",
+                     width=6,
                      values=[eintrag["format"] for eintrag
                              in self.controller.artefakt_formate()]).pack(side="right")
-        ttk.Button(speichern, text="Antwort speichern",
-                   command=self._antwort_speichern).pack(side="left", fill="x", expand=True)
-        ttk.Label(buttons, text="Strg+Eingabe sendet", foreground="#666666").pack(pady=(4, 0))
+        ttk.Button(hinweise, text="Antwort speichern",
+                   command=self._antwort_speichern).pack(side="right", padx=(0, 4))
+        ttk.Button(hinweise, text="Neue Unterhaltung",
+                   command=self._new_conversation).pack(side="right", padx=(0, 4))
 
+        # -- Rechts: Quellen als Karten, darunter der Verlauf -----------
         right = ttk.Frame(panes)
         panes.add(right, weight=2)
 
-        ttk.Label(right, text="Quellen der letzten Antwort", font=("Segoe UI", 10, "bold")).pack(
-            anchor="w"
-        )
-        self.sources = scrolledtext.ScrolledText(
-            right, wrap="word", font=("Segoe UI", 9), height=16, state="disabled"
-        )
-        self.sources.pack(fill="both", expand=True, pady=(2, PAD))
+        from ui.quellenpanel import Quellenpanel
 
-        ttk.Label(right, text="Unterhaltungen", font=("Segoe UI", 10, "bold")).pack(anchor="w")
-        self.conversation_list = tk.Listbox(right, height=8, font=("Segoe UI", 9))
-        self.conversation_list.pack(fill="both", expand=True, pady=2)
+        self.quellenpanel = Quellenpanel(right, oeffnen=self._quelle_oeffnen)
+
+        verlauf = ttk.Frame(right)
+        verlauf.pack(side="bottom", fill="x", pady=(PAD, 0))
+        ttk.Label(verlauf, text="Unterhaltungen",
+                  font=("Segoe UI", 10, "bold")).pack(anchor="w")
+        self.conversation_list = tk.Listbox(verlauf, height=6, font=("Segoe UI", 9))
+        self.conversation_list.pack(fill="x", pady=2)
         self.conversation_list.bind("<Double-Button-1>", self._open_conversation)
-        ttk.Button(right, text="Unterhaltung exportieren", command=self._export_conversation).pack(
-            fill="x"
-        )
+        ttk.Button(verlauf, text="Unterhaltung exportieren",
+                   command=self._export_conversation).pack(fill="x")
+
+        # Tastenkuerzel am Fenster, nicht am Eingabefeld: sie sollen auch
+        # dann wirken, wenn der Mauszeiger woanders steht.
+        self.root.bind("<Control-n>", lambda _e: self._new_conversation())
+        self.root.bind("<Control-N>", lambda _e: self._new_conversation())
+        self.root.bind("<Escape>", self._auf_escape)
+
+    def _auf_eingabetaste(self, ereignis=None) -> str:
+        """Eingabe sendet - ausser bei gedrueckter Umschalttaste.
+
+        Tk meldet den Zustand der Sondertasten im Feld ``state``; Bit 0
+        steht fuer Umschalt. Die Abfrage ist bewusst defensiv: meldet ein
+        System nichts, wird gesendet - das ist der haeufigere Wunsch.
+        """
+        zustand = int(getattr(ereignis, "state", 0) or 0)
+        if zustand & 0x0001:            # Umschalt gedrueckt: Zeilenumbruch
+            return ""
+        self._send()
+        return "break"
+
+    def _auf_escape(self, _ereignis=None) -> str:
+        """Escape bricht eine laufende Erzeugung ab (Abschnitt 33).
+
+        Laeuft nichts, tut die Taste nichts - sie darf keine Unterhaltung
+        schliessen und nichts verwerfen.
+        """
+        if getattr(self, "_laufende_aufgabe", None) is not None:
+            self._abbrechen()
+        return "break"
+
+    def _quelle_oeffnen(self, ziel: str) -> None:
+        """Oeffnet eine Quelle - lokale Datei bevorzugt (Abschnitt 41)."""
+        if not ziel:
+            return
+        if str(ziel).lower().startswith(("http://", "https://")):
+            if not self.controller.lage.online_moeglich:
+                messagebox.showinfo(
+                    "Quelle oeffnen",
+                    "Diese Quelle liegt im Internet. Im aktuellen "
+                    "Betriebsmodus wird nicht online zugegriffen.",
+                    parent=self.root)
+                return
+            import webbrowser
+
+            webbrowser.open(str(ziel))
+            return
+        if not self.controller.datei_oeffnen(ziel):
+            messagebox.showwarning("Quelle oeffnen",
+                                   f"Liess sich nicht oeffnen:\n{ziel}",
+                                   parent=self.root)
+
+    def _ablage_einrichten(self) -> None:
+        """Richtet Drag & Drop ein, soweit das System es hergibt.
+
+        Tkinter kann das nicht von sich aus. Unter Windows laesst es sich
+        ueber die Systemschnittstelle nachruesten (``DragAcceptFiles`` und
+        die Nachricht WM_DROPFILES). Bewusst **keine** zusaetzliche
+        Bibliothek: das Paket soll von einem Datentraeger laufen, und jede
+        weitere Binaerdatei darin ist eine weitere Fehlerquelle.
+
+        Gelingt es nicht, bleibt es beim Klicken. Der Bereich sagt dann
+        auch nur noch das - eine Aufforderung zum Ziehen, die nicht
+        funktioniert, waere schlimmer als keine.
+        """
+        self.ablage_moeglich = False
+        try:
+            from ui.dateiablage import einrichten
+
+            self.ablage_moeglich = einrichten(self.root, self._datei_abgelegt)
+        except Exception:               # pragma: no cover - defensiv
+            log.debug("Drag & Drop nicht verfuegbar", exc_info=True)
+        if not self.ablage_moeglich:
+            self.drop_hinweis.configure(
+                text="Datei anhaengen (Ziehen ist auf diesem System nicht "
+                     "verfuegbar)")
+
+    def _datei_abgelegt(self, pfade) -> None:
+        """Nimmt per Ziehen abgelegte Dateien auf."""
+        for pfad in list(pfade)[:20]:
+            self._dokument_aufnehmen(Path(pfad))
 
     # -- Registerkarte: Unternehmenswissen -----------------------------
     def _build_memory_tab(self) -> None:
@@ -1969,18 +2075,18 @@ class MainWindow:
             self.stop_button.configure(state="disabled")
 
     def _show_sources(self, outcome: AskOutcome) -> None:
-        references = outcome.answer.used_references or outcome.answer.references
-        self.sources.configure(state="normal")
-        self.sources.delete("1.0", "end")
-        if not references:
-            self.sources.insert("end", "Zu dieser Frage wurde lokal keine Fundstelle gefunden.\n")
-        for reference in references:
-            self.sources.insert("end", f"[{reference.number}] {reference.reference}\n")
-            self.sources.insert("end", f"    {reference.priority_label}\n")
-            if reference.url:
-                self.sources.insert("end", f"    {reference.url}\n")
-            self.sources.insert("end", f"    {reference.excerpt}\n\n")
-        self.sources.configure(state="disabled")
+        """Quellen ins rechte Panel - Technisches nur in die Details.
+
+        Auftrag Abschnitt 18 und 19: die Quelle gehoert neben die Antwort,
+        die Bewertungszahl nicht. Eine Zahl neben einer Gesetzesangabe
+        sieht aus, als gehoere sie zur fachlichen Aussage.
+        """
+        #: Die zuletzt angezeigten Quellen - fuer die Recherche-Details und
+        #: damit ein Test nachsehen kann, was wirklich herangezogen wurde.
+        self._letzte_quellen = list(outcome.answer.references or [])
+        self.quellenpanel.setzen(
+            outcome.answer.used_references or outcome.answer.references,
+            outcome.answer.references)
 
     def _ask_about_candidates(self, outcome: AskOutcome) -> None:
         for candidate in outcome.capture_candidates:
@@ -2047,8 +2153,17 @@ class MainWindow:
         )
         if not filename:
             return
+        self._dokument_aufnehmen(Path(filename))
+
+    def _dokument_aufnehmen(self, pfad: Path) -> None:
+        """Nimmt eine Datei auf - egal ob ausgewaehlt oder hergezogen.
+
+        Ein gemeinsamer Weg fuer beides. Zwei Wege haetten frueher oder
+        spaeter zwei verschiedene Verhalten - und dann klappt es beim
+        Auswaehlen und beim Ziehen nicht.
+        """
         try:
-            result = self.controller.add_document(Path(filename))
+            result = self.controller.add_document(pfad)
         except Exception as exc:
             messagebox.showerror("Beleg", str(exc), parent=self.root)
             return
