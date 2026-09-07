@@ -2069,8 +2069,14 @@ class MainWindow:
         self.statusliste.pack(fill="x", pady=(12, 0))
         self._statuszeilen: dict[str, tuple] = {}
 
-        ttk.Button(innen, text="Status aktualisieren",
-                   command=self._refresh_status).pack(anchor="w", pady=(14, 0))
+        knoepfe = tk.Frame(innen, bg="#ffffff")
+        knoepfe.pack(fill="x", pady=(14, 0))
+        ttk.Button(knoepfe, text="Status aktualisieren",
+                   command=self._refresh_status).pack(side="left")
+        ttk.Button(knoepfe, text="Sicherung erstellen",
+                   command=self._backup).pack(side="left", padx=(PAD, 0))
+        ttk.Button(knoepfe, text="Sicherung wiederherstellen",
+                   command=self._wiederherstellen).pack(side="left", padx=(PAD, 0))
 
         # Der vollstaendige Zustand als Text bleibt erhalten - er ist das,
         # was bei einer Stoerung kopiert und weitergegeben wird. Nur steht
@@ -2790,6 +2796,69 @@ class MainWindow:
             f"{info['verzeichnis']}\n\nDateien mit Pruefsummen:\n"
             + "\n".join(f"  {n}: {c}" for n, c in info["pruefsummen"].items()),
         )
+
+    def _wiederherstellen(self) -> None:
+        """Spielt eine Sicherung zurueck - in vier Schritten, jeder mit Grund.
+
+        Wiederherstellen ueberschreibt den aktuellen Stand. Es ist die
+        einschneidendste Handlung der Anwendung und wird entsprechend
+        behandelt: auswaehlen, Pruefstand zeigen, ausdruecklich bestaetigen,
+        und der bisherige Stand wird vorher gesichert.
+        """
+        sicherungen = self.controller.sicherungen()
+        if not sicherungen:
+            messagebox.showinfo(
+                "Wiederherstellen",
+                "Es gibt noch keine Sicherung.\n\n"
+                "Legen Sie zuerst eine an - dann laesst sich dieser Stand "
+                "spaeter zurueckholen.", parent=self.root)
+            return
+
+        uebersicht = "\n".join(
+            f"  {e['name']}   {'in Ordnung' if e['vollstaendig'] else 'BESCHAEDIGT'}"
+            f"   ({e['befund']})" for e in sicherungen[:15])
+        name = simpledialog.askstring(
+            "Wiederherstellen",
+            "Verfuegbare Sicherungen:\n\n" + uebersicht
+            + "\n\nWelche soll eingespielt werden? (Name eintragen)",
+            initialvalue=sicherungen[0]["name"], parent=self.root)
+        if not name:
+            return
+
+        eintrag = next((e for e in sicherungen if e["name"] == name.strip()), None)
+        if eintrag is None:
+            messagebox.showerror("Wiederherstellen",
+                                 f"Diese Sicherung gibt es nicht: {name}",
+                                 parent=self.root)
+            return
+        if not eintrag["vollstaendig"]:
+            messagebox.showerror(
+                "Wiederherstellen",
+                f"Die Sicherung {name} ist nicht unversehrt:\n\n"
+                f"{eintrag['befund']}\n\n"
+                "Sie wird nicht eingespielt. Eine beschaedigte Sicherung "
+                "macht aus einem heilen Stand einen kaputten.",
+                parent=self.root)
+            return
+
+        if not messagebox.askyesno(
+            "Wiederherstellen",
+            f"Sicherung {name} vom {eintrag['erstellt_am'][:16]} einspielen?\n\n"
+            "Der aktuelle Stand von Unternehmensgedaechtnis, Fachwissen und "
+            "Einstellungen wird dabei UEBERSCHRIEBEN.\n\n"
+            "Der bisherige Stand wird vorher automatisch gesichert - wer "
+            "sich vertut, kommt zurueck.\n\nJetzt einspielen?",
+            parent=self.root,
+        ):
+            return
+
+        try:
+            ergebnis = self.controller.wiederherstellen(name.strip(), bestaetigt=True)
+        except Exception as fehler:
+            messagebox.showerror("Wiederherstellen", str(fehler), parent=self.root)
+            return
+        self._refresh_status()
+        TextWindow(self.root, "Wiederherstellen", ergebnis["meldung"])
 
     # -- Status --------------------------------------------------------
     def _refresh_status(self) -> None:

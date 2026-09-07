@@ -169,12 +169,7 @@ class AppController:
         )
 
         # Datenbanken
-        self.knowledge_db = Database(self.paths.knowledge_db, KNOWLEDGE_MIGRATIONS)
-        self.company_db = Database(self.paths.company_db, COMPANY_MIGRATIONS)
-        self.knowledge = KnowledgeStore(self.knowledge_db)
-        self.memory = MemoryStore(self.company_db)
-        self.audit = AuditLog(self.company_db, bool(self.config.get("security.audit_enabled", True)))
-        self.approvals = ApprovalStore(self.company_db, self.audit)
+        self._datenbanken_oeffnen()
 
         # Recherche
         self.embedder = build_embedder(
@@ -274,6 +269,22 @@ class AppController:
 
         self.conversation_uid: str = ""
         self._bundled_result: dict = {}
+
+    def _datenbanken_oeffnen(self) -> None:
+        """Oeffnet beide Datenbanken und alles, was auf ihnen aufsetzt.
+
+        Eigene Methode, weil es zwei Anlaesse dafuer gibt: den Start und
+        das Wiederherstellen einer Sicherung. Ohne sie muesste der zweite
+        Fall den ersten nachbauen - und beide liefen frueher oder spaeter
+        auseinander.
+        """
+        self.knowledge_db = Database(self.paths.knowledge_db, KNOWLEDGE_MIGRATIONS)
+        self.company_db = Database(self.paths.company_db, COMPANY_MIGRATIONS)
+        self.knowledge = KnowledgeStore(self.knowledge_db)
+        self.memory = MemoryStore(self.company_db)
+        self.audit = AuditLog(self.company_db,
+                              bool(self.config.get("security.audit_enabled", True)))
+        self.approvals = ApprovalStore(self.company_db, self.audit)
 
     def _seed_default_config(self) -> list[str]:
         """Kopiert mitgelieferte Vorgabedateien in einen frischen Datenbereich.
@@ -2169,6 +2180,136 @@ class AppController:
     def setup_progress(self) -> tuple[int, int]:
         schritte = self.setup_wizard_steps()
         return sum(1 for s in schritte if s["erledigt"]), len(schritte)
+
+    def sicherungen(self) -> list[dict]:
+        """Alle Sicherungen mit Zeitpunkt, Umfang und Pruefstand.
+
+        Der Pruefstand ist der wichtige Teil: eine Sicherung, deren
+        Pruefsummen nicht mehr stimmen, sieht genauso aus wie eine gute -
+        bis man sie einspielt.
+        """
+        ordner = self.paths.get("backups")
+        if not ordner.is_dir():
+            return []
+        eintraege = []
+        for verzeichnis in sorted(ordner.iterdir(), reverse=True):
+            if not verzeichnis.is_dir():
+                continue
+            angaben = {"name": verzeichnis.name, "pfad": str(verzeichnis),
+                       "erstellt_am": "", "dateien": [], "vollstaendig": False,
+                       "befund": "kein Verzeichnis der Sicherung"}
+            handbuch = verzeichnis / "MANIFEST.json"
+            if handbuch.is_file():
+                try:
+                    daten = json.loads(handbuch.read_text(encoding="utf-8"))
+                    angaben["erstellt_am"] = daten.get("erstellt_am", "")
+                    angaben["dateien"] = list(daten.get("dateien", []))
+                    angaben.update(self._sicherung_pruefen(verzeichnis, daten))
+                except (json.JSONDecodeError, OSError) as fehler:
+                    angaben["befund"] = f"Verzeichnis unlesbar: {fehler}"
+            eintraege.append(angaben)
+        return eintraege
+
+    @staticmethod
+    def _sicherung_pruefen(verzeichnis: Path, daten: dict) -> dict:
+        """Vergleicht die Dateien mit den hinterlegten Pruefsummen."""
+        pruefsummen = daten.get("pruefsummen") or {}
+        fehlend, abweichend = [], []
+        for name, erwartet in pruefsummen.items():
+            datei = verzeichnis / name
+            if not datei.is_file():
+                fehlend.append(name)
+                continue
+            if hashlib.sha256(datei.read_bytes()).hexdigest() != erwartet:
+                abweichend.append(name)
+
+        # Auch eine Datei zu VIEL macht die Sicherung fraglich. Sie steht in
+        # keiner Pruefsumme, also weiss niemand, woher sie kommt - und beim
+        # Einspielen wuerde sie mit zurueckgeschrieben. Ein Vergleich, der
+        # nur nach fehlenden Dateien sucht, uebersieht genau das.
+        bekannt = set(pruefsummen) | {"MANIFEST.json"}
+        zusaetzlich = sorted(
+            p.name for p in verzeichnis.iterdir()
+            if p.is_file() and p.name not in bekannt)
+
+        if fehlend or abweichend or zusaetzlich:
+            teile = []
+            if fehlend:
+                teile.append("fehlt: " + ", ".join(sorted(fehlend)))
+            if abweichend:
+                teile.append("veraendert: " + ", ".join(sorted(abweichend)))
+            if zusaetzlich:
+                teile.append("nicht im Verzeichnis: " + ", ".join(zusaetzlich))
+            return {"vollstaendig": False, "befund": " | ".join(teile)}
+        return {"vollstaendig": True,
+                "befund": f"{len(pruefsummen)} Dateien, Pruefsummen stimmen"}
+
+    def wiederherstellen(self, name: str, bestaetigt: bool = False) -> dict:
+        """Spielt eine Sicherung wieder ein.
+
+        Drei Vorkehrungen, jede aus einem eigenen Grund:
+
+        1. **Ohne Bestaetigung geschieht nichts.** Wiederherstellen
+           ueberschreibt den aktuellen Stand - das ist die einschneidendste
+           Handlung der ganzen Anwendung.
+        2. **Die Pruefsummen muessen stimmen.** Eine beschaedigte Sicherung
+           einzuspielen macht aus einem heilen Stand einen kaputten.
+        3. **Vorher wird der aktuelle Stand gesichert.** Wer sich vertut,
+           kommt zurueck. Ohne das waere die Wiederherstellung selbst der
+           gefaehrlichste Knopf im Programm.
+
+        Die Datenbanken sind waehrenddessen offen. Sie werden geschlossen,
+        ersetzt und wieder geoeffnet - der Aufrufer bekommt danach eine
+        Anwendung, die weiterlaeuft, keine mit toten Verbindungen.
+        """
+        eintrag = next((s for s in self.sicherungen() if s["name"] == name), None)
+        if eintrag is None:
+            raise ValueError(f"Diese Sicherung gibt es nicht: {name}")
+        if not eintrag["vollstaendig"]:
+            raise ValueError(
+                f"Die Sicherung {name} ist nicht unversehrt ({eintrag['befund']}). "
+                "Sie wird nicht eingespielt.")
+        if not bestaetigt:
+            raise ValueError(
+                "Das Wiederherstellen ueberschreibt den aktuellen Stand und "
+                "braucht deshalb eine ausdrueckliche Bestaetigung.")
+
+        quelle = Path(eintrag["pfad"])
+        vorher = self.backup(label="vor-wiederherstellung")
+
+        zurueckgespielt: list[str] = []
+        try:
+            self.company_db.close()
+            self.knowledge_db.close()
+            for datei, ziel in (("company.db", self.paths.company_db),
+                                ("knowledge.db", self.paths.knowledge_db)):
+                herkunft = quelle / datei
+                if herkunft.is_file():
+                    ziel.parent.mkdir(parents=True, exist_ok=True)
+                    shutil.copy2(herkunft, ziel)
+                    zurueckgespielt.append(datei)
+            for datei in ("settings.json", "source_registry.json", "secrets.enc"):
+                herkunft = quelle / datei
+                if herkunft.is_file():
+                    shutil.copy2(herkunft, self.paths.get("config") / datei)
+                    zurueckgespielt.append(datei)
+        finally:
+            # Auch wenn mitten drin etwas schiefging: die Verbindungen
+            # muessen wieder stehen, sonst ist die Anwendung nicht mehr
+            # bedienbar und der Benutzer sieht nur noch Folgefehler.
+            self._datenbanken_oeffnen()
+
+        self.audit.record("wiederherstellung", "backup", name,
+                          dateien=zurueckgespielt,
+                          sicherung_vorher=vorher.get("verzeichnis", ""))
+        return {
+            "ok": True, "name": name, "dateien": zurueckgespielt,
+            "sicherung_vorher": vorher.get("verzeichnis", ""),
+            "meldung": (f"{len(zurueckgespielt)} Dateien aus {name} "
+                        "zurueckgespielt. Der bisherige Stand wurde vorher "
+                        f"gesichert unter {vorher.get('verzeichnis', '')}. "
+                        "Bitte die Anwendung neu starten."),
+        }
 
     def restore_info(self) -> dict:
         """Woran ein Nutzer den Projekt-/Datenstand erkennt (Masterprompt 45)."""
