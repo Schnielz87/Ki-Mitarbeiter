@@ -1341,19 +1341,28 @@ def test_begriffsfrage_kostet_deutlich_weniger_als_eine_fachfrage(portable_root)
 
     Gemeldet: "Was ist Buchhaltung" brauchte 4 min 20 s bis zum ersten
     Wort. Rund 95 Prozent davon entfallen auf das Verarbeiten des Prompts,
-    und dessen Dauer haengt fast linear an seiner Groesse. Vorher rund
-    2900 Textbausteine, danach rund 1200.
+    und dessen Dauer haengt fast linear an seiner Groesse.
 
-    Der Test misst nicht Sekunden - die haengen vom Rechner ab -, sondern
-    das, was die Sekunden verursacht: die Groesse des Prompts.
+    Verglichen wird **dieselbe Frage**, einmal wie heute eingestuft und
+    einmal so, wie sie vorher behandelt wurde. Nur so misst der Test die
+    Wirkung der Aenderung.
+
+    Der erste Entwurf verglich zwei verschiedene Fragen. Das ging in der
+    Entwicklungsumgebung knapp durch (8398 gegen 8510 Zeichen) und fiel im
+    Bauablauf durch (8398 gegen 6499) - denn wie lang die Fundstellen einer
+    Frage ausfallen, haengt am Wissensbestand und nicht an der Aenderung.
+    Ein Test, dessen Ergebnis von der Umgebung abhaengt, misst nicht das,
+    was er zu messen vorgibt.
     """
-    from pkc.rag.fragetyp import einstufen
+    from pkc.rag.fragetyp import Fragetyp, einstufen
 
     controller = make_controller(portable_root)
     controller.bootstrap(build_embeddings=True)
 
-    def prompt_groesse(frage: str) -> int:
+    def prompt_groesse(frage: str, typ=None) -> int:
         einstufung = einstufen(frage)
+        if typ is not None:
+            einstufung = type(einstufung)(typ, "Vergleichsfall")
         if einstufung.braucht_recherche:
             hits, entries = controller.rag.retrieve(
                 frage, tiefe=einstufung.recherchetiefe)
@@ -1365,20 +1374,23 @@ def test_begriffsfrage_kostet_deutlich_weniger_als_eine_fachfrage(portable_root)
             frage, bundle, [], "OFFLINE", "2026-01-01", einstufung)
         return sum(len(m.content) for m in nachrichten)
 
+    frage = "Was ist Buchhaltung?"
     try:
-        begriff = prompt_groesse("Was ist Buchhaltung?")
-        fachlich = prompt_groesse(
-            "Wie buche ich eine Eingangsrechnung aus Frankreich?")
+        assert einstufen(frage).typ is Fragetyp.BEGRIFF
+        jetzt = prompt_groesse(frage)
+        vorher = prompt_groesse(frage, Fragetyp.FACHLICH)
         einzelfall = prompt_groesse(
             "Wir haben eine Rechnung aus Frankreich von einem Unternehmer "
             "erhalten, wie buchen wir das mit der Umsatzsteuer?")
+        einfache_fachfrage = prompt_groesse(
+            "Wie buche ich eine Eingangsrechnung aus Frankreich?")
     finally:
         controller.shutdown()
 
-    assert begriff * 2 < fachlich, (
-        f"die Begriffsfrage muss weniger als die Haelfte kosten "
-        f"(gemessen: {begriff} gegen {fachlich} Zeichen)")
-    assert fachlich < einzelfall, (
+    assert jetzt * 2 < vorher, (
+        f"dieselbe Frage muss jetzt weniger als die Haelfte kosten "
+        f"(gemessen: {jetzt} gegen {vorher} Zeichen)")
+    assert einfache_fachfrage < einzelfall, (
         "der geschilderte Einzelfall bekommt mehr als die einfache Fachfrage")
 
 
