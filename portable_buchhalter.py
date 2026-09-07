@@ -83,6 +83,12 @@ def main(argv: list[str] | None = None) -> int:
 
         return hauptschleife()
 
+    # Das Begruessungsbild laesst sich abschalten. Gedacht fuer den
+    # Bauablauf und fuer alle, die eilig sind - eine Begruessung, die man
+    # nicht loswird, ist keine Begruessung.
+    ohne_startbild = "--kein-startbild" in argv
+    argv = [a for a in argv if a != "--kein-startbild"]
+
     if argv and argv[0] not in ("--gui", "gui"):
         from ui.cli import main as cli_main
         return cli_main(argv)
@@ -101,7 +107,7 @@ def main(argv: list[str] | None = None) -> int:
         )
         return 3
     try:
-        return run()
+        return run(startbild=not ohne_startbild)
     except Exception as exc:  # der Nutzer darf nicht vor einem stummen Fenster sitzen
         import traceback
 

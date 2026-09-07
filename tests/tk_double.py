@@ -113,6 +113,40 @@ class _Widget:
     def update_idletasks(self): return None
     def winfo_children(self): return list(self.children)
 
+    # -- Fensterverwaltung -------------------------------------------
+    # Gebraucht vom Begruessungsbild und spaeter von der neuen Schale.
+    # Ohne diese Methoden faengt der defensive Code der Oberflaeche jeden
+    # Aufruf ab - und ein Test kaeme dann zum richtigen Ergebnis aus dem
+    # falschen Grund. Genau das ist bei den ersten Startbildtests passiert.
+    def overrideredirect(self, *a, **k): return self
+    def withdraw(self): return self
+    def deiconify(self): return self
+    def lift(self, *a, **k): return self
+    def attributes(self, *a, **k): return self
+    def focus_force(self): return self
+    def grab_set(self): return self
+    def grab_release(self): return self
+    def resizable(self, *a, **k): return self
+    def maxsize(self, *a, **k): return self
+    def state(self, *a, **k): return "normal"
+
+    def wait_window(self, fenster=None):
+        """Kehrt sofort zurueck - es gibt keine Ereignisschleife.
+
+        Die ``after``-Rueckrufe sind zu diesem Zeitpunkt bereits gelaufen
+        (siehe ``after``), das Fenster ist also schon geschlossen.
+        """
+        return None
+
+    def winfo_reqwidth(self): return 400
+    def winfo_reqheight(self): return 260
+    def winfo_width(self): return 400
+    def winfo_height(self): return 260
+    def winfo_screenwidth(self): return 1920
+    def winfo_screenheight(self): return 1080
+    def winfo_exists(self): return not self.destroyed
+    def winfo_toplevel(self): return self
+
     def invoke(self):
         """Loest den Button-Rueckruf aus."""
         callback = self.commands.get("command")
@@ -296,11 +330,30 @@ class _Dialogs:
 DIALOGS = _Dialogs()
 
 
+class _Toplevel(_Widget):
+    """Ein eigenstaendiges Fenster - mitgezaehlt.
+
+    Warum eine eigene Klasse: ein Test muss pruefen koennen, dass ein
+    Fenster **nicht** aufgeht. Solange alles derselbe Platzhalter ist,
+    laesst sich das nicht unterscheiden - und ein Test, der das nicht
+    unterscheiden kann, besteht auch dann, wenn die Anwendung ein leeres
+    Fenster oeffnet.
+    """
+
+    #: Alle seit dem letzten ``install()`` erzeugten Fenster.
+    ERZEUGT: list["_Toplevel"] = []
+
+    def __init__(self, master: Any = None, **options):
+        super().__init__(master, **options)
+        _Toplevel.ERZEUGT.append(self)
+
+
 def install() -> _Dialogs:
     """Registriert das Doppel als ``tkinter`` und gibt die Dialogerfassung."""
+    _Toplevel.ERZEUGT.clear()
     tk = types.ModuleType("tkinter")
     tk.Tk = _Widget
-    tk.Toplevel = _Widget
+    tk.Toplevel = _Toplevel
     tk.Frame = _Widget
     tk.Label = _Widget
     tk.Button = _Widget

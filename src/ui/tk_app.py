@@ -1997,9 +1997,25 @@ class OnboardingWindow:
         self.window.destroy()
 
 
-def run() -> int:
-    """Startet Systempruefung und Hauptfenster."""
+def run(startbild: bool = True) -> int:
+    """Startet Begruessungsbild, Systempruefung und Hauptfenster.
+
+    Die Reihenfolge ist nicht beliebig: der Controller wird **vor** dem
+    Begruessungsbild aufgebaut. Er faehrt dabei den Modelldienst im
+    Hintergrund hoch, und genau diese Zeit ueberbrueckt das Bild. Stuende
+    es davor, waeren die drei Sekunden verlorene Zeit statt gewonnener.
+    """
     controller = AppController(console_logging=False)
+    if startbild:
+        try:
+            from ui.startbild import Startbild
+
+            Startbild(load_brand(controller.paths, controller.config),
+                      profilname(controller.profile)).zeigen()
+        except Exception:               # pragma: no cover - defensiv
+            # Ein Begruessungsbild, das den Start verhindert, waere die
+            # schlechteste aller Loesungen.
+            log.debug("Begruessungsbild uebersprungen", exc_info=True)
     proceed, report = StartupWindow(controller).run()
     if not proceed:
         controller.shutdown()

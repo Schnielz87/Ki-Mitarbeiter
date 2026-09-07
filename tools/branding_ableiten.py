@@ -98,6 +98,74 @@ def _auf_grund(bild, farbe):
     return flaeche
 
 
+def _wortmarkenspalte(bild) -> int | None:
+    """Findet die Spalte, ab der der Schriftzug beginnt.
+
+    Ein Logo dieser Bauart besteht aus zwei Teilen nebeneinander: links das
+    Zeichen, rechts der Schriftzug. Dazwischen liegt eine deutliche
+    senkrechte Luecke - beim gelieferten PORTIVA-Classic-Logo 40 Bildpunkte
+    breit.
+
+    Gesucht wird die breiteste solche Luecke. Ist keine da (etwa weil nur
+    ein Symbol vorliegt), kommt None zurueck und es wird nichts umgefaerbt.
+    Lieber unveraendert als falsch eingefaerbt.
+    """
+    breite, hoehe = bild.size
+    alpha = bild.getchannel("A")
+    px = alpha.load()
+    schritt = max(1, hoehe // 200)
+    belegt = [any(px[x, y] > 24 for y in range(0, hoehe, schritt))
+              for x in range(breite)]
+    if not any(belegt):
+        return None
+    erste = belegt.index(True)
+    letzte = breite - 1 - belegt[::-1].index(True)
+
+    beste, lauf = (0, None), None
+    for x in range(erste, letzte + 1):
+        if not belegt[x]:
+            lauf = x if lauf is None else lauf
+        elif lauf is not None:
+            if x - lauf > beste[0]:
+                beste = (x - lauf, x)
+            lauf = None
+    # Eine Luecke gilt erst ab zwei Prozent der Gesamtbreite als Trennung
+    # zwischen Zeichen und Schriftzug. Buchstabenabstaende sind schmaler.
+    if beste[1] is None or beste[0] < breite * 0.02:
+        return None
+    return beste[1]
+
+
+def _schriftzug_aufhellen(bild, farbe=(255, 255, 255)):
+    """Faerbt den dunklen Schriftzug hell - fuer die dunkle Seitenleiste.
+
+    Ohne das waere die dunkle Variante unbrauchbar: der Schriftzug PORTIVA
+    ist dunkles Marineblau und stuende schwarz auf schwarzblauem Grund.
+
+    Umgefaerbt wird ausschliesslich rechts der Trennluecke, also der
+    Schriftzug. Das Zeichen selbst bleibt Bildpunkt fuer Bildpunkt
+    unveraendert - es ist die verbindliche Marke und wird nicht angefasst.
+    Eine Regel nach Helligkeit statt nach Ort waere hier falsch: der untere
+    Teil des P ist genauso dunkel wie der Schriftzug.
+    """
+    ab = _wortmarkenspalte(bild)
+    if ab is None:
+        return bild.copy()
+    kopie = bild.copy()
+    px = kopie.load()
+    breite, hoehe = kopie.size
+    for y in range(hoehe):
+        for x in range(ab, breite):
+            r, g, b, a = px[x, y]
+            if a == 0:
+                continue
+            # Nur dunkle Tinte aufhellen. Der helle Akzent im "A" des
+            # Schriftzugs ist bereits hell und bleibt, wie er ist.
+            if max(r, g, b) < 150:
+                px[x, y] = (*farbe, a)
+    return kopie
+
+
 def main() -> int:
     Image = _laden()
 
@@ -156,7 +224,8 @@ def main() -> int:
     # passendem Grund. Farben und Formen bleiben unveraendert.
     _auf_grund(haupt, (255, 255, 255, 255)).save(assets / VARIANTEN["light"])
     geschrieben.append(assets / VARIANTEN["light"])
-    _auf_grund(haupt, (23, 32, 46, 255)).save(assets / VARIANTEN["dark"])
+    _auf_grund(_schriftzug_aufhellen(haupt), (23, 32, 46, 255)).save(
+        assets / VARIANTEN["dark"])
     geschrieben.append(assets / VARIANTEN["dark"])
 
     # Symbol: quadratisch, ohne Verzerrung. Liegt ein eigenes Quadratsymbol

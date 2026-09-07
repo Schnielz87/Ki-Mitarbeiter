@@ -47,7 +47,10 @@ def test_unexpected_error_is_reported(monkeypatch, tmp_path, capsys):
 
     class Kaputt:
         @staticmethod
-        def run():
+        def run(**_egal):
+            # **_egal, damit dieser Test die Signatur von run() nicht
+            # mitversiegelt. Geprueft wird, ob ein unerwarteter Fehler beim
+            # Benutzer ankommt - nicht, wieviele Schalter der Start kennt.
             raise RuntimeError("Datenbank nicht lesbar")
 
     monkeypatch.setitem(sys.modules, "ui.tk_app", Kaputt)
