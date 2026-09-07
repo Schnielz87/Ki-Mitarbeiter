@@ -154,26 +154,33 @@ Einstufung `BEGRIFF` mit einer Recherchetiefe von 0,3. Zwei Fundstellen
 statt acht, kein Fachschema, eigene Antwortanweisung. Der Beleg bleibt,
 der Ballast fällt weg.
 
-Gemessen mit dem ausgelieferten Wissensbestand:
+Gemessen mit dem ausgelieferten Wissensbestand — **dieselbe Frage**, einmal
+wie bisher behandelt und einmal wie jetzt:
 
-| Frage | Typ | vorher | nachher |
+| Umgebung | vorher | nachher | Faktor |
 |---|---|---|---|
-| **Was ist Buchhaltung?** | BEGRIFF | ~2910 | **~1190** |
-| Was ist Reverse Charge? | BEGRIFF | ~2900 | ~1090 |
-| Was bedeutet Skonto? | BEGRIFF | ~2900 | ~1300 |
-| Welche Pflichtangaben braucht eine Rechnung? | FACHLICH | ~2910 | ~2490 |
-| Wie buche ich eine Eingangsrechnung aus Frankreich? | FACHLICH | ~2900 | ~2430 |
-| Wir haben eine Rechnung aus Frankreich … | KOMPLEX | ~3090 | ~3090 |
+| Entwicklungsrechner | 8896 Zeichen | 4199 | **2,1** |
+| Windows-Baurechner | 6318 Zeichen | 4199 | **1,5** |
 
-**Faktor 2,4 auf genau die Frage, die gemeldet wurde.** Der verwickelte
-Einzelfall behält alles — dort ist nichts überflüssig.
+**Warum zwei verschiedene Zahlen?** Der Anteil, den ich abschalte, ist
+überall gleich groß: statt acht Fundstellen zwei, kein Fachschema. Wie
+lang die *einzelnen* Fundstellen ausfallen, hängt aber davon ab, welche
+Abschnitte die Volltextsuche zuoberst stellt — und das fällt auf zwei
+Rechnern unterschiedlich aus.
+
+Die ehrliche Aussage lautet deshalb: **der Prompt schrumpft um ein Drittel
+bis um die Hälfte**, nicht „um den Faktor 2,4". Diese Zahl hatte ich
+zunächst berichtet; sie stammte aus einem Vergleich zweier verschiedener
+Fragen und war zu günstig gegriffen.
+
+Der verwickelte Einzelfall behält alles — dort ist nichts überflüssig.
 
 Was dabei ausdrücklich **nicht** kleiner wird: das Unternehmenswissen. Es
 ist klein und es ist das, was PORTIVA von einem allgemeinen Sprachmodell
 unterscheidet. Ein Test hält das fest.
 
-Was das für die gemeldeten 4 min 20 s bedeutet: rechnerisch rund 1 min 50 s.
-Das ist **keine Zusage** — die Verarbeitungsdauer wächst nicht exakt
+Was das für die gemeldeten 4 min 20 s bedeutet: rechnerisch **zwischen
+2 und 3 Minuten**. Das ist **keine Zusage** — die Verarbeitungsdauer wächst nicht exakt
 linear, und die Zahl ist auf diesem Rechner nicht nachgemessen. Nachmessen
 lässt sie sich mit „Wartezeit messen".
 

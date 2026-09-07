@@ -1336,62 +1336,71 @@ def test_ein_paar_textbausteine_weniger_sind_keine_wiederverwendung(portable_roo
         controller.shutdown()
 
 
-def test_begriffsfrage_kostet_deutlich_weniger_als_eine_fachfrage(portable_root):
+def test_die_begriffsfrage_bekommt_weniger_fundstellen_und_kein_schema(portable_root):
     """Der gemessene Hebel, an dem die Wartezeit des Anwenders haengt.
 
     Gemeldet: "Was ist Buchhaltung" brauchte 4 min 20 s bis zum ersten
-    Wort. Rund 95 Prozent davon entfallen auf das Verarbeiten des Prompts,
-    und dessen Dauer haengt fast linear an seiner Groesse.
+    Wort. Rund 95 Prozent davon entfallen auf das Verarbeiten des Prompts.
 
-    Verglichen wird **dieselbe Frage**, einmal wie heute eingestuft und
-    einmal so, wie sie vorher behandelt wurde. Nur so misst der Test die
-    Wirkung der Aenderung.
+    Geprueft wird der **Mechanismus**, nicht ein Zahlenverhaeltnis: weniger
+    Fundstellen, kein Fachschema, kleinerer Prompt. Zwei frueheren
+    Fassungen dieses Tests ist genau das zum Verhaengnis geworden - sie
+    verlangten einen Faktor zwei, und wie lang die Fundstellen ausfallen,
+    haengt am Wissensbestand und an der Reihenfolge, die die Volltextsuche
+    liefert. Dieselbe Frage ergab hier 8896 und im Bauablauf 6318 Zeichen.
 
-    Der erste Entwurf verglich zwei verschiedene Fragen. Das ging in der
-    Entwicklungsumgebung knapp durch (8398 gegen 8510 Zeichen) und fiel im
-    Bauablauf durch (8398 gegen 6499) - denn wie lang die Fundstellen einer
-    Frage ausfallen, haengt am Wissensbestand und nicht an der Aenderung.
     Ein Test, dessen Ergebnis von der Umgebung abhaengt, misst nicht das,
-    was er zu messen vorgibt.
+    was er zu messen vorgibt - auch wenn er zufaellig gruen ist.
     """
     from pkc.rag.fragetyp import Fragetyp, einstufen
 
     controller = make_controller(portable_root)
     controller.bootstrap(build_embeddings=True)
 
-    def prompt_groesse(frage: str, typ=None) -> int:
+    def aufbau(frage: str, typ=None):
         einstufung = einstufen(frage)
         if typ is not None:
             einstufung = type(einstufung)(typ, "Vergleichsfall")
-        if einstufung.braucht_recherche:
-            hits, entries = controller.rag.retrieve(
-                frage, tiefe=einstufung.recherchetiefe)
-        else:
-            hits, entries = [], []
+        hits, entries = controller.rag.retrieve(
+            frage, tiefe=einstufung.recherchetiefe)
         bundle = controller.rag.builder.build(
             hits, entries, tiefe=einstufung.recherchetiefe)
         nachrichten = controller.rag.build_messages(
             frage, bundle, [], "OFFLINE", "2026-01-01", einstufung)
-        return sum(len(m.content) for m in nachrichten)
+        text = "\n".join(m.content for m in nachrichten)
+        return len(bundle.references), len(text), text
 
     frage = "Was ist Buchhaltung?"
     try:
         assert einstufen(frage).typ is Fragetyp.BEGRIFF
-        jetzt = prompt_groesse(frage)
-        vorher = prompt_groesse(frage, Fragetyp.FACHLICH)
-        einzelfall = prompt_groesse(
-            "Wir haben eine Rechnung aus Frankreich von einem Unternehmer "
-            "erhalten, wie buchen wir das mit der Umsatzsteuer?")
-        einfache_fachfrage = prompt_groesse(
-            "Wie buche ich eine Eingangsrechnung aus Frankreich?")
+        quellen_jetzt, groesse_jetzt, text_jetzt = aufbau(frage)
+        quellen_vorher, groesse_vorher, text_vorher = aufbau(frage, Fragetyp.FACHLICH)
     finally:
         controller.shutdown()
 
-    assert jetzt * 2 < vorher, (
-        f"dieselbe Frage muss jetzt weniger als die Haelfte kosten "
-        f"(gemessen: {jetzt} gegen {vorher} Zeichen)")
-    assert einfache_fachfrage < einzelfall, (
-        "der geschilderte Einzelfall bekommt mehr als die einfache Fachfrage")
+    assert quellen_jetzt <= 2, (
+        f"eine Erklaerung braucht ein bis zwei belegende Stellen, keine "
+        f"{quellen_jetzt}")
+    assert quellen_jetzt < quellen_vorher, (
+        f"vorher {quellen_vorher} Fundstellen, jetzt {quellen_jetzt} - es "
+        "muessen weniger werden")
+    assert "BUCHUNGSVORSCHLAG" not in text_jetzt, "kein Fachschema"
+    assert groesse_jetzt < groesse_vorher, (
+        f"der Prompt muss kleiner werden ({groesse_jetzt} gegen "
+        f"{groesse_vorher} Zeichen)")
+
+
+def test_mindestens_zwei_fundstellen_bleiben_immer(portable_root):
+    """Mit einer einzigen Fundstelle haengt die Antwort an einem einzigen
+    Treffer - und wenn der danebenliegt, gibt es keine zweite Meinung."""
+    controller = make_controller(portable_root)
+    controller.bootstrap(build_embeddings=True)
+    try:
+        controller.rag.top_k = 8
+        hits, _ = controller.rag.retrieve("Was ist Reverse Charge?", tiefe=0.05)
+        assert len(hits) >= 2, f"nur {len(hits)} Fundstelle(n)"
+    finally:
+        controller.shutdown()
 
 
 def test_die_begriffsfrage_bekommt_ihre_eigene_anweisung(portable_root):
