@@ -1016,6 +1016,26 @@ class AppController:
             "im_betrieb_gesamt_s": gute[-1]["gesamt_s"] if gute else 0.0,
         }
 
+    def modell_bereit(self) -> bool:
+        """Steht der Modelldienst schon, oder laedt er noch?
+
+        Gebraucht fuer die Anzeige waehrend des Wartens. Die erste Frage
+        nach dem Start wartet auf das Laden mehrerer Gigabyte; steht in
+        dieser Zeit "recherchiert lokal", haelt der Benutzer die Anwendung
+        fuer haengend. Gemeldet wurde: viereinhalb Minuten auf die erste
+        Antwort, ohne dass sich am Fenster etwas ruehrte.
+
+        Ein Anbieter, der keinen eigenen Dienst startet, gilt als bereit -
+        dort gibt es nichts zu laden.
+        """
+        dienst = getattr(getattr(self.llm, "primary", None), "server", None)
+        if dienst is None:
+            return True
+        try:
+            return bool(getattr(dienst, "laeuft", False)) and bool(dienst.bereit())
+        except Exception:                        # pragma: no cover - defensiv
+            return False
+
     def tempostufe(self) -> str:
         """Der Name der Stufe, die JETZT gilt - "automatisch" aufgeloest.
 

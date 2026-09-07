@@ -294,3 +294,40 @@ def test_lange_dauern_werden_als_minuten_geschrieben(fenster):
     window, _, _ = fenster
     assert window._dauer_text(500) == "8 Min 20 Sek (500 Sekunden)"
     assert window._dauer_text(4.2) == "4.2 Sekunden"
+
+
+def test_waehrend_des_wartens_steht_da_worauf_gewartet_wird(fenster, monkeypatch):
+    """Gemeldet: viereinhalb Minuten, und im Fenster ruehrte sich nichts.
+
+    Der groesste Teil dieser Zeit war gar keine Recherche, sondern das
+    einmalige Laden des Modells. Wer "recherchiert lokal" liest, waehrend
+    in Wahrheit vier Gigabyte von der Platte kommen, haelt die Anwendung
+    fuer haengend.
+    """
+    window, controller, _ = fenster
+    window.busy = True
+    window._frage_begonnen = __import__("time").monotonic() - 130.0
+    window._strom_laeuft = False
+
+    monkeypatch.setattr(controller, "modell_bereit", lambda: False)
+    window._wartestand_anzeigen()
+    text = window.statusbar.options["text"]
+    assert "geladen" in text, "es muss dastehen, dass das Modell laedt"
+    assert "2 Min" in text, "die bisherige Wartezeit gehoert dazu"
+
+    monkeypatch.setattr(controller, "modell_bereit", lambda: True)
+    window._wartestand_anzeigen()
+    assert "geladen" not in window.statusbar.options["text"]
+
+    window._strom_laeuft = True
+    window._wartestand_anzeigen()
+    assert "geschrieben" in window.statusbar.options["text"]
+
+
+def test_ohne_laufende_frage_wird_die_statuszeile_nicht_angefasst(fenster):
+    """Die Anzeige darf nicht auf eigene Faust etwas behaupten."""
+    window, _, _ = fenster
+    window.busy = False
+    window.statusbar.options["text"] = "unveraendert"
+    window._wartestand_anzeigen()
+    assert window.statusbar.options["text"] == "unveraendert"

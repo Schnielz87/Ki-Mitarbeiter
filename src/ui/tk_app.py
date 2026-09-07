@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import queue
 import threading
+import time
 import traceback
 from pathlib import Path
 from typing import Any, Callable
@@ -1368,6 +1369,7 @@ class MainWindow:
             return "break"
         self.entry.delete("1.0", "end")
         self._append_chat(self._sprecher_ich, question)
+        self._frage_begonnen = time.monotonic()
         self._set_busy(True, "Der Buchhalter recherchiert lokal ...")
 
         # Abschnitt 21: Textstuecke kommen aus dem Arbeitsfaden, angezeigt
@@ -1404,8 +1406,37 @@ class MainWindow:
 
         self._laufende_aufgabe = BackgroundTask(self.root)
         self.stop_button.configure(state="normal")
-        self._laufende_aufgabe.run(work, done, on_tick=self._strom_ausgeben)
+        def takt() -> None:
+            self._strom_ausgeben()
+            self._wartestand_anzeigen()
+
+        self._laufende_aufgabe.run(work, done, on_tick=takt)
         return "break"
+
+    def _wartestand_anzeigen(self) -> None:
+        """Sagt waehrend des Wartens, worauf gewartet wird - und wie lange.
+
+        Gemeldet wurde: viereinhalb Minuten bis zur ersten Antwort, und in
+        der ganzen Zeit stand unveraendert "recherchiert lokal" da. Wer das
+        sieht, haelt die Anwendung fuer haengend - zumal der groesste Teil
+        dieser Zeit gar keine Recherche war, sondern das einmalige Laden des
+        Modells.
+
+        Die Zeit selbst wird dadurch nicht kuerzer. Aber eine Wartezeit, von
+        der man weiss, wofuer sie ist und wie lange sie schon laeuft, ist
+        etwas anderes als ein stehendes Fenster.
+        """
+        begonnen = getattr(self, "_frage_begonnen", None)
+        if begonnen is None or not self.busy:
+            return
+        if getattr(self, "_strom_laeuft", False):
+            stand = "Die Antwort wird geschrieben"
+        elif not self.controller.modell_bereit():
+            stand = "Das Sprachmodell wird geladen (einmalig nach dem Start)"
+        else:
+            stand = "Der Buchhalter recherchiert und denkt nach"
+        self.statusbar.configure(
+            text=f"{stand} - seit {self._dauer_text(time.monotonic() - begonnen)}")
 
     def _antwort_anzeigen(self, text: str) -> None:
         """Zeigt die fertige Antwort - notfalls anstelle des Stroms.

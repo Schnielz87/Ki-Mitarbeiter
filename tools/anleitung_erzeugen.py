@@ -657,8 +657,13 @@ tabelle_mit(
 
 kasten(
     "Wenn die erste Antwort lange dauert",
-    "Das ist einmalig: das Modell wird in den Arbeitsspeicher geladen. Die "
-    "folgenden Antworten kommen deutlich schneller.\n\n"
+    "Das ist einmalig: das Modell wird in den Arbeitsspeicher geladen. Bei "
+    "einem grossen Modell auf einem USB-Stick sind das durchaus ein bis "
+    "zwei Minuten. Die folgenden Antworten kommen deutlich schneller.\n\n"
+    "Sie muessen dabei nicht raten, ob noch etwas passiert: unten in der "
+    "Statuszeile steht, worauf gerade gewartet wird - \"Das Sprachmodell "
+    "wird geladen\", \"Der Buchhalter recherchiert und denkt nach\" oder "
+    "\"Die Antwort wird geschrieben\" - und daneben, seit wann.\n\n"
     "Kommt der Dienst gar nicht hoch, nennt die Meldung seine letzte "
     "Ausgabe - meist reicht der Arbeitsspeicher nicht. Dann ein kleineres "
     "Profil waehlen. Ausfuehrlich steht es in logs\\llama-server.log.",
