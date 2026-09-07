@@ -82,6 +82,10 @@ class _ModelHandler(BaseHTTPRequestHandler):
                     "finish_reason": "stop",
                 }],
                 "usage": {"prompt_tokens": 120, "completion_tokens": 20},
+                # llama.cpp legt seiner Antwort diese Aufteilung bei. Sie
+                # sagt, wo die Wartezeit geblieben ist.
+                "timings": {"prompt_ms": 120000.0, "prompt_n": 2400,
+                            "predicted_ms": 40000.0, "predicted_n": 160},
             }).encode()
         self.send_response(200)
         self.send_header("Content-Type", "application/json")
@@ -353,3 +357,30 @@ def test_fremder_dienst_bekommt_kein_zusatzfeld(model_server):
     gesehen = model_server.handler.seen[-1]
     assert "cache_prompt" not in gesehen, (
         "ein fremder Dienst darf keine llama.cpp-Sonderangabe bekommen")
+
+
+def test_die_zeitangaben_des_dienstes_werden_uebernommen(model_server):
+    """llama.cpp sagt selbst, wo die Zeit geblieben ist - das ist zuverlaessiger
+    als das Protokoll zu durchsuchen.
+
+    Die Aufteilung ist der Unterschied zwischen "es dauert lange" und einer
+    Aufgabe, die sich bearbeiten laesst: viel Zeit im Verarbeiten heisst
+    kuerzerer Kontext, viel Zeit im Schreiben heisst kleineres Modell.
+    """
+    anbieter = OpenAICompatibleProvider(model_server.base, model="testmodell")
+    anbieter.generate([ChatMessage("user", "Frage")], max_tokens=8)
+
+    assert anbieter.letzte_zeiten == {
+        "verarbeiten": {"sekunden": 120.0, "tokens": 2400},
+        "schreiben": {"sekunden": 40.0, "tokens": 160},
+    }
+
+
+def test_ohne_zeitangaben_wird_nichts_geschaetzt(model_server):
+    """Ein fremder Dienst schickt das Feld nicht - dann bleibt es leer."""
+    model_server.handler.behaviour = "ok"
+    anbieter = OpenAICompatibleProvider(model_server.base, model="testmodell")
+    # Der Stromweg des Stellvertreters schickt keine Zeitangaben.
+    anbieter.generate([ChatMessage("user", "Frage")], max_tokens=8,
+                      on_token=lambda _s: None)
+    assert anbieter.letzte_zeiten == {}

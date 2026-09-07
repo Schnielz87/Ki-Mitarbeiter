@@ -196,6 +196,11 @@ class OpenAICompatibleProvider:
         #: eine unbekannte Angabe mit einem Fehler abweist. Der mitgelieferte
         #: llama.cpp-Dienst setzt hier "cache_prompt".
         self.zusatzfelder: dict = {}
+        #: Wo die Zeit der letzten Anfrage geblieben ist, sofern der Dienst
+        #: es sagt. llama.cpp legt der Antwort ein Feld "timings" bei; ein
+        #: anderer Dienst tut es nicht, dann bleibt es leer. Gelesen wird,
+        #: was da ist - geschaetzt wird nichts.
+        self.letzte_zeiten: dict = {}
         self.name = name
 
     @property
@@ -260,6 +265,7 @@ class OpenAICompatibleProvider:
             text = (choice.get("message", {}).get("content") or "").strip()
         except (KeyError, IndexError, TypeError) as exc:
             raise LlmError(f"Unerwartete Antwort des Modelldienstes: {str(data)[:200]}") from exc
+        self._zeiten_merken(data)
         usage = data.get("usage") or {}
         return LlmResponse(
             text=text, provider=self.name, model=data.get("model", self.model),
@@ -268,6 +274,38 @@ class OpenAICompatibleProvider:
             elapsed=time.monotonic() - started,
             truncated=choice.get("finish_reason") == "length",
         )
+
+    def _zeiten_merken(self, daten) -> None:
+        """Uebernimmt die Zeitangaben, die llama.cpp seiner Antwort beilegt.
+
+        Warum das wichtig ist: "es dauert lange" laesst sich nicht
+        bearbeiten, "die Frage zu verarbeiten kostet 120 der 160 Sekunden"
+        schon. Die beiden Anteile verlangen verschiedene Massnahmen -
+        kuerzerer Kontext gegen das eine, kleineres Modell gegen das andere.
+
+        Gelesen wird ausschliesslich, was der Dienst selbst geschickt hat.
+        Fehlt das Feld, bleibt der Wert leer; es wird nichts geschaetzt und
+        nichts hochgerechnet.
+        """
+        if not isinstance(daten, dict):
+            return
+        zeiten = daten.get("timings")
+        if not isinstance(zeiten, dict):
+            return
+        neu: dict = {}
+        for schluessel, (ms, anzahl) in (
+            ("verarbeiten", ("prompt_ms", "prompt_n")),
+            ("schreiben", ("predicted_ms", "predicted_n")),
+        ):
+            try:
+                neu[schluessel] = {
+                    "sekunden": round(float(zeiten[ms]) / 1000.0, 1),
+                    "tokens": int(zeiten[anzahl]),
+                }
+            except (KeyError, TypeError, ValueError):
+                continue
+        if neu:
+            self.letzte_zeiten = neu
 
     def _strom(self, request, on_token: Callable[[str], None], started: float) -> LlmResponse:
         """Liest die Antwort als Ereignisstrom (Abschnitt 21).
@@ -295,6 +333,7 @@ class OpenAICompatibleProvider:
                         brocken = json.loads(nutzlast)
                     except json.JSONDecodeError:
                         continue
+                    self._zeiten_merken(brocken)
                     stueck, grund_neu = _teil_aus_brocken(brocken)
                     if grund_neu:
                         grund = grund_neu
@@ -454,8 +493,12 @@ class MitgelieferterServerProvider(OpenAICompatibleProvider):
             # Wo die Wartezeit geblieben ist. Ohne diese Aufteilung bleibt
             # "es dauert lange" eine Beschreibung; mit ihr wird sie zu einer
             # Aufgabe, die sich bearbeiten laesst.
-            "zeitaufteilung": (self.server.zeitaufteilung()
-                               if hasattr(self.server, "zeitaufteilung") else {}),
+            # Zuerst das, was der Dienst der Antwort selbst beigelegt hat;
+            # das Protokoll ist nur der Rueckfall fuer Fassungen, die kein
+            # solches Feld schicken.
+            "zeitaufteilung": (self.letzte_zeiten
+                               or (self.server.zeitaufteilung()
+                                   if hasattr(self.server, "zeitaufteilung") else {})),
             "benoetigt_internet": False,
         }
 

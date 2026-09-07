@@ -317,16 +317,41 @@ aufgefuehrt, weil ein Testbericht ohne Fundstellen wenig wert ist.
 ## Wartezeit - gemessen, nicht behauptet
 
 Auf dem Windows-Baurechner mit `modell messen` (Probemodell 0,5B, nur CPU,
-zwei geteilte Kerne, zwei **verschiedene** Fachfragen), Ablauf 34064400295:
+zwei geteilte Kerne, zwei **verschiedene** Fachfragen), Ablauf 34148640961
+vom 2026-09-07 - mit gemerktem Prompt, echten Kernen und aufgeloester
+Vorgabe:
 
-| Stufe | erste Frage | im laufenden Betrieb |
-|---|---|---|
-| schnell | 25,0 s | 26,0 s |
-| ausgewogen | 42,4 s | 44,8 s |
-| ausfuehrlich | 43,1 s | 45,3 s |
+| Stufe | wirksam | erste Frage | im laufenden Betrieb | Messdauer gesamt |
+|---|---|---|---|---|
+| automatisch | schnell | 19,9 s | 22,2 s | 74,3 s |
+| schnell | schnell | 19,8 s | 21,0 s | 73,6 s |
+| ausgewogen | ausgewogen | 36,0 s | 39,0 s | 95,2 s |
+| ausfuehrlich | ausfuehrlich | 43,2 s | 38,6 s | 165,3 s |
+
+Zwei Dinge stehen damit fest, und nur diese beiden:
+
+* **Die Vorgabe "automatisch" wird auf einem Rechner ohne Grafikkarte zu
+  "schnell".** Sie hat es auf diesem Rechner getan, und die Zeile
+  "automatisch" liegt erwartungsgemaess auf der Zeile "schnell".
+* **Der Unterschied zwischen den Stufen ist rund die Haelfte.** 21,0 s
+  gegen 39,0 s bis zum ersten Wort. Wer bisher mit der alten Vorgabe
+  "ausgewogen" arbeitete, wartet mit der neuen Vorgabe etwa halb so lang.
 
 Der Dienst meldete dabei `cpu (rechnet auf: Prozessor, Zusatzschalter
 aktiv)` - die Beschleunigungsschalter greifen also.
+
+**Nicht belegt** ist die Wirkung des gemerkten Prompts (`cache_prompt`) und
+der echten statt logischen Kerne. Beide Aenderungen sind in diesem Lauf
+enthalten, aber der Baurechner hat zwei Kerne ohne Hyperthreading - dort
+kann die Kernzahl gar nichts aendern -, und die Zahlen des Vorlaufs
+34064400295 sind wegen der geaenderten Fragen und des kleineren Prompts
+nicht vergleichbar. Wieviel `cache_prompt` bringt, zeigt erst eine Messung
+auf einem Rechner mit grossem Modell (`WEITERARBEIT.md`, Abschnitt 3a).
+
+Die Spalte "Messdauer gesamt" ist neu. Sie steht da, weil die Teilzeiten
+allein einer Stoppuhr widersprechen: gemeldet wurde eine Messung, die laut
+Anzeige zwei Durchgaenge von je zwei Minuten hatte und laut Stoppuhr acht
+Minuten dauerte. Beides war richtig - die Anzeige war nur unvollstaendig.
 
 Diese Zahlen sind die **Untergrenze**, nicht der Normalfall: zwei geteilte
 Kerne, keine Grafikkarte. Auf einem Buerorechner mit mehr Kernen und der
