@@ -340,13 +340,42 @@ Zwei Dinge stehen damit fest, und nur diese beiden:
 Der Dienst meldete dabei `cpu (rechnet auf: Prozessor, Zusatzschalter
 aktiv)` - die Beschleunigungsschalter greifen also.
 
-**Nicht belegt** ist die Wirkung des gemerkten Prompts (`cache_prompt`) und
-der echten statt logischen Kerne. Beide Aenderungen sind in diesem Lauf
-enthalten, aber der Baurechner hat zwei Kerne ohne Hyperthreading - dort
-kann die Kernzahl gar nichts aendern -, und die Zahlen des Vorlaufs
-34064400295 sind wegen der geaenderten Fragen und des kleineren Prompts
-nicht vergleichbar. Wieviel `cache_prompt` bringt, zeigt erst eine Messung
-auf einem Rechner mit grossem Modell (`WEITERARBEIT.md`, Abschnitt 3a).
+### Wo die Zeit hingeht - und was `cache_prompt` NICHT gebracht hat
+
+Der folgende Lauf 34150465641 liest die Zeitangaben, die llama.cpp seiner
+Antwort beilegt. Damit ist zum ersten Mal belegt, wohin die Wartezeit geht:
+
+| Stufe | Frage verarbeiten | Antwort schreiben |
+|---|---|---|
+| schnell | 29,7 s fuer 1227 Token | 2,1 s fuer 49 Token |
+| ausgewogen | 51,4 s fuer 1980 Token | 3,4 s fuer 72 Token |
+
+**Rund 95 Prozent der Wartezeit entstehen, bevor das erste Wort da ist.**
+Das Schreiben der Antwort ist nicht das Problem; das Verarbeiten der Frage
+samt Fundstellen ist es. Damit ist die Groesse des Prompts der Hebel - und
+genau daran dreht die Tempostufe.
+
+**Und hier die unangenehme Zahl:** `cache_prompt` hat auf diesem Rechner
+**nichts bewirkt**. Der Anfang des Prompts ist bei beiden Messfragen Zeichen
+fuer Zeichen derselbe - ein Test in `tests/` haelt das fest -, und trotzdem
+verarbeitete der Dienst im zweiten Durchgang wieder 1227 Token bei
+gleichbleibendem Durchsatz (41 gegen 38 Token je Sekunde). Waere der Anfang
+wiederverwendet worden, muesste beides kleiner sein.
+
+Die Ursache ist **nicht ermittelt**. Denkbar sind mehrere: die
+mitgelieferte llama.cpp-Fassung reicht das Feld auf dem
+OpenAI-kompatiblen Weg nicht durch, oder sie meldet die Zahl anders als
+angenommen. Solange das offen ist, wird hier nichts behauptet.
+
+Damit die naechste Messung es beantwortet statt es zu vermuten, nennen
+Fenster und Konsole jetzt ausdruecklich die verarbeiteten Tokenzahlen
+**beider** Durchgaenge und die Zeile "Prompt-Anfang wiederverwendet: ja /
+NEIN".
+
+**Ebenfalls nicht belegt** ist die Wirkung der echten statt logischen
+Kernzahl: der Baurechner hat zwei Kerne ohne Hyperthreading, dort kann die
+Kernzahl gar nichts aendern. Beides zeigt erst eine Messung auf einem
+Buerorechner mit grossem Modell (`WEITERARBEIT.md`, Abschnitt 3a).
 
 Die Spalte "Messdauer gesamt" ist neu. Sie steht da, weil die Teilzeiten
 allein einer Stoppuhr widersprechen: gemeldet wurde eine Messung, die laut

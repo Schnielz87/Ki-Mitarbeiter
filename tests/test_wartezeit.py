@@ -1175,3 +1175,116 @@ def test_ohne_eigenen_dienst_gilt_alles_als_bereit(portable_root):
         assert controller.modell_bereit() is True
     finally:
         controller.shutdown()
+
+
+def test_die_messung_beantwortet_ob_der_prompt_anfang_wiederverwendet_wird(portable_root):
+    """Die Frage, an der die halbe Wartezeit haengt - beantwortet, nicht vermutet.
+
+    Der Anfang jedes Prompts ist bei zwei Fachfragen Zeichen fuer Zeichen
+    derselbe. Verarbeitet der Dienst ihn trotzdem jedes Mal neu, ist das auf
+    einem Rechner ohne Grafikkarte rund die Haelfte der Wartezeit fuer
+    nichts. Der Vergleich der Tokenzahlen beider Durchgaenge sagt es.
+    """
+    from test_controller import make_controller
+
+    controller = make_controller(portable_root)
+    controller.bootstrap(build_embeddings=True)
+
+    class Meldend:
+        name = "m"
+        model = "x"
+        # Erster Durchgang alles, zweiter nur den neuen Teil - so sieht
+        # Wiederverwendung aus.
+        _folge = [1200, 400]
+        letzte_zeiten: dict = {}
+
+        def available(self):
+            return True, ""
+
+        def generate(self, messages, max_tokens=1024, temperature=0.2, stop=None,
+                     on_token=None):
+            tokens = self._folge.pop(0) if self._folge else 400
+            self.letzte_zeiten = {
+                "verarbeiten": {"sekunden": 10.0, "tokens": tokens},
+                "schreiben": {"sekunden": 1.0, "tokens": 20},
+            }
+            if on_token:
+                on_token("**ERGEBNIS**\n")
+            return LlmResponse(text="**ERGEBNIS**\nSiehe [1].", provider="m",
+                               model="x", completion_tokens=5)
+
+    controller.llm = LlmManager(Meldend())
+    controller.rag.llm = controller.llm
+    try:
+        ergebnis = controller.modell_messen()
+        wieder = ergebnis["prompt_wiederverwendung"]
+        assert wieder["tokens_erster_lauf"] == 1200
+        assert wieder["tokens_spaeterer_lauf"] == 400
+        assert wieder["greift"] is True
+    finally:
+        controller.shutdown()
+
+
+def test_ohne_wiederverwendung_wird_das_auch_so_gesagt(portable_root):
+    """Gleich viele Textbausteine im zweiten Durchgang heisst: nichts gemerkt.
+
+    Genau das hat der Bauablauf am 2026-09-07 gezeigt. Eine Anzeige, die das
+    verschweigt, laesst den naechsten Schritt im Dunkeln.
+    """
+    from test_controller import make_controller
+
+    controller = make_controller(portable_root)
+    controller.bootstrap(build_embeddings=True)
+
+    class Gleichbleibend:
+        name = "g"
+        model = "x"
+        letzte_zeiten = {"verarbeiten": {"sekunden": 30.0, "tokens": 1227},
+                         "schreiben": {"sekunden": 1.0, "tokens": 24}}
+
+        def available(self):
+            return True, ""
+
+        def generate(self, messages, max_tokens=1024, temperature=0.2, stop=None,
+                     on_token=None):
+            if on_token:
+                on_token("**ERGEBNIS**\n")
+            return LlmResponse(text="**ERGEBNIS**\nSiehe [1].", provider="g",
+                               model="x", completion_tokens=5)
+
+    controller.llm = LlmManager(Gleichbleibend())
+    controller.rag.llm = controller.llm
+    try:
+        wieder = controller.modell_messen()["prompt_wiederverwendung"]
+        assert wieder["greift"] is False
+    finally:
+        controller.shutdown()
+
+
+def test_ohne_zeitangaben_wird_nichts_ueber_wiederverwendung_behauptet(portable_root):
+    """Ein Dienst, der nichts sagt, ergibt keine Aussage - keine Vermutung."""
+    from test_controller import make_controller
+
+    controller = make_controller(portable_root)
+    controller.bootstrap(build_embeddings=True)
+
+    class Schweigend:
+        name = "s"
+        model = "x"
+
+        def available(self):
+            return True, ""
+
+        def generate(self, messages, max_tokens=1024, temperature=0.2, stop=None,
+                     on_token=None):
+            if on_token:
+                on_token("**ERGEBNIS**\n")
+            return LlmResponse(text="**ERGEBNIS**\nSiehe [1].", provider="s",
+                               model="x", completion_tokens=5)
+
+    controller.llm = LlmManager(Schweigend())
+    controller.rag.llm = controller.llm
+    try:
+        assert controller.modell_messen()["prompt_wiederverwendung"] == {}
+    finally:
+        controller.shutdown()

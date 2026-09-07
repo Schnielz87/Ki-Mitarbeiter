@@ -566,6 +566,13 @@ def cmd_modell(args) -> int:
             # Die Zahl, die eine Stoppuhr daneben anzeigen wuerde. Ohne sie
             # widerspricht die Ausgabe dem, was jemand tatsaechlich erlebt.
             print(f"Gesamte Messdauer (Stoppuhr): {ergebnis.get('messdauer_s', 0)} s")
+            wieder = ergebnis.get("prompt_wiederverwendung") or {}
+            if wieder:
+                # Die Frage, die sich sonst nur vermuten liesse.
+                print(f"Prompt-Anfang wiederverwendet: "
+                      f"{'ja' if wieder['greift'] else 'NEIN'} "
+                      f"({wieder['tokens_erster_lauf']} Textbausteine im ersten, "
+                      f"{wieder['tokens_spaeterer_lauf']} im zweiten Durchgang)")
             return 0
 
         print(f"Unbekannte Aktion: {args.aktion}", file=sys.stderr)

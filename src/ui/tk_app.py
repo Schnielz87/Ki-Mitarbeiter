@@ -1130,6 +1130,17 @@ class MainWindow:
                     "Fragen samt Recherche und das vollstaendige Schreiben",
                     "beider Antworten. Die Zeilen oben nennen die Teilzeiten.",
                 ]
+            wieder = ergebnis.get("prompt_wiederverwendung") or {}
+            if wieder:
+                zeilen += [
+                    "",
+                    "Prompt-Anfang wiederverwendet: "
+                    + ("ja" if wieder["greift"] else "NEIN"),
+                    f"  erster Durchgang : {wieder['tokens_erster_lauf']} "
+                    "Textbausteine verarbeitet",
+                    f"  zweiter Durchgang: {wieder['tokens_spaeterer_lauf']} "
+                    "Textbausteine verarbeitet",
+                ]
             else:
                 zeilen += ["", "Es hat kein Sprachmodell geantwortet."]
             self._write_modell_log("\n".join(zeilen))

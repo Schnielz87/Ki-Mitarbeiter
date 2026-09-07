@@ -987,6 +987,13 @@ class AppController:
             gesamt = _time.monotonic() - begonnen
             antwort = ergebnis.answer
             vom_modell = bool(antwort.model_answered)
+            # Die Zeitangaben des Dienstes JE DURCHGANG festhalten, nicht nur
+            # am Ende. Erst der Vergleich beider Durchgaenge beantwortet die
+            # entscheidende Frage: verarbeitet der Dienst beim zweiten Mal
+            # weniger Textbausteine als beim ersten? Wenn ja, merkt er sich
+            # den unveraenderlichen Anfang des Prompts. Wenn nein, tut er es
+            # nicht - und dann nuetzt jede Vermutung darueber nichts.
+            zeiten = dict(getattr(self.llm.primary, "letzte_zeiten", {}) or {})
             laeufe.append({
                 "nummer": nummer,
                 "frage": frage,
@@ -994,6 +1001,7 @@ class AppController:
                 "erstes_wort_s": round(erstes[0] if erstes else 0.0, 1),
                 "gesamt_s": round(gesamt, 1),
                 "zeichen": len(antwort.text),
+                "zeiten": zeiten,
                 "grund": "" if vom_modell else
                          "Es hat kein Sprachmodell geantwortet.",
             })
@@ -1014,6 +1022,33 @@ class AppController:
             # Der zweite Lauf ist der Alltag: Dienst laeuft, Kopf ist bekannt.
             "im_betrieb_erstes_wort_s": gute[-1]["erstes_wort_s"] if gute else 0.0,
             "im_betrieb_gesamt_s": gute[-1]["gesamt_s"] if gute else 0.0,
+            "prompt_wiederverwendung": self._wiederverwendung(gute),
+        }
+
+    @staticmethod
+    def _wiederverwendung(laeufe: list[dict]) -> dict:
+        """Merkt sich der Dienst den unveraenderlichen Anfang des Prompts?
+
+        Der Anfang jedes Prompts - Rollenbeschreibung, Grenzen, Antwortschema
+        - ist bei zwei Fachfragen Zeichen fuer Zeichen derselbe. Verarbeitet
+        der Dienst ihn trotzdem jedes Mal neu, ist das auf einem Rechner ohne
+        Grafikkarte rund die Haelfte der Wartezeit fuer nichts.
+
+        Beantwortet wird das nicht durch eine Annahme, sondern durch den
+        Vergleich der Tokenzahlen beider Durchgaenge. Fehlen die Angaben,
+        kommt ein leeres Ergebnis - keine Vermutung.
+        """
+        zahlen = [l.get("zeiten", {}).get("verarbeiten", {}).get("tokens")
+                  for l in laeufe]
+        zahlen = [z for z in zahlen if isinstance(z, int) and z > 0]
+        if len(zahlen) < 2:
+            return {}
+        return {
+            "tokens_erster_lauf": zahlen[0],
+            "tokens_spaeterer_lauf": zahlen[-1],
+            # Weniger verarbeitete Textbausteine beim zweiten Mal heisst:
+            # der Anfang wurde wiederverwendet.
+            "greift": zahlen[-1] < zahlen[0],
         }
 
     def modell_bereit(self) -> bool:
