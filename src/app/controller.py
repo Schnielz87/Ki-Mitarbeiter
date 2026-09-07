@@ -11,6 +11,7 @@ import datetime as _dt
 import hashlib
 import json
 import shutil
+import sys
 import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -1299,6 +1300,171 @@ class AppController:
             inhalt, format, name, unterordner=unterordner,
             ueberschreiben=ueberschreiben, angaben=angaben,
         )
+
+    # -- Arbeitsergebnisse ---------------------------------------------
+    def datei_oeffnen(self, pfad) -> bool:
+        """Oeffnet eine Datei mit dem Programm, das das System dafuer kennt.
+
+        Bewusst kein eigener Betrachter: eine XLSX-Datei gehoert in Excel,
+        eine PDF in den PDF-Betrachter des Anwenders. Etwas Eigenes zu
+        bauen hiesse, es schlechter zu machen.
+
+        Gibt zurueck, ob es geklappt hat. Keine Ausnahme nach oben: dass
+        eine Datei sich nicht oeffnen laesst, ist ein Hinweis an den
+        Benutzer, kein Absturz.
+        """
+        import os
+        import subprocess
+
+        ziel = Path(pfad)
+        if not ziel.is_file():
+            log.info("Datei nicht mehr vorhanden: %s", ziel)
+            return False
+        try:
+            if os.name == "nt":                      # pragma: no cover - Windows
+                os.startfile(str(ziel))              # noqa: S606
+            elif sys.platform == "darwin":           # pragma: no cover - macOS
+                subprocess.Popen(["open", str(ziel)])
+            else:
+                subprocess.Popen(["xdg-open", str(ziel)])
+            return True
+        except Exception as fehler:                  # pragma: no cover - defensiv
+            log.warning("Datei liess sich nicht oeffnen: %s (%s)", ziel, fehler)
+            return False
+
+    def artefakt_pfad(self, name: str) -> Path:
+        """Der volle Pfad eines Arbeitsergebnisses."""
+        return self.artefakte.ordner / name
+
+    def artefakt_exportieren(self, name: str, ziel) -> Path:
+        """Kopiert ein Arbeitsergebnis an einen selbst gewaehlten Ort.
+
+        Kopiert, nicht verschoben: das Original bleibt auf dem
+        Datentraeger, sonst waere es nach dem Export dort weg - und der
+        Nachweis mit Pruefsumme im Verzeichnis zeigte ins Leere.
+        """
+        quelle = self.artefakt_pfad(name)
+        if not quelle.is_file():
+            raise FileNotFoundError(f"Die Datei gibt es nicht mehr: {name}")
+        ziel = Path(ziel)
+        if ziel.is_dir():
+            ziel = ziel / quelle.name
+        ziel.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(quelle, ziel)
+        self.audit.record("artefakt.exportiert", "artefakt", name, ziel=str(ziel))
+        return ziel
+
+    def artefakt_umbenennen(self, name: str, neuer_name: str) -> Path:
+        return self.artefakte.umbenennen(name, neuer_name)
+
+    def artefakt_loeschen(self, name: str) -> bool:
+        return self.artefakte.loeschen(name)
+
+    # -- Plugins --------------------------------------------------------
+    def plugin_liste(self) -> list[dict]:
+        """Alle installierten Plugins mit Stand und Rechten im Klartext.
+
+        Die Rechte werden hier schon in Saetze uebersetzt. "fs.read" sagt
+        einem Buchhalter nichts; "darf Dateien auf dem Datentraeger lesen"
+        schon - und wer Rechte erteilt, muss verstehen, was er erteilt.
+        """
+        eintraege = []
+        for paket in self.plugins.liste():
+            angaben = paket.as_dict()
+            angaben["rechte_text"] = self.plugins.rechtebeschreibung(
+                paket.manifest.berechtigungen)
+            angaben["fehler"] = paket.fehler
+            eintraege.append(angaben)
+        return eintraege
+
+    def plugin_schalten(self, kennung: str, aktiv: bool) -> bool:
+        """Aktiviert oder deaktiviert ein Plugin."""
+        if aktiv:
+            self.plugins.aktivieren(kennung)
+        else:
+            self.plugins.deaktivieren(kennung)
+        self.audit.record("plugin.geschaltet", "plugin", kennung,
+                          nachher="aktiv" if aktiv else "inaktiv")
+        return True
+
+    # -- Verbundene Dienste ---------------------------------------------
+    def dienste(self) -> list[dict]:
+        """Alle Connectoren mit Verbindungsstand.
+
+        "Verbunden" heisst hier: es liegt ein Geheimnis im Tresor. Ob die
+        Gegenstelle antwortet, sagt erst ``dienst_testen`` - und das ist
+        ein Unterschied, der benannt gehoert.
+        """
+        eintraege = []
+        konfiguriert = set(self.connectors.configured_ids())
+        for info in self.connectors.info():
+            angaben = info.as_dict()
+            angaben["verbunden"] = (angaben.get("id") in konfiguriert
+                                    or bool(angaben.get("eingerichtet")))
+            eintraege.append(angaben)
+        return eintraege
+
+    def dienst_testen(self, kennung: str) -> dict:
+        """Fragt die Gegenstelle - im OFFLINE-Modus gar nicht.
+
+        Ein Verbindungstest ist ein Netzzugriff. Ihn im Offlinebetrieb
+        auszufuehren waere genau das, was der Modus ausschliesst.
+        """
+        if not self.lage.online_moeglich:
+            return {"ok": False, "meldung":
+                    "Im Betriebsmodus OFFLINE wird keine Verbindung aufgebaut."}
+        connector = self.connectors.get(kennung)
+        if connector is None:
+            return {"ok": False, "meldung": f"Unbekannter Dienst: {kennung}"}
+        try:
+            pruefen = getattr(connector, "pruefen", None) or \
+                getattr(connector, "test", None)
+            if pruefen is None:
+                return {"ok": False, "meldung":
+                        "Dieser Dienst kennt keinen Verbindungstest."}
+            ergebnis = pruefen()
+            ok = bool(ergebnis) if not isinstance(ergebnis, dict) \
+                else bool(ergebnis.get("ok"))
+            return {"ok": ok, "meldung": "Verbindung steht." if ok
+                    else "Die Gegenstelle hat nicht wie erwartet geantwortet."}
+        except Exception as fehler:
+            return {"ok": False, "meldung": f"{type(fehler).__name__}: {fehler}"}
+
+    def dienst_trennen(self, kennung: str) -> bool:
+        """Entfernt die hinterlegten Zugangsdaten eines Dienstes.
+
+        Nur das Geheimnis wird entfernt. Was der Dienst frueher geliefert
+        hat und im Unternehmensgedaechtnis steht, bleibt - es zu loeschen
+        waere eine Entscheidung des Benutzers, nicht die Folge eines
+        Trennens.
+        """
+        entfernt = False
+        for schluessel in self._dienstschluessel(kennung):
+            try:
+                if self.vault.delete(schluessel):
+                    entfernt = True
+            except Exception:                        # pragma: no cover - defensiv
+                log.debug("Geheimnis %s liess sich nicht entfernen", schluessel,
+                          exc_info=True)
+        self.audit.record("dienst.getrennt", "connector", kennung,
+                          status="ok" if entfernt else "nichts_zu_entfernen")
+        return entfernt
+
+    def _dienstschluessel(self, kennung: str) -> list[str]:
+        """Unter welchen Namen ein Dienst sein Geheimnis ablegt.
+
+        Der Name steht in der Connector-Konfiguration unter "secret_key".
+        Fehlt er, werden die ueblichen Schreibweisen versucht - lieber
+        einmal zu viel gesucht als ein Geheimnis zurueckgelassen, das der
+        Benutzer fuer entfernt haelt.
+        """
+        namen: list[str] = []
+        connector = self.connectors.get(kennung)
+        konfiguration = getattr(connector, "config", None) or {}
+        if isinstance(konfiguration, dict) and konfiguration.get("secret_key"):
+            namen.append(str(konfiguration["secret_key"]))
+        namen += [f"connector.{kennung}", kennung]
+        return list(dict.fromkeys(namen))
 
     def antwort_speichern(self, format: str, conversation_uid: str = "",
                           name: str = "", ueberschreiben: bool = False):

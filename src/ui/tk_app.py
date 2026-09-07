@@ -19,7 +19,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 import tkinter as tk
-from tkinter import filedialog, messagebox, scrolledtext, ttk
+from tkinter import filedialog, messagebox, scrolledtext, simpledialog, ttk
 
 from app.controller import AppController, AskOutcome, StartupReport
 from pkc.branding import load_brand, profilname
@@ -430,8 +430,11 @@ class MainWindow:
         self._build_chat_tab()
         self._build_memory_tab()
         self._build_documents_tab()
+        self._build_results_tab()
         self._build_update_tab()
         self._build_model_tab()
+        self._build_plugins_tab()
+        self._build_services_tab()
         self._build_settings_tab()
 
     def _sichtbare_bereiche(self) -> list[str] | None:
@@ -606,6 +609,149 @@ class MainWindow:
             self.document_tree.column(column, width=width, anchor="w")
         self.document_tree.pack(fill="both", expand=True)
         self._refresh_documents()
+
+    # -- Bereich: Arbeitsergebnisse ------------------------------------
+    def _build_results_tab(self) -> None:
+        """Von PORTIVA erzeugte Dateien zentral finden, oeffnen, exportieren.
+
+        Der Dienst dahinter gab es laengst (``Artefaktwerk``); erreichbar
+        war er nur ueber den Knopf "Antwort speichern" im Chat und ueber
+        die Konsole. Hier ist er, wo man ihn sucht.
+        """
+        frame = self.schale.bereich_anlegen(
+            "arbeitsergebnisse", "Arbeitsergebnisse",
+            "Von PORTIVA erzeugte Dateien zentral finden, oeffnen und "
+            "exportieren.", "\u25ad")
+
+        leiste = ttk.Frame(frame)
+        leiste.pack(fill="x", pady=(0, PAD))
+        ttk.Button(leiste, text="Aktualisieren",
+                   command=self._refresh_results).pack(side="left")
+        for text, befehl in (("Oeffnen", self._result_oeffnen),
+                             ("Exportieren", self._result_exportieren),
+                             ("Umbenennen", self._result_umbenennen),
+                             ("Loeschen", self._result_loeschen)):
+            ttk.Button(leiste, text=text, command=befehl).pack(side="left", padx=(PAD, 0))
+        self.results_hint = ttk.Label(
+            leiste, text="Zeile auswaehlen, dann eine Aktion",
+            foreground="#5b6b80")
+        self.results_hint.pack(side="right")
+
+        spalten = ("name", "format", "zeitpunkt", "fassung", "groesse", "zustand")
+        self.results_tree = ttk.Treeview(frame, columns=spalten, show="headings")
+        for spalte, kopf, breite in (
+            ("name", "Datei", 320), ("format", "Format", 90),
+            ("zeitpunkt", "Erzeugt", 160), ("fassung", "Fassung", 80),
+            ("groesse", "Groesse", 100), ("zustand", "Zustand", 140),
+        ):
+            self.results_tree.heading(spalte, text=kopf)
+            self.results_tree.column(spalte, width=breite, anchor="w")
+        self.results_tree.pack(fill="both", expand=True)
+        self.results_tree.bind("<Double-Button-1>",
+                               lambda _e: self._result_oeffnen())
+        self._refresh_results()
+
+    def _refresh_results(self) -> None:
+        if not hasattr(self, "results_tree"):
+            return
+        self.results_tree.delete(*self.results_tree.get_children())
+        eintraege = self.controller.artefakt_liste(limit=200)
+        for eintrag in eintraege:
+            groesse = eintrag.get("bytes") or eintrag.get("groesse") or 0
+            self.results_tree.insert("", "end", values=(
+                eintrag.get("name") or eintrag.get("pfad", ""),
+                (eintrag.get("format") or "").upper(),
+                (eintrag.get("erzeugt_am") or eintrag.get("zeitpunkt", ""))[:16],
+                eintrag.get("fassung", ""),
+                f"{int(groesse) / 1024:.0f} KB" if groesse else "",
+                "vorhanden" if eintrag.get("vorhanden", True)
+                else "nicht mehr vorhanden",
+            ))
+        self.results_hint.configure(
+            text=f"{len(eintraege)} Arbeitsergebnisse"
+            if eintraege else "Noch keine Dateien erzeugt")
+
+    def _gewaehltes_ergebnis(self) -> str:
+        """Der Dateiname der markierten Zeile - oder eine Meldung.
+
+        Kein stilles Nichtstun: wer auf "Oeffnen" drueckt, ohne etwas
+        gewaehlt zu haben, bekommt gesagt, was fehlt.
+        """
+        auswahl = self.results_tree.selection()
+        if not auswahl:
+            messagebox.showinfo(
+                "Arbeitsergebnisse",
+                "Bitte zuerst eine Zeile in der Liste auswaehlen.",
+                parent=self.root)
+            return ""
+        return str(self.results_tree.item(auswahl[0])["values"][0])
+
+    def _result_oeffnen(self) -> None:
+        name = self._gewaehltes_ergebnis()
+        if not name:
+            return
+        if not self.controller.datei_oeffnen(self.controller.artefakt_pfad(name)):
+            messagebox.showwarning(
+                "Oeffnen",
+                f"{name} liess sich nicht oeffnen.\n\n"
+                "Entweder gibt es die Datei nicht mehr, oder auf diesem "
+                "Rechner ist kein Programm fuer dieses Format eingerichtet.",
+                parent=self.root)
+
+    def _result_exportieren(self) -> None:
+        name = self._gewaehltes_ergebnis()
+        if not name:
+            return
+        ziel = filedialog.asksaveasfilename(
+            title="Arbeitsergebnis exportieren", initialfile=name, parent=self.root)
+        if not ziel:
+            return
+        try:
+            pfad = self.controller.artefakt_exportieren(name, ziel)
+        except Exception as fehler:
+            messagebox.showerror("Export", str(fehler), parent=self.root)
+            return
+        messagebox.showinfo(
+            "Export",
+            f"Kopiert nach:\n{pfad}\n\nDas Original bleibt auf dem "
+            "Datentraeger - der Nachweis mit Pruefsumme bleibt damit gueltig.",
+            parent=self.root)
+
+    def _result_umbenennen(self) -> None:
+        name = self._gewaehltes_ergebnis()
+        if not name:
+            return
+        neu = simpledialog.askstring(
+            "Umbenennen", "Neuer Name (die Endung bleibt erhalten):",
+            initialvalue=Path(name).stem, parent=self.root)
+        if not neu:
+            return
+        try:
+            pfad = self.controller.artefakt_umbenennen(name, neu)
+        except Exception as fehler:
+            messagebox.showerror("Umbenennen", str(fehler), parent=self.root)
+            return
+        self._refresh_results()
+        messagebox.showinfo("Umbenennen", f"Heisst jetzt: {pfad.name}",
+                            parent=self.root)
+
+    def _result_loeschen(self) -> None:
+        name = self._gewaehltes_ergebnis()
+        if not name:
+            return
+        if not messagebox.askyesno(
+            "Loeschen",
+            f"{name} endgueltig loeschen?\n\n"
+            "Der Eintrag im Verzeichnis bleibt als Nachweis erhalten - die "
+            "Datei selbst ist danach weg.",
+            parent=self.root,
+        ):
+            return
+        if self.controller.artefakt_loeschen(name):
+            self._refresh_results()
+        else:
+            messagebox.showwarning("Loeschen", f"{name} war nicht mehr da.",
+                                   parent=self.root)
 
     # -- Registerkarte: Wissensupdate ----------------------------------
     def _build_update_tab(self) -> None:
@@ -1254,6 +1400,278 @@ class MainWindow:
                     + str(probe.get("grund", "ohne Angabe")))
 
         BackgroundTask(self.root).run(self.controller.modell_probe, done)
+
+    # -- Bereich: Plugins ----------------------------------------------
+    def _build_plugins_tab(self) -> None:
+        """Faehigkeiten installieren, Berechtigungen pruefen, sicher verwalten.
+
+        Die Pluginverwaltung gab es vollstaendig - nur ueber die Konsole.
+        Wer die Anwendung per Doppelklick oeffnet, hat keine offen.
+        """
+        frame = self.schale.bereich_anlegen(
+            "plugins", "Plugins & Erweiterungen",
+            "Faehigkeiten installieren, Berechtigungen pruefen und sicher "
+            "verwalten.", "\u25c8")
+
+        leiste = ttk.Frame(frame)
+        leiste.pack(fill="x", pady=(0, PAD))
+        ttk.Button(leiste, text="Aus Datei installieren",
+                   command=self._plugin_installieren).pack(side="left")
+        for text, befehl in (("Aktivieren", lambda: self._plugin_schalten(True)),
+                             ("Deaktivieren", lambda: self._plugin_schalten(False)),
+                             ("Berechtigungen", self._plugin_rechte),
+                             ("Deinstallieren", self._plugin_entfernen),
+                             ("Aktualisieren", self._refresh_plugins)):
+            ttk.Button(leiste, text=text, command=befehl).pack(side="left", padx=(PAD, 0))
+        self.plugins_hint = ttk.Label(leiste, text="", foreground="#5b6b80")
+        self.plugins_hint.pack(side="right")
+
+        spalten = ("id", "name", "version", "kategorie", "zustand", "signatur")
+        self.plugins_tree = ttk.Treeview(frame, columns=spalten, show="headings")
+        for spalte, kopf, breite in (
+            ("id", "Kennung", 160), ("name", "Name", 240),
+            ("version", "Version", 90), ("kategorie", "Kategorie", 140),
+            ("zustand", "Zustand", 120), ("signatur", "Signatur", 160),
+        ):
+            self.plugins_tree.heading(spalte, text=kopf)
+            self.plugins_tree.column(spalte, width=breite, anchor="w")
+        self.plugins_tree.pack(fill="both", expand=True)
+
+        self.plugins_log = scrolledtext.ScrolledText(frame, height=7, wrap="word",
+                                                     font=FONT_MONO)
+        self.plugins_log.pack(fill="x", pady=(PAD, 0))
+        self.plugins_log.configure(state="disabled")
+        self._refresh_plugins()
+
+    def _refresh_plugins(self) -> None:
+        if not hasattr(self, "plugins_tree"):
+            return
+        self.plugins_tree.delete(*self.plugins_tree.get_children())
+        eintraege = self.controller.plugin_liste()
+        for eintrag in eintraege:
+            if eintrag.get("fehler"):
+                zustand = "fehlerhaft"
+            else:
+                zustand = "aktiv" if eintrag.get("aktiv") else "installiert"
+            if not eintrag.get("signiert"):
+                signatur = "nicht signiert"
+            elif eintrag.get("signatur_gueltig"):
+                signatur = "gueltig"
+            else:
+                signatur = "UNGUELTIG"
+            self.plugins_tree.insert("", "end", values=(
+                eintrag.get("id", ""), eintrag.get("name", ""),
+                eintrag.get("version", ""), eintrag.get("kategorie", ""),
+                zustand, signatur,
+            ))
+        self.plugins_hint.configure(
+            text=f"{len(eintraege)} installiert" if eintraege
+            else "Noch keine Plugins installiert")
+
+    def _gewaehltes_plugin(self) -> str:
+        auswahl = self.plugins_tree.selection()
+        if not auswahl:
+            messagebox.showinfo("Plugins", "Bitte zuerst ein Plugin auswaehlen.",
+                                parent=self.root)
+            return ""
+        return str(self.plugins_tree.item(auswahl[0])["values"][0])
+
+    def _plugin_schreiben(self, text: str) -> None:
+        self.plugins_log.configure(state="normal")
+        self.plugins_log.delete("1.0", "end")
+        self.plugins_log.insert("1.0", text)
+        self.plugins_log.configure(state="disabled")
+
+    def _plugin_installieren(self) -> None:
+        """Erst pruefen, dann fragen, dann installieren.
+
+        Ein Plugin laeuft mit den Rechten der Anwendung. Es ohne Rueckfrage
+        zu installieren waere derselbe Fehler wie ein Modellbezug ohne
+        Bestaetigung - nur mit groesserer Wirkung.
+        """
+        pfad = filedialog.askopenfilename(
+            title="Pluginpaket auswaehlen",
+            filetypes=[("PORTIVA-Plugin", "*.kimplug"), ("Alle Dateien", "*.*")],
+            parent=self.root)
+        if not pfad:
+            return
+        try:
+            bericht = self.controller.plugins.pruefen(Path(pfad))
+        except Exception as fehler:
+            messagebox.showerror("Plugin pruefen", str(fehler), parent=self.root)
+            return
+
+        angaben = bericht.as_dict() if hasattr(bericht, "as_dict") else dict(bericht)
+        rechte = self.controller.plugins.rechtebeschreibung(
+            angaben.get("berechtigungen") or angaben.get("verlangt") or [])
+        text = "\n".join([
+            f"Name        : {angaben.get('name', '?')}",
+            f"Version     : {angaben.get('version', '?')}",
+            f"Kategorie   : {angaben.get('kategorie', '?')}",
+            f"Herausgeber : {angaben.get('autor', '?')}",
+            f"Signatur    : {'vorhanden' if angaben.get('signiert') else 'keine'}",
+            "", "Verlangte Berechtigungen:",
+            *(f"  - {r}" for r in (rechte or ["(keine)"])),
+        ])
+        self._plugin_schreiben(text)
+
+        if not messagebox.askyesno(
+            "Plugin installieren",
+            text + "\n\nEin Plugin laeuft mit den Rechten der Anwendung.\n"
+            "Installieren Sie es nur, wenn Sie der Herkunft trauen.\n\n"
+            "Jetzt installieren?",
+            parent=self.root,
+        ):
+            return
+        try:
+            self.controller.plugins.installieren(Path(pfad), bestaetigt=True)
+        except Exception as fehler:
+            messagebox.showerror("Installation", str(fehler), parent=self.root)
+            return
+        self._refresh_plugins()
+        messagebox.showinfo(
+            "Installation",
+            "Installiert. Aktivieren Sie das Plugin, damit seine Faehigkeit "
+            "beim naechsten Start bereitsteht.", parent=self.root)
+
+    def _plugin_schalten(self, aktiv: bool) -> None:
+        kennung = self._gewaehltes_plugin()
+        if not kennung:
+            return
+        try:
+            self.controller.plugin_schalten(kennung, aktiv)
+        except Exception as fehler:
+            messagebox.showerror("Plugins", str(fehler), parent=self.root)
+            return
+        self._refresh_plugins()
+        self._plugin_schreiben(
+            f"{kennung} ist jetzt {'aktiv' if aktiv else 'deaktiviert'}.\n"
+            "Die Aenderung wirkt beim naechsten Programmstart vollstaendig.")
+
+    def _plugin_rechte(self) -> None:
+        kennung = self._gewaehltes_plugin()
+        if not kennung:
+            return
+        eintrag = next((p for p in self.controller.plugin_liste()
+                        if p.get("id") == kennung), {})
+        zeilen = [f"Berechtigungen von {eintrag.get('name', kennung)}", ""]
+        zeilen += [f"  - {r}" for r in (eintrag.get("rechte_text") or ["(keine)"])]
+        erteilt = eintrag.get("berechtigungen") or []
+        zeilen += ["", "Tatsaechlich erteilt:",
+                   *(f"  - {r}" for r in (erteilt or ["(keine)"]))]
+        self._plugin_schreiben("\n".join(zeilen))
+
+    def _plugin_entfernen(self) -> None:
+        kennung = self._gewaehltes_plugin()
+        if not kennung:
+            return
+        if not messagebox.askyesno(
+            "Deinstallieren",
+            f"{kennung} entfernen?\n\nDie Faehigkeit steht danach nicht mehr "
+            "zur Verfuegung. Bereits erzeugte Dateien bleiben erhalten.",
+            parent=self.root,
+        ):
+            return
+        try:
+            self.controller.plugins.entfernen(kennung)
+        except Exception as fehler:
+            messagebox.showerror("Deinstallieren", str(fehler), parent=self.root)
+            return
+        self._refresh_plugins()
+
+    # -- Bereich: Verbundene Dienste -----------------------------------
+    def _build_services_tab(self) -> None:
+        frame = self.schale.bereich_anlegen(
+            "dienste", "Verbundene Dienste",
+            "Externe Konten und Unternehmenssysteme sicher verbinden.",
+            "\u26ad")
+
+        leiste = ttk.Frame(frame)
+        leiste.pack(fill="x", pady=(0, PAD))
+        for text, befehl in (("Verbindung testen", self._dienst_testen),
+                             ("Trennen", self._dienst_trennen),
+                             ("Aktualisieren", self._refresh_services)):
+            ttk.Button(leiste, text=text, command=befehl).pack(side="left", padx=(0, PAD))
+        self.services_hint = ttk.Label(leiste, text="", foreground="#5b6b80")
+        self.services_hint.pack(side="right")
+
+        spalten = ("id", "name", "system", "modus", "zustand")
+        self.services_tree = ttk.Treeview(frame, columns=spalten, show="headings")
+        for spalte, kopf, breite in (
+            ("id", "Kennung", 150), ("name", "Dienst", 260),
+            ("system", "System", 180), ("modus", "Betrieb", 120),
+            ("zustand", "Zustand", 160),
+        ):
+            self.services_tree.heading(spalte, text=kopf)
+            self.services_tree.column(spalte, width=breite, anchor="w")
+        self.services_tree.pack(fill="both", expand=True)
+
+        self.services_log = scrolledtext.ScrolledText(frame, height=7, wrap="word",
+                                                      font=FONT_MONO)
+        self.services_log.pack(fill="x", pady=(PAD, 0))
+        self.services_log.configure(state="disabled")
+        self._refresh_services()
+
+    def _refresh_services(self) -> None:
+        if not hasattr(self, "services_tree"):
+            return
+        self.services_tree.delete(*self.services_tree.get_children())
+        eintraege = self.controller.dienste()
+        for eintrag in eintraege:
+            self.services_tree.insert("", "end", values=(
+                eintrag.get("id", ""), eintrag.get("name", ""),
+                eintrag.get("system", ""), eintrag.get("modus", ""),
+                "verbunden" if eintrag.get("verbunden") else "nicht verbunden",
+            ))
+        verbunden = sum(1 for e in eintraege if e.get("verbunden"))
+        self.services_hint.configure(
+            text=f"{verbunden} von {len(eintraege)} verbunden")
+        self._dienst_schreiben(
+            "Zugangsdaten liegen ausschliesslich verschluesselt im Tresor auf "
+            "diesem Datentraeger. Sie werden nirgends im Klartext angezeigt "
+            "oder abgelegt.")
+
+    def _dienst_schreiben(self, text: str) -> None:
+        self.services_log.configure(state="normal")
+        self.services_log.delete("1.0", "end")
+        self.services_log.insert("1.0", text)
+        self.services_log.configure(state="disabled")
+
+    def _gewaehlter_dienst(self) -> str:
+        auswahl = self.services_tree.selection()
+        if not auswahl:
+            messagebox.showinfo("Verbundene Dienste",
+                                "Bitte zuerst einen Dienst auswaehlen.",
+                                parent=self.root)
+            return ""
+        return str(self.services_tree.item(auswahl[0])["values"][0])
+
+    def _dienst_testen(self) -> None:
+        kennung = self._gewaehlter_dienst()
+        if not kennung:
+            return
+        ergebnis = self.controller.dienst_testen(kennung)
+        self._dienst_schreiben(f"{kennung}: {ergebnis['meldung']}")
+        (messagebox.showinfo if ergebnis["ok"] else messagebox.showwarning)(
+            "Verbindung testen", ergebnis["meldung"], parent=self.root)
+
+    def _dienst_trennen(self) -> None:
+        kennung = self._gewaehlter_dienst()
+        if not kennung:
+            return
+        if not messagebox.askyesno(
+            "Trennen",
+            f"Die Zugangsdaten fuer {kennung} aus dem Tresor entfernen?\n\n"
+            "Bereits uebernommene Daten im Unternehmensgedaechtnis bleiben "
+            "erhalten - deren Loeschung ist eine eigene Entscheidung.",
+            parent=self.root,
+        ):
+            return
+        entfernt = self.controller.dienst_trennen(kennung)
+        self._refresh_services()
+        self._dienst_schreiben(
+            f"{kennung}: Zugangsdaten entfernt." if entfernt
+            else f"{kennung}: Es waren keine Zugangsdaten hinterlegt.")
 
     # -- Registerkarte: Einstellungen ----------------------------------
     def _build_settings_tab(self) -> None:

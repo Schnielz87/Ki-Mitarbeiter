@@ -202,6 +202,78 @@ class Artefaktwerk:
             eintraege.append(eintrag)
         return list(reversed(eintraege))[:limit]
 
+    # -- Verwalten -----------------------------------------------------
+    def _pfad(self, name: str) -> Path:
+        """Loest einen Dateinamen sicher im Artefaktordner auf.
+
+        Der Name kommt aus der Oberflaeche und damit letztlich aus dem
+        Verzeichnis. Ein Eintrag mit "..\\..\\windows\\system32" darf nicht
+        dazu fuehren, dass ausserhalb des Ordners gearbeitet wird - auch
+        dann nicht, wenn das Verzeichnis beschaedigt ist.
+        """
+        ordner = self.ordner.resolve()
+        ziel = (ordner / name).resolve()
+        if ziel == ordner or ordner not in ziel.parents:
+            raise ValueError(f"Ausserhalb des Ablageordners: {name}")
+        return ziel
+
+    def umbenennen(self, name: str, neuer_name: str) -> Path:
+        """Benennt eine erzeugte Datei um - Endung bleibt erhalten.
+
+        Die Endung wird bewusst nicht aus dem neuen Namen uebernommen: eine
+        XLSX-Datei "Bericht.txt" zu nennen erzeugt eine Datei, die kein
+        Programm mehr oeffnet. Wer das Format wechseln will, erzeugt neu.
+        """
+        quelle = self._pfad(name)
+        if not quelle.is_file():
+            raise FileNotFoundError(f"Die Datei gibt es nicht mehr: {name}")
+        sauber = "".join(z for z in (neuer_name or "").strip()
+                         if z.isalnum() or z in " _-.").strip()
+        if not sauber:
+            raise ValueError("Der neue Name ist leer.")
+        ziel = self._pfad(Path(sauber).stem + quelle.suffix)
+        if ziel.exists():
+            raise FileExistsError(f"Es gibt schon eine Datei {ziel.name}.")
+        quelle.rename(ziel)
+        self._verzeichnis_umschreiben(quelle.name, ziel.name)
+        self._melden("artefakt.umbenannt", ziel.name, quelle.suffix.lstrip("."), "")
+        return ziel
+
+    def loeschen(self, name: str) -> bool:
+        """Loescht eine erzeugte Datei. Der Verzeichniseintrag bleibt.
+
+        Warum der Eintrag bleibt: er ist der Nachweis, dass die Datei
+        einmal erzeugt wurde, mit Pruefsumme und Zeitpunkt. Ihn
+        mitzuloeschen hiesse, die Spur zu verwischen. In der Liste steht
+        der Eintrag dann als nicht mehr vorhanden.
+        """
+        ziel = self._pfad(name)
+        if not ziel.is_file():
+            return False
+        ziel.unlink()
+        self._melden("artefakt.geloescht", name, ziel.suffix.lstrip("."), "")
+        return True
+
+    def _verzeichnis_umschreiben(self, alt: str, neu: str) -> None:
+        datei = self._verzeichnis_datei()
+        if not datei.is_file():
+            return
+        zeilen = []
+        for zeile in datei.read_text(encoding="utf-8").splitlines():
+            if not zeile.strip():
+                continue
+            try:
+                eintrag = json.loads(zeile)
+            except json.JSONDecodeError:
+                zeilen.append(zeile)
+                continue
+            if eintrag.get("pfad") == alt or eintrag.get("name") == alt:
+                eintrag["pfad"] = neu
+                eintrag["name"] = neu
+                zeile = json.dumps(eintrag, ensure_ascii=False)
+            zeilen.append(zeile)
+        datei.write_text("\n".join(zeilen) + "\n", encoding="utf-8")
+
     def _melden(self, aktion: str, name: str, format: str, fehler: str) -> None:
         if self.audit is None:
             return

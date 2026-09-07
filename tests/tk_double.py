@@ -324,7 +324,23 @@ class _Dialogs:
         self._record("frage", title, message)
         return self.answers.pop(0) if self.answers else self.default_answer
 
+    #: Wohin ein "Speichern unter" fuehrt. None heisst: abgebrochen.
+    save_file = None
+    #: Was eine Texteingabe liefert, wenn ``answers`` leer ist.
+    default_string = None
+
     def askopenfilename(self, **k): return self.open_file or ""
+
+    def asksaveasfilename(self, **k):
+        """Wohin gespeichert werden soll. Wie beim Oeffnen gesteuert ueber
+        ``save_file``; ohne Vorgabe bricht der Benutzer ab."""
+        return self.save_file or ""
+
+    def askstring(self, titel, frage, **k):
+        """Eine Texteingabe. ``answers`` liefert die Antwort - so laesst
+        sich auch der Abbruch (None) im Test nachstellen."""
+        self.messages.append(("eingabe", titel, frage))
+        return self.answers.pop(0) if self.answers else self.default_string
 
 
 DIALOGS = _Dialogs()
@@ -387,7 +403,10 @@ def install() -> _Dialogs:
 
     filedialog = types.ModuleType("tkinter.filedialog")
     filedialog.askopenfilename = DIALOGS.askopenfilename
-    filedialog.asksaveasfilename = DIALOGS.askopenfilename
+    filedialog.asksaveasfilename = DIALOGS.asksaveasfilename
+
+    simpledialog = types.ModuleType("tkinter.simpledialog")
+    simpledialog.askstring = DIALOGS.askstring
 
     messagebox = types.ModuleType("tkinter.messagebox")
     messagebox.showinfo = DIALOGS.showinfo
@@ -399,10 +418,12 @@ def install() -> _Dialogs:
     tk.scrolledtext = scrolled
     tk.filedialog = filedialog
     tk.messagebox = messagebox
+    tk.simpledialog = simpledialog
 
     for name, module in (
         ("tkinter", tk), ("tkinter.ttk", ttk), ("tkinter.scrolledtext", scrolled),
         ("tkinter.filedialog", filedialog), ("tkinter.messagebox", messagebox),
+        ("tkinter.simpledialog", simpledialog),
     ):
         sys.modules[name] = module
 
@@ -410,4 +431,6 @@ def install() -> _Dialogs:
     DIALOGS.answers.clear()
     DIALOGS.default_answer = False
     DIALOGS.open_file = None
+    DIALOGS.save_file = None
+    DIALOGS.default_string = None
     return DIALOGS
