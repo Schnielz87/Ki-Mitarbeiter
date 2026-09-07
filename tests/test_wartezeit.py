@@ -1126,3 +1126,52 @@ def test_ohne_protokoll_wird_nichts_geschaetzt(tmp_path):
 
     server = Llamaserver(programm=tmp_path / "x", modell=tmp_path / "m.gguf")
     assert server.zeitaufteilung() == {}
+
+
+def test_die_bereitschaftsfrage_fragt_nichts_ab(portable_root):
+    """Sie laeuft im Oberflaechen-Thread, mehrmals je Sekunde.
+
+    Eine Netzanfrage mit Zeitgrenze wuerde dort genau das Fenster
+    einfrieren, dessen Lebendigkeit sie zeigen soll. Also darf sie den
+    Dienst nicht befragen - nur lesen, was ohnehin schon feststeht.
+    """
+    from test_controller import make_controller
+
+    controller = make_controller(portable_root)
+
+    class Dienst:
+        laeuft = True
+        port = 8080
+
+        def bereit(self):
+            raise AssertionError("waehrend des Wartens darf nichts abgefragt werden")
+
+    class Anbieter:
+        name = "a"
+        model = "x"
+        server = Dienst()
+        base_url = "http://127.0.0.1:8080"
+
+        def available(self):
+            return True, ""
+
+    try:
+        controller.llm = LlmManager(Anbieter())
+        assert controller.modell_bereit() is True
+        Anbieter.base_url = "http://127.0.0.1:0"
+        assert controller.modell_bereit() is False, (
+            "solange der Start nicht abgeschlossen ist, gilt der Dienst nicht "
+            "als bereit")
+    finally:
+        controller.shutdown()
+
+
+def test_ohne_eigenen_dienst_gilt_alles_als_bereit(portable_root):
+    """Ein fremder Anbieter laedt nichts - dort gibt es nichts abzuwarten."""
+    from test_controller import make_controller
+
+    controller = make_controller(portable_root)
+    try:
+        assert controller.modell_bereit() is True
+    finally:
+        controller.shutdown()

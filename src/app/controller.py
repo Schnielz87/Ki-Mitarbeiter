@@ -1027,12 +1027,25 @@ class AppController:
 
         Ein Anbieter, der keinen eigenen Dienst startet, gilt als bereit -
         dort gibt es nichts zu laden.
+
+        Wichtig: hier wird **nichts** abgefragt. Die Oberflaeche ruft das
+        waehrend des Wartens mehrmals je Sekunde auf; eine Netzanfrage mit
+        Zeitgrenze wuerde genau das Fenster einfrieren, dessen Lebendigkeit
+        hier gezeigt werden soll. Gelesen werden nur Merkmale, die der
+        Anbieter ohnehin schon fuehrt: dass der Vorgang laeuft (ein Blick
+        auf den Kindvorgang, keine Verbindung) und dass der Start
+        abgeschlossen ist - erkennbar an der Adresse, die der Anbieter erst
+        setzt, nachdem der Dienst geantwortet hat.
         """
-        dienst = getattr(getattr(self.llm, "primary", None), "server", None)
+        anbieter = getattr(self.llm, "primary", None)
+        dienst = getattr(anbieter, "server", None)
         if dienst is None:
             return True
         try:
-            return bool(getattr(dienst, "laeuft", False)) and bool(dienst.bereit())
+            if not getattr(dienst, "laeuft", False) or not getattr(dienst, "port", 0):
+                return False
+            adresse = str(getattr(anbieter, "base_url", "") or "")
+            return bool(adresse) and not adresse.endswith(":0")
         except Exception:                        # pragma: no cover - defensiv
             return False
 
