@@ -6,13 +6,23 @@
 Stand: 07.09.2026 · Branch `claude/portable-ki-buchhalter-xr1qlj` ·
 Version 0.4.0
 
-> **Laufender Vorgang:** UI/UX-Umbau auf zehn Hauptbereiche mit linker
-> Navigation. Die GAP-Analyse und der Integrationsplan liegen vor
-> (`UI_GAP_ANALYSE.md`, `BASELINE_VOR_UI_UMBAU.md`,
-> `config/ui_action_registry.yaml`). **Die Umsetzung ist noch nicht
-> begonnen und wartet auf die Freigabe des Auftraggebers.**
-> Ebenfalls neu: `ANTWORTZEIT_KONZEPT.md` mit der gemessenen Ursache der
-> Wartezeit und vier Vorschlägen.
+> **UI/UX-Umbau umgesetzt** (freigegeben am 07.09.2026). Die Oberflaeche
+> hat jetzt eine linke Navigation mit **zehn Bereichen**, ein
+> Begruessungsbild mit dem PORTIVA-Classic-Logo und ein Quellenpanel mit
+> getrennten Recherche-Details.
+>
+> Nachweise: `UI_UX_KONZEPT.md`, `UI_BUTTON_FUNKTIONSMATRIX.md`
+> (62 Bedienelemente, 0 ohne Rueckruf), `UI_GAP_ANALYSE.md`,
+> `BASELINE_VOR_UI_UMBAU.md`, `config/ui_action_registry.yaml`.
+>
+> **Nicht umgesetzt** (eigener Auftrag): Vorlagen und Aufgaben. Beide
+> Bereiche stehen in der Navigation und kennzeichnen sich als noch nicht
+> verfuegbar.
+>
+> **Wartezeit:** `ANTWORTZEIT_KONZEPT.md`. Hebel 1 und 2 umgesetzt - der
+> Prompt einer Begriffsfrage schrumpft um ein Drittel bis um die Haelfte.
+> Hebel 3 (Prompt-Anfang wiederverwenden) und 4 (Antwortspeicher) sind
+> offen.
 
 ---
 
@@ -26,7 +36,7 @@ Geheimnistresor, Freigabepflicht, Connector-Rahmen, Dateiausgabe in acht
 Formaten, Plugin-System mit eigenem Vorgang je Plugin, mitgeliefertem
 Modelldienst und gefuehrtem Weg zum Sprachmodell, grafische Oberflaeche und
 Kommandozeile -
-abgesichert durch **610 automatische Tests**.
+abgesichert durch **745 automatische Tests**.
 
 **Noch nicht abgenommen** sind die Schritte, die zwingend Windows, eine
 echte grafische Oberflaeche, ein echtes Sprachmodell oder Zugriff auf die
