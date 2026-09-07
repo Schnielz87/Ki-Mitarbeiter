@@ -1218,7 +1218,16 @@ class MainWindow:
         # Kontextgroesse, Zahl der Fundstellen und Verlaufstiefe in einem
         # abgestimmten Satz. Diese vier Werte gegeneinander von Hand
         # einzustellen gelingt niemandem.
-        add_choice("Antworttempo", "llm.tempo", _tempo.namen())
+        add_choice("Antworttempo", "llm.tempo",
+                   [_tempo.AUTOMATISCH, *_tempo.namen()])
+        # Was "automatisch" auf DIESEM Rechner gerade bedeutet, muss
+        # dastehen. Eine Einstellung, deren Wirkung man nicht sehen kann,
+        # ist keine Einstellung, sondern ein Versprechen.
+        gewaehlt = self.controller.tempostufe()
+        ttk.Label(left, wraplength=430, justify="left", foreground="#555555",
+                  text=("automatisch: richtet sich nach diesem Rechner und dem "
+                        f"eingerichteten Modell - hier gerade \"{gewaehlt}\".")
+                  ).pack(anchor="w", pady=(0, 2))
         ttk.Label(left, wraplength=430, justify="left", foreground="#555555",
                   text=" · ".join(f"{n}: {_tempo.stufe(n)['beschreibung']}"
                                   for n in _tempo.namen())

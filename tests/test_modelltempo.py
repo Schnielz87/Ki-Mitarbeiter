@@ -276,3 +276,66 @@ def test_ohne_gpu_wird_kein_schalter_gesetzt(tmp_path):
     befehl = Llamaserver(programm=tmp_path / "llama-server",
                          modell=tmp_path / "m.gguf", port=1)._befehl()
     assert "-ngl" not in befehl and "-t" not in befehl
+
+
+def test_ohne_grafikkarte_und_mit_grossem_modell_wird_schnell_empfohlen():
+    """Der Fall aus dem Betrieb: 7B-Modell, keine Karte, Antwort nach Minuten.
+
+    Die mittlere Stufe schickt rund 1600 Token Kontext durch das Modell.
+    Auf reiner Prozessorrechnung mit einem grossen Modell sind das Minuten,
+    bevor das erste Wort erscheint. Genau dort ist die mittlere Stufe die
+    falsche Vorgabe.
+    """
+    from pkc.llm import tempo
+
+    assert tempo.empfehlung(gpu=False, modell_gb=4.68) == "schnell"
+    assert tempo.empfehlung(gpu=False, modell_gb=8.99) == "schnell"
+
+
+def test_mit_grafikkarte_bleibt_es_bei_der_mittleren_stufe():
+    """Rechnet eine Karte mit, ist ein Token billig - dann darf es mehr sein."""
+    from pkc.llm import tempo
+
+    assert tempo.empfehlung(gpu=True, modell_gb=8.99) == "ausgewogen"
+
+
+def test_kleines_modell_ohne_karte_bleibt_ausgewogen():
+    """Die Empfehlung darf nicht pauschal bremsen, wo nichts zu bremsen ist."""
+    from pkc.llm import tempo
+
+    assert tempo.empfehlung(gpu=False, modell_gb=2.1, kerne=8) == "ausgewogen"
+
+
+def test_sehr_wenige_kerne_bekommen_die_schnelle_stufe():
+    from pkc.llm import tempo
+
+    assert tempo.empfehlung(gpu=False, modell_gb=2.1, kerne=2) == "schnell"
+
+
+def test_eine_ausdrueckliche_wahl_hat_vorrang(portable_root):
+    """Wie beim Betriebsmodus: eine Entscheidung wird nie stillschweigend
+    uebergangen."""
+    from test_controller import make_controller
+
+    controller = make_controller(portable_root)
+    try:
+        controller.config.set("llm.tempo", "ausfuehrlich")
+        assert controller.tempostufe() == "ausfuehrlich"
+        assert controller.tempowerte()["max_output_tokens"] == 1024
+    finally:
+        controller.shutdown()
+
+
+def test_automatisch_ergibt_immer_eine_echte_stufe(portable_root):
+    """Aus "automatisch" muss ein Name werden, den es wirklich gibt."""
+    from pkc.llm import tempo
+    from test_controller import make_controller
+
+    controller = make_controller(portable_root)
+    try:
+        controller.config.set("llm.tempo", tempo.AUTOMATISCH)
+        gewaehlt = controller.tempostufe()
+        assert gewaehlt in tempo.namen(), gewaehlt
+        assert controller.tempowerte() == tempo.stufe(gewaehlt)
+    finally:
+        controller.shutdown()

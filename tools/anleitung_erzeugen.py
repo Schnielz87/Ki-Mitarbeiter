@@ -517,13 +517,26 @@ absatz("Unter \"Einstellungen und Status\" steht ganz oben bei "
        "kann: wie lang die Antwort werden darf, wieviel Fachtext mitgeschickt "
        "wird, wieviele Fundstellen herangezogen werden und wie weit der "
        "bisherige Gespraechsverlauf zurueckreicht.")
+absatz("Die Vorgabe ist \"Automatisch\". Das ist bei einer portablen "
+       "Anwendung nicht Bequemlichkeit, sondern richtig: derselbe "
+       "Datentraeger laeuft heute an einem Buerorechner ohne Grafikkarte "
+       "und morgen an einer Arbeitsstation mit. Eine fest eingetragene "
+       "Stufe waere an einem der beiden falsch. Unter dem Auswahlfeld "
+       "steht, welche Stufe auf DIESEM Rechner gerade gilt. Waehlen Sie "
+       "selbst eine Stufe, gilt Ihre Wahl - sie wird nie stillschweigend "
+       "uebergangen.")
 tabelle_mit(
     ["Stufe", "Was sie tut", "Wofuer"],
     [
+        ["Automatisch (Vorgabe)",
+         "Richtet sich nach dem Rechner, an dem der Datentraeger gerade "
+         "steckt, und nach dem eingerichteten Modell",
+         "Der Normalfall. Ohne Grafikkarte und mit einem grossen Modell "
+         "waehlt die Anwendung von sich aus \"Schnell\"."],
         ["Schnell", "Kurze, belegte Antwort aus wenigen Fundstellen",
          "Wenn es zuegig gehen soll."],
-        ["Ausgewogen (Vorgabe)", "Vollstaendige Fachantwort",
-         "Der normale Betrieb."],
+        ["Ausgewogen", "Vollstaendige Fachantwort",
+         "Der normale Betrieb auf einem Rechner, der es traegt."],
         ["Ausfuehrlich", "Mehr Fundstellen, laengere Antwort",
          "Wenn Tiefe wichtiger ist als Zeit."],
     ],

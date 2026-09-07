@@ -35,7 +35,12 @@ DEFAULTS: dict[str, Any] = {
         # Fundstellen und Verlaufstiefe in einem abgestimmten Satz - diese
         # vier Werte gegeneinander von Hand einzustellen gelingt niemandem.
         # Siehe pkc/llm/tempo.py.
-        "tempo": "ausgewogen",         # schnell | ausgewogen | ausfuehrlich
+        # "automatisch" heisst: nach dem Rechner richten, an dem der
+        # Datentraeger gerade steckt. Ein Buerorechner ohne Grafikkarte
+        # und ein grosses Modell brauchen die schnelle Stufe; eine
+        # Arbeitsstation mit Karte vertraegt die mittlere. Eine feste
+        # Vorgabe waere an einem der beiden falsch.
+        "tempo": "automatisch",        # automatisch | schnell | ausgewogen | ausfuehrlich
         # 0 = aus dem Tempo ableiten. Ein ausdruecklicher Wert hat Vorrang.
         "max_output_tokens": 0,
         # Den Modelldienst schon beim Programmstart hochfahren, damit die

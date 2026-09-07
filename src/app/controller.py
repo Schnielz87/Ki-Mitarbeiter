@@ -221,7 +221,7 @@ class AppController:
         # Gemessen an einem echten Aufbau: 2712 Token Kontext und 1024
         # erlaubte Ausgabetoken sind der Grund, warum eine Antwort auf einem
         # Buerorechner Minuten dauert - nicht das Modell allein.
-        tempowerte = tempo.stufe(self.config.get("llm.tempo", tempo.VORGABE))
+        tempowerte = self.tempowerte()
         self.rag = RagEngine(
             self.profile, self.searcher, self.memory, self.llm,
             ContextBuilder(max_context_tokens=tempowerte["kontext_tokens"],
@@ -1002,7 +1002,7 @@ class AppController:
         return {
             "ok": bool(gute),
             "fragen": fragen,
-            "tempo": str(self.config.get("llm.tempo", tempo.VORGABE)),
+            "tempo": self.tempostufe(),
             "bereit_nach_s": bereit_nach,
             # Was eine Stoppuhr neben dem Rechner anzeigen wuerde.
             "messdauer_s": round(_time.monotonic() - messung_begonnen, 1),
@@ -1016,6 +1016,47 @@ class AppController:
             "im_betrieb_gesamt_s": gute[-1]["gesamt_s"] if gute else 0.0,
         }
 
+    def tempostufe(self) -> str:
+        """Der Name der Stufe, die JETZT gilt - "automatisch" aufgeloest.
+
+        Eine portable Anwendung laeuft heute an einem Buerorechner ohne
+        Grafikkarte und morgen an einer Arbeitsstation mit. Eine fest
+        eingetragene Stufe waere an einem der beiden falsch, deshalb wird
+        hier bei jedem Aufruf nach dem Rechner gefragt statt einmal
+        gespeichert.
+
+        Eine ausdrueckliche Wahl des Benutzers hat immer Vorrang. Sie wird
+        nie stillschweigend uebergangen - genau wie beim Betriebsmodus.
+        """
+        gewaehlt = str(self.config.get("llm.tempo", tempo.AUTOMATISCH) or "").strip().lower()
+        if gewaehlt != tempo.AUTOMATISCH:
+            return gewaehlt
+        try:
+            from pkc.hardware import detect, physische_kerne
+
+            geraet = detect(self.paths.root)
+            modell = getattr(getattr(self.llm.primary, "server", None), "modell", None)
+            groesse_gb = 0.0
+            if modell is not None:
+                try:
+                    groesse_gb = Path(modell).stat().st_size / 1024**3
+                except OSError:
+                    groesse_gb = 0.0
+            return tempo.empfehlung(
+                gpu=bool(int(self.config.get("llm.gpu_layers", 0) or 0))
+                    or bool(geraet.gpu_name),
+                modell_gb=groesse_gb,
+                kerne=physische_kerne() or (geraet.cpu_cores or 0),
+            )
+        except Exception:                        # pragma: no cover - defensiv
+            # Eine misslungene Erkennung darf nie eine Antwort verhindern.
+            log.debug("Tempostufe nicht automatisch bestimmbar", exc_info=True)
+            return tempo.VORGABE
+
+    def tempowerte(self) -> dict:
+        """Die Werte der geltenden Stufe."""
+        return tempo.stufe(self.tempostufe())
+
     def tempo_anwenden(self) -> dict:
         """Uebernimmt das eingestellte Antworttempo in die laufende Anwendung.
 
@@ -1026,7 +1067,7 @@ class AppController:
         gehalten. Aufgefallen ist das erst, weil ein Test denselben Weg ging
         wie die Oberflaeche.
         """
-        werte = tempo.stufe(self.config.get("llm.tempo", tempo.VORGABE))
+        werte = self.tempowerte()
         self.rag.builder = ContextBuilder(
             max_context_tokens=werte["kontext_tokens"],
             max_company_tokens=werte["unternehmen_tokens"])
@@ -1043,7 +1084,7 @@ class AppController:
         ausdruecklich = int(self.config.get("llm.max_output_tokens", 0) or 0)
         if ausdruecklich > 0:
             return ausdruecklich
-        return int(tempo.stufe(self.config.get("llm.tempo", tempo.VORGABE))
+        return int(self.tempowerte()
                    ["max_output_tokens"])
 
     def einrichtungsweg(self, text: str) -> None:
@@ -1283,7 +1324,7 @@ class AppController:
         # Der Verlauf wandert bei jeder Frage erneut durch das Modell. Sechs
         # Zuege sind schnell einige tausend Token - also Wartezeit, bevor
         # das erste Wort erscheint.
-        werte = tempo.stufe(self.config.get("llm.tempo", tempo.VORGABE))
+        werte = self.tempowerte()
         history = (self._history(uid, turns=werte["verlauf"] + 1)[:-1]
                    if use_history else [])
 

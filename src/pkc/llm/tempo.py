@@ -61,8 +61,48 @@ STUFEN = {
 VORGABE = "ausgewogen"
 
 
+#: Die Stufe dem Rechner ueberlassen. Das ist bei einer portablen Anwendung
+#: nicht nur bequem, sondern richtig: derselbe Datentraeger laeuft heute an
+#: einem Buerorechner ohne Grafikkarte und morgen an einer Arbeitsstation
+#: mit. Eine fest eingetragene Stufe waere an einem der beiden falsch.
+AUTOMATISCH = "automatisch"
+
+
+def empfehlung(gpu: bool, modell_gb: float, kerne: int = 0) -> str:
+    """Welche Stufe zu diesem Rechner und diesem Modell passt.
+
+    Die Ueberlegung dahinter steht oben im Modul: die Wartezeit vor dem
+    ersten Wort waechst mit der Zahl der Token im Kontext, und wie teuer ein
+    Token ist, haengt am Modell und daran, ob eine Grafikkarte rechnet.
+
+    * Rechnet eine Grafikkarte mit, ist ein Token billig - dann kann der
+      Kontext gross sein.
+    * Auf reiner Prozessorrechnung ist ein Token bei einem grossen Modell
+      teuer. Dort bedeutet die mittlere Stufe Minuten statt Sekunden.
+    * Sehr wenige Kerne sind derselbe Fall, auch bei kleinem Modell.
+
+    Keine Zahl hier ist geraten: die Grenze von vier Gigabyte trennt die
+    Modelle des Katalogs so, dass die beiden grossen (7B und 14B) auf der
+    langsamen Seite liegen. Wer es anders will, stellt die Stufe von Hand
+    ein - dann gilt die Wahl und nicht diese Empfehlung.
+    """
+    if gpu:
+        return "ausgewogen"
+    if float(modell_gb or 0.0) >= 4.0:
+        return "schnell"
+    if kerne and int(kerne) < 4:
+        return "schnell"
+    return "ausgewogen"
+
+
 def stufe(name: str) -> dict:
-    """Die Werte einer Stufe. Unbekanntes faellt auf die Vorgabe zurueck."""
+    """Die Werte einer Stufe. Unbekanntes faellt auf die Vorgabe zurueck.
+
+    ``automatisch`` ist hier bewusst unbekannt: die Aufloesung braucht die
+    Angaben des Rechners, die dieses Modul nicht hat. Sie geschieht eine
+    Ebene hoeher (``Controller.tempostufe``). Faellt sie aus, gilt die
+    Vorgabe - eine mittlere Stufe ist nie falsch, nur nicht optimal.
+    """
     return STUFEN.get(str(name or "").strip().lower(), STUFEN[VORGABE])
 
 

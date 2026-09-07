@@ -387,7 +387,11 @@ jobs:
           # unbrauchbar: jeder Aufruf startet den Modelldienst neu.
           Set-Location dist\Portable-Buchhalter
           $zeilen = @()
-          foreach ($stufe in @("ausfuehrlich", "ausgewogen", "schnell")) {
+          # "automatisch" zuerst: das ist die Vorgabe des Auslieferungspakets,
+          # und die Ausgabe nennt, zu welcher Stufe sie auf diesem Rechner
+          # wird. Ohne diesen Durchgang waere die Vorgabe die einzige
+          # Einstellung, die nie gemessen wurde.
+          foreach ($stufe in @("automatisch", "ausfuehrlich", "ausgewogen", "schnell")) {
             Write-Host "=== Tempostufe: $stufe ==="
             .\PORTABLE_BUCHHALTER_KONSOLE.exe --offline einstellungen setzen `
               --schluessel llm.tempo --wert $stufe | Out-Null
@@ -404,8 +408,10 @@ jobs:
             } else { "?" }
             $dienst = if ($ausgabe -match "Dienst\s*:\s*(.+)") { $matches[1].Trim() } else { "?" }
             Write-Host "  Dienst: $dienst"
+            $aufgeloest = if ($ausgabe -match "Tempo\s*:\s*(\S+)") { $matches[1] } else { $stufe }
             $zeilen += [pscustomobject]@{
               stufe = $stufe
+              wirksam = $aufgeloest
               erste_frage_1_wort_s = $erste
               spaeter_1_wort_s = $betrieb[0]
               spaeter_gesamt_s = $betrieb[1]
@@ -418,8 +424,10 @@ jobs:
           $zeilen | ConvertTo-Json -Depth 3 | Set-Content "$env:RUNNER_TEMP\wartezeit.json"
 
           # Die Vorgabe zurueckstellen, damit das Auslieferungspaket sie traegt.
+          # "automatisch" - eine feste Stufe waere an einem Teil der Rechner
+          # falsch, und ein Auslieferungspaket weiss nicht, wo es landet.
           .\PORTABLE_BUCHHALTER_KONSOLE.exe --offline einstellungen setzen `
-            --schluessel llm.tempo --wert ausgewogen | Out-Null
+            --schluessel llm.tempo --wert automatisch | Out-Null
 
           # Und die Groesse der beiden Modelldienst-Fassungen berichten: das
           # Paket ist dadurch deutlich groesser geworden, das gehoert benannt.
