@@ -1288,3 +1288,36 @@ def test_ohne_zeitangaben_wird_nichts_ueber_wiederverwendung_behauptet(portable_
         assert controller.modell_messen()["prompt_wiederverwendung"] == {}
     finally:
         controller.shutdown()
+
+
+def test_ein_paar_textbausteine_weniger_sind_keine_wiederverwendung(portable_root):
+    """Der Fehler, den der Bauablauf am 2026-09-07 vorgefuehrt hat.
+
+    Die beiden Messfragen sind verschieden lang. Allein daraus ergaben sich
+    1232 gegen 1227 verarbeitete Textbausteine - und die Anzeige meldete
+    "wiederverwendet: ja". Fuenf Textbausteine Unterschied sind aber keine
+    gemerkte Rollenbeschreibung, sondern eine kuerzere Frage. Eine Anzeige,
+    die so etwas als Erfolg meldet, ist schlimmer als keine: sie beendet die
+    Suche nach der Ursache.
+    """
+    from test_controller import make_controller
+
+    controller = make_controller(portable_root)
+    try:
+        # Genau die Zahlen aus dem Bauablauf.
+        wieder = controller._wiederverwendung([
+            {"zeiten": {"verarbeiten": {"tokens": 1232}}},
+            {"zeiten": {"verarbeiten": {"tokens": 1227}}},
+        ])
+        assert wieder["greift"] is False, (
+            "0,4 Prozent weniger sind kein gemerkter Prompt-Anfang")
+
+        # Faellt der unveraenderliche Anfang wirklich weg, sieht es so aus.
+        wieder = controller._wiederverwendung([
+            {"zeiten": {"verarbeiten": {"tokens": 1232}}},
+            {"zeiten": {"verarbeiten": {"tokens": 230}}},
+        ])
+        assert wieder["greift"] is True
+        assert wieder["rueckgang_prozent"] > 80
+    finally:
+        controller.shutdown()

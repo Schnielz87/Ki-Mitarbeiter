@@ -372,6 +372,26 @@ Fenster und Konsole jetzt ausdruecklich die verarbeiteten Tokenzahlen
 **beider** Durchgaenge und die Zeile "Prompt-Anfang wiederverwendet: ja /
 NEIN".
 
+**Lauf 34152711836 hat es beantwortet - und dabei einen Fehler in der
+Anzeige selbst vorgefuehrt.** Die Zahlen:
+
+| Stufe | erster Durchgang | zweiter Durchgang |
+|---|---|---|
+| schnell | 1232 Token | 1227 Token |
+| ausgewogen | 1960 Token | 1980 Token |
+
+Der unveraenderliche Anfang ist rund tausend Token gross. Faellt er weg,
+muesste der zweite Durchgang bei ungefaehr 230 Token liegen. Er liegt bei
+1227. **Es wird nichts wiederverwendet - der ganze Anfang wird bei jeder
+Frage neu verarbeitet.** Der Grund ist weiterhin nicht ermittelt.
+
+Die Anzeige meldete bei der schnellen Stufe trotzdem "wiederverwendet:
+ja", weil 1227 kleiner ist als 1232. Die fuenf Token Unterschied kommen
+aber allein daher, dass die zweite Messfrage kuerzer ist. Das Kriterium
+verlangt jetzt einen Rueckgang von mindestens einem Sechstel; ein Test
+haelt genau diesen Fall fest. Eine Anzeige, die Rauschen als Erfolg
+meldet, ist schlimmer als keine - sie beendet die Suche nach der Ursache.
+
 **Ebenfalls nicht belegt** ist die Wirkung der echten statt logischen
 Kernzahl: der Baurechner hat zwei Kerne ohne Hyperthreading, dort kann die
 Kernzahl gar nichts aendern. Beides zeigt erst eine Messung auf einem

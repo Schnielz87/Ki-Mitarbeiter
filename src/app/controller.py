@@ -1043,12 +1043,21 @@ class AppController:
         zahlen = [z for z in zahlen if isinstance(z, int) and z > 0]
         if len(zahlen) < 2:
             return {}
+        # "Weniger als vorher" reicht als Kriterium NICHT. Die beiden
+        # Messfragen sind verschieden lang; allein daraus ergaben sich im
+        # Bauablauf 1232 gegen 1227 Textbausteine - und die Anzeige meldete
+        # faelschlich "wiederverwendet: ja". Fuenf Textbausteine Unterschied
+        # sind kein gemerkter Prompt-Anfang, sondern eine kuerzere Frage.
+        #
+        # Wiederverwendung heisst: der unveraenderliche Anfang faellt weg.
+        # Der ist rund tausend Textbausteine gross. Ein Rueckgang unter
+        # einem Sechstel ist also Rauschen, kein Beleg.
+        rueckgang = (zahlen[0] - zahlen[-1]) / zahlen[0]
         return {
             "tokens_erster_lauf": zahlen[0],
             "tokens_spaeterer_lauf": zahlen[-1],
-            # Weniger verarbeitete Textbausteine beim zweiten Mal heisst:
-            # der Anfang wurde wiederverwendet.
-            "greift": zahlen[-1] < zahlen[0],
+            "rueckgang_prozent": round(rueckgang * 100, 1),
+            "greift": rueckgang >= 0.15,
         }
 
     def modell_bereit(self) -> bool:

@@ -1139,7 +1139,8 @@ class MainWindow:
                     f"  erster Durchgang : {wieder['tokens_erster_lauf']} "
                     "Textbausteine verarbeitet",
                     f"  zweiter Durchgang: {wieder['tokens_spaeterer_lauf']} "
-                    "Textbausteine verarbeitet",
+                    f"Textbausteine verarbeitet ({wieder['rueckgang_prozent']} % "
+                    "weniger)",
                 ]
             else:
                 zeilen += ["", "Es hat kein Sprachmodell geantwortet."]

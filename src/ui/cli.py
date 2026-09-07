@@ -572,7 +572,8 @@ def cmd_modell(args) -> int:
                 print(f"Prompt-Anfang wiederverwendet: "
                       f"{'ja' if wieder['greift'] else 'NEIN'} "
                       f"({wieder['tokens_erster_lauf']} Textbausteine im ersten, "
-                      f"{wieder['tokens_spaeterer_lauf']} im zweiten Durchgang)")
+                      f"{wieder['tokens_spaeterer_lauf']} im zweiten Durchgang, "
+                      f"{wieder['rueckgang_prozent']} % weniger)")
             return 0
 
         print(f"Unbekannte Aktion: {args.aktion}", file=sys.stderr)
