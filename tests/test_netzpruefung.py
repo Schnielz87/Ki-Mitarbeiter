@@ -183,3 +183,29 @@ def test_offline_bleibt_offline(anwendung, monkeypatch):
     with pytest.raises(ValueError) as fehler:
         anwendung.modell_beziehen("probe-klein", bestaetigt=True)
     assert "OFFLINE" in str(fehler.value)
+
+
+def test_erreichbare_bezugsquelle_berichtigt_die_anzeige(anwendung, monkeypatch):
+    """Gemeldet: oben stand "Internet: nicht verfuegbar" waehrend des Ladens.
+
+    Erreicht die Anwendung die Adresse, von der sie gerade Gigabyte laedt,
+    ist die Frage nach dem Internet beantwortet. Bliebe der alte Befund
+    stehen, widerspraeche die Kopfzeile im selben Fenster den Tatsachen.
+    """
+    from pkc.netstate import Mode
+
+    anwendung.set_mode(Mode.HYBRID)
+    anwendung.network.force(False, "Test: allgemeine Pruefung findet nichts")
+    assert anwendung.lage.internet_text == "nicht verfuegbar"
+
+    monkeypatch.setattr("pkc.netstate.probe", lambda adresse, zeit: True)
+    monkeypatch.setattr("pkc.llm.bezug.laden", lambda *a, **k:
+                        __import__("pkc.llm.bezug", fromlist=["Ladeergebnis"])
+                        .Ladeergebnis(True, anwendung.paths.get("models") / "probe.gguf",
+                                      meldung="geladen"))
+
+    anwendung.modell_beziehen("probe-klein", bestaetigt=True)
+
+    assert anwendung.lage.internet_text == "verfuegbar", (
+        "nach einem erfolgreichen Bezug darf die Anzeige nicht weiter "
+        "behaupten, es gebe kein Internet")

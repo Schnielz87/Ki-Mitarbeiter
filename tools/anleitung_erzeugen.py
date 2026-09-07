@@ -312,6 +312,77 @@ kasten(
     "noch kein Nachweis.",
 )
 
+doc.add_heading("Welches Modell - und wann welches?", level=2)
+absatz("Zur Auswahl stehen vier Modelle. Sie unterscheiden sich in genau "
+       "drei Punkten, und die haengen zusammen: je groesser das Modell, "
+       "desto besser die fachliche Qualitaet, desto mehr Arbeitsspeicher "
+       "braucht es - und desto laenger dauert eine Antwort. Ein "
+       "\"schnelles und zugleich bestes\" Modell gibt es nicht.")
+
+# Die Angaben stammen aus dem ausgelieferten Katalog, nicht aus dem
+# Gedaechtnis des Verfassers. Wird der Katalog geaendert, aendert sich
+# diese Tabelle mit - falsche Zahlen koennen hier gar nicht entstehen.
+_WOFUER = {
+    "probe": "Zum Ausprobieren, ob die Einrichtung ueberhaupt klappt. "
+             "Antwortet schnell, aber fachlich unbrauchbar. Stellen Sie "
+             "damit KEINE Buchhaltungsfragen.",
+    "light": "Wenn der Rechner weniger als 12 GB Arbeitsspeicher hat oder "
+             "wenn Ihnen Tempo wichtiger ist als die letzte Genauigkeit. "
+             "Achtung: nicht Apache-2.0 - vor betrieblichem Einsatz die "
+             "Lizenz pruefen.",
+    "standard": "Der Normalfall. Nehmen Sie dieses Modell, wenn Sie sich "
+                "nicht entscheiden wollen und der Rechner es traegt.",
+    "high": "Wenn Sie eine Grafikkarte haben oder wenn Ihnen die Qualitaet "
+            "eine lange Wartezeit wert ist. Auf reiner Prozessorrechnung "
+            "dauert eine Antwort damit sehr lange.",
+}
+_entscheidung = []
+for _quelle in _katalog.laden(REPO / "config"):
+    _entscheidung.append([
+        _quelle.profil,
+        _quelle.name,
+        f"{_quelle.min_ram_gb} GB RAM",
+        _WOFUER.get(_quelle.profil, _quelle.hinweis),
+    ])
+tabelle_mit(
+    ["Auswahl", "Modell", "Braucht mind.", "Wann Sie es nehmen sollten"],
+    _entscheidung,
+    breiten=[1.9, 4.2, 2.0, 6.9],
+)
+
+absatz("Die einfache Regel:", fett=True)
+punkt("Die Anwendung waehlt bereits vor, was zu Ihrem Rechner passt. "
+      "Wenn Sie nichts aendern, ist das eine sinnvolle Entscheidung.")
+punkt("Reicht der Arbeitsspeicher nicht fuer die Vorauswahl, nehmen Sie "
+      "die naechstkleinere Stufe. Ein zu grosses Modell wird nicht "
+      "schneller, wenn man wartet - es wird nur ausgelagert und damit "
+      "um ein Vielfaches langsamer.")
+punkt("Ohne Grafikkarte rechnet alles auf dem Prozessor. Dort ist der "
+      "Unterschied zwischen light und standard deutlich spuerbar, der "
+      "zwischen standard und high erheblich.")
+punkt("Sie koennen jederzeit wechseln: ein anderes Modell laden, in der "
+      "Auswahlliste umstellen, fertig. Bereits geladene Dateien bleiben "
+      "im Ordner models liegen und muessen nicht erneut geladen werden.")
+
+kasten(
+    "Antwortzeit gegen Qualitaet - was Sie wirklich merken",
+    "Die Zeit bis zum ersten Wort waechst ungefaehr mit der Groesse des "
+    "Modells. Wer von standard auf light wechselt, wartet spuerbar "
+    "kuerzer und bekommt etwas knappere, gelegentlich ungenauere "
+    "Antworten. Wer von standard auf high wechselt, wartet deutlich "
+    "laenger.\n\n"
+    "Was auf IHREM Rechner herauskommt, sagt keine Tabelle, sondern die "
+    "Messung: Registerkarte \"Sprachmodell\" -> \"Wartezeit messen\". "
+    "Dort werden zwei echte Fachfragen gestellt und die Zeiten "
+    "angezeigt. Der zweite Hebel neben dem Modell ist die Tempostufe in "
+    "den Einstellungen (Kapitel 16).",
+)
+
+absatz("Die Groessen der Dateien, die genauen Lizenztexte und die Herkunft "
+       "stehen weiter unten in diesem Kapitel unter \"Welches Modell?\" - "
+       "und noch einmal in der Rueckfrage, die vor jedem Herunterladen "
+       "erscheint.")
+
 doc.add_heading("Nur einmal - nicht bei jedem Start", level=2)
 absatz("Das Modell wird EINMAL geladen. Danach liegt es im Ordner models "
        "auf diesem Datentraeger - nicht auf dem Rechner, an dem Sie es "

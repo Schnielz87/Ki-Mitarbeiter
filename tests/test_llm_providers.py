@@ -302,3 +302,54 @@ def test_notbetrieb_verwirft_bereits_gezeigte_stuecke(model_server):
     assert not response.is_generated, "ohne Modellantwort kein 'generated'"
     assert "" in gesehen, "der Neubeginn muss gemeldet werden"
     assert gesehen[-1] == "", "das zuletzt Gezeigte muss verworfen werden"
+
+
+def test_mitgelieferter_dienst_laesst_den_prompt_merken(model_server):
+    """Ohne ``cache_prompt`` rechnet llama.cpp jede Frage von vorn.
+
+    Der unveraenderliche Anfang jedes Prompts - Rollenbeschreibung und
+    Antwortschema - ist rund tausend Token. Ohne dieses Feld verarbeitet
+    llama.cpp ihn bei JEDER Frage erneut. Gemessen wurde im Betrieb: zwei
+    aufeinanderfolgende Fragen, 157 und 160 Sekunden bis zum ersten Wort.
+    Ohne Merken wird die zweite Frage nicht schneller - genau das war zu
+    sehen.
+    """
+    from pkc.llm.providers import MitgelieferterServerProvider
+
+    class Modell:
+        name = "testmodell"
+
+    class Attrappe:
+        programm = "llama-server"
+        port = int(model_server.base.rsplit(":", 1)[1])
+        laeuft = True
+        modell = Modell()
+        adresse = model_server.base
+
+        def bereit(self):
+            return True
+
+        def starten(self):
+            return True
+
+    anbieter = MitgelieferterServerProvider(Attrappe())
+    anbieter.base_url = model_server.base
+    anbieter.generate([ChatMessage("user", "Was ist Buchhaltung?")], max_tokens=8)
+
+    gesehen = model_server.handler.seen[-1]
+    assert gesehen.get("cache_prompt") is True, (
+        "der mitgelieferte Dienst muss den Prompt merken duerfen")
+
+
+def test_fremder_dienst_bekommt_kein_zusatzfeld(model_server):
+    """Ein fremder Anbieter weist eine unbekannte Angabe mit Fehler ab.
+
+    Deshalb steht ``cache_prompt`` nicht in der gemeinsamen Grundlage,
+    sondern nur beim mitgelieferten Dienst.
+    """
+    anbieter = OpenAICompatibleProvider(model_server.base, model="testmodell")
+    anbieter.generate([ChatMessage("user", "Frage")], max_tokens=8)
+
+    gesehen = model_server.handler.seen[-1]
+    assert "cache_prompt" not in gesehen, (
+        "ein fremder Dienst darf keine llama.cpp-Sonderangabe bekommen")

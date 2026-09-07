@@ -954,6 +954,12 @@ class AppController:
         import time as _time
 
         fragen = [frage] if frage else list(self.MESSFRAGEN)
+        # Stoppuhrzeit der ganzen Messung. Ohne sie widerspricht die Anzeige
+        # dem, was der Benutzer erlebt: er sieht zwei Zeilen mit je zwei
+        # Minuten und hat acht Minuten gewartet. Die Differenz ist kein
+        # Fehler - Warten auf die Bereitschaft, Recherche und das Schreiben
+        # der zweiten Antwort gehoeren dazu -, aber sie muss dastehen.
+        messung_begonnen = _time.monotonic()
 
         # Erst abwarten, bis die Anwendung bereit ist. Sonst misst der erste
         # Durchgang das Laden des Modells mit - und das erlebt so niemand:
@@ -998,6 +1004,8 @@ class AppController:
             "fragen": fragen,
             "tempo": str(self.config.get("llm.tempo", tempo.VORGABE)),
             "bereit_nach_s": bereit_nach,
+            # Was eine Stoppuhr neben dem Rechner anzeigen wuerde.
+            "messdauer_s": round(_time.monotonic() - messung_begonnen, 1),
             # Auskunft ueber den Dienst, wenn er eine gibt. Eine Messung
             # darf nicht daran scheitern, dass ein Anbieter nichts erzaehlt.
             "dienst": (self.llm.primary.describe()
@@ -1080,6 +1088,11 @@ class AppController:
                     "network.probe_timeout_seconds", 8))):
                 log.info("Bezugsquelle erreichbar, obwohl die allgemeine "
                          "Netzpruefung nichts fand: %s", adresse)
+                # Und das gehoert auch in die Anzeige. Sonst steht oben
+                # weiter "Internet: nicht verfuegbar", waehrend die Anwendung
+                # gerade Gigabyte aus dem Netz laedt - eine Auskunft, die im
+                # selben Fenster von den Tatsachen widerlegt wird.
+                self.network.force(True, f"Bezugsquelle erreichbar: {adresse}")
                 return True
         return False
 

@@ -959,7 +959,11 @@ class MainWindow:
         if probe.get("ok"):
             zeilen += [
                 "Das Sprachmodell ist einsatzbereit.",
-                f"  Antwortzeit : {probe['dauer_s']} s",
+                # Ausdruecklich als Probefrage benannt. "Antwortzeit: 4.0 s"
+                # unmittelbar nach einem Modellbezug wurde als Dauer des
+                # Herunterladens gelesen - verstaendlich, denn davon war
+                # gerade die Rede. Es ist die Zeit der kurzen Probefrage.
+                f"  Probefrage  : {probe['dauer_s']} s bis zur Antwort",
                 f"  Tempo       : {probe['token_je_sekunde']} Token je Sekunde",
                 *self._tempo_zeilen(probe["token_je_sekunde"]),
                 "", "Probeantwort:", "  " + probe.get("text", ""),
@@ -974,8 +978,15 @@ class MainWindow:
             messagebox.showinfo(
                 "Sprachmodell",
                 "Das Sprachmodell ist einsatzbereit.\n\n"
-                f"Es hat in {probe['dauer_s']} Sekunden geantwortet. Ab der "
-                "naechsten Frage formuliert der Buchhalter wieder Fachantworten.",
+                "Zur Kontrolle wurde ihm eine kurze Probefrage gestellt. "
+                f"Darauf hat es nach {probe['dauer_s']} Sekunden geantwortet.\n\n"
+                "Diese Zahl sagt nichts darueber, wie lange das "
+                "Herunterladen gedauert hat, und auch noch nichts ueber "
+                "richtige Fachfragen: die sind laenger und brauchen "
+                "deutlich mehr Zeit. Was Sie im Alltag erwartet, misst der "
+                "Knopf \u201eWartezeit messen\u201c.\n\n"
+                "Ab der naechsten Frage formuliert der Buchhalter wieder "
+                "Fachantworten.",
                 parent=self.root)
         else:
             messagebox.showwarning(
@@ -1016,6 +1027,19 @@ class MainWindow:
             if hardware.get("grafik"):
                 zeilen.append(f"      Erkannt wurde: {hardware['grafik']}")
         return zeilen
+
+    @staticmethod
+    def _dauer_text(sekunden: float) -> str:
+        """Sekunden so schreiben, wie eine Stoppuhr sie anzeigt.
+
+        "500.0 s" muss der Benutzer selbst umrechnen, um es mit seiner
+        Stoppuhr zu vergleichen. "8 Min 20 Sek" nicht.
+        """
+        sekunden = float(sekunden or 0.0)
+        if sekunden < 60:
+            return f"{sekunden:.1f} Sekunden"
+        minuten, rest = divmod(int(round(sekunden)), 60)
+        return f"{minuten} Min {rest} Sek ({sekunden:.0f} Sekunden)"
 
     def _modell_messen(self) -> None:
         """Misst die Wartezeit an zwei echten Fachfragen.
@@ -1077,6 +1101,19 @@ class MainWindow:
                     f"Im laufenden Betrieb: {ergebnis['im_betrieb_erstes_wort_s']} s "
                     "bis zum ersten Wort.",
                 ]
+            # Die Stoppuhrzeit gehoert dazu - auch wenn nichts geantwortet
+            # hat. Wer acht Minuten gewartet hat und darueber zwei Zeilen
+            # mit je zwei Minuten liest, haelt die Anzeige sonst fuer
+            # falsch. Sie ist es nicht; sie war nur unvollstaendig.
+            if ergebnis.get("messdauer_s"):
+                zeilen += [
+                    "",
+                    f"Gesamte Messdauer (Stoppuhr): "
+                    f"{self._dauer_text(ergebnis['messdauer_s'])}.",
+                    "Darin enthalten: das Warten auf die Bereitschaft, beide",
+                    "Fragen samt Recherche und das vollstaendige Schreiben",
+                    "beider Antworten. Die Zeilen oben nennen die Teilzeiten.",
+                ]
             else:
                 zeilen += ["", "Es hat kein Sprachmodell geantwortet."]
             self._write_modell_log("\n".join(zeilen))
@@ -1084,6 +1121,9 @@ class MainWindow:
                 "Wartezeit messen",
                 (f"Im laufenden Betrieb: "
                  f"{ergebnis['im_betrieb_erstes_wort_s']} s bis zum ersten Wort.\n\n"
+                 f"Die ganze Messung hat "
+                 f"{self._dauer_text(ergebnis.get('messdauer_s', 0))} gedauert - "
+                 "sie umfasst zwei vollstaendige Fragen samt Recherche.\n\n"
                  "Die Einzelheiten stehen unten im Textbereich - Sie koennen "
                  "sie mit der Maus markieren und kopieren.")
                 if ergebnis["ok"] else "Es hat kein Sprachmodell geantwortet.",

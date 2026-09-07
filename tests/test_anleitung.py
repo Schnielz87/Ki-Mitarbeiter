@@ -180,3 +180,42 @@ def test_anleitung_verspricht_keine_zahlen_als_zusage():
                       Document(str(ROOT / "docs" / "BEDIENUNGSANLEITUNG.docx")).paragraphs)
     assert "keine Zusage" in alles
     assert "misst das auf Ihrem Rechner selbst" in alles
+
+
+def test_anleitung_erklaert_den_unterschied_der_sprachmodelle():
+    """Der Benutzer hat danach gefragt - also muss es dastehen.
+
+    Eine Tabelle mit Dateigroessen beantwortet nicht die Frage "wann nehme
+    ich welches?". Der Abschnitt in Kapitel 2 muss jedes Profil des
+    ausgelieferten Katalogs mit einer Empfehlung nennen.
+    """
+    from pkc.llm import katalog
+
+    assert "Welches Modell - und wann welches?" in QUELLE, (
+        "Der Vergleichsabschnitt fehlt in der Anleitung."
+    )
+    # Der Abschnitt liegt in Kapitel 2 - dort, wo das Modell ausgewaehlt
+    # wird. Weiter hinten haette ihn niemand gesucht.
+    kapitel2 = QUELLE.index('doc.add_heading("2.')
+    kapitel3 = QUELLE.index('doc.add_heading("3.')
+    stelle = QUELLE.index("Welches Modell - und wann welches?")
+    assert kapitel2 < stelle < kapitel3, (
+        "Der Vergleich steht nicht in dem Kapitel, in dem man das Modell waehlt."
+    )
+
+    profile = {q.profil for q in katalog.laden(ROOT / "config")}
+    abschnitt = QUELLE[stelle:stelle + 4000]
+    fehlend = sorted(p for p in profile if f'"{p}":' not in abschnitt)
+    assert not fehlend, (
+        "Zu diesen Modellen sagt die Anleitung nicht, wann man sie nimmt: "
+        + ", ".join(fehlend)
+    )
+
+
+def test_anleitung_verweist_fuer_die_wartezeit_auf_die_messung():
+    """Keine erfundenen Sekundenangaben - der Verweis auf die Messung."""
+    stelle = QUELLE.index("Welches Modell - und wann welches?")
+    abschnitt = QUELLE[stelle:stelle + 4000]
+    assert "Wartezeit messen" in abschnitt, (
+        "Der Abschnitt nennt keinen Weg, die eigene Wartezeit zu messen."
+    )

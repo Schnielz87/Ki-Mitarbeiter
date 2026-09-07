@@ -192,6 +192,10 @@ class OpenAICompatibleProvider:
         self.api_key = api_key
         self.timeout = float(timeout)
         self.requires_internet = bool(requires_internet)
+        #: Zusaetzliche Felder der Anfrage. Leer, weil ein fremder Dienst
+        #: eine unbekannte Angabe mit einem Fehler abweist. Der mitgelieferte
+        #: llama.cpp-Dienst setzt hier "cache_prompt".
+        self.zusatzfelder: dict = {}
         self.name = name
 
     @property
@@ -228,6 +232,7 @@ class OpenAICompatibleProvider:
             "max_tokens": int(max_tokens),
             "temperature": float(temperature),
             "stream": on_token is not None,
+            **self.zusatzfelder,
         }
         if stop:
             payload["stop"] = list(stop)
@@ -346,6 +351,20 @@ class MitgelieferterServerProvider(OpenAICompatibleProvider):
         self.server = server
         self.protokollordner = protokollordner
         self.startfehler = ""
+        # Der entscheidende Zusatz. llama.cpp verarbeitet den Prompt ohne
+        # dieses Feld bei JEDER Anfrage vollstaendig neu - auch den Teil, der
+        # sich nie aendert. Das sind rund 1000 Token Rollenbeschreibung und
+        # Antwortschema, jedes Mal.
+        #
+        # Aufgefallen an einer Messung aus dem Betrieb: zwei Fragen
+        # nacheinander brauchten 157 und 160 Sekunden bis zum ersten Wort.
+        # Waere der unveraenderliche Anfang gemerkt worden, haette die zweite
+        # deutlich schneller sein muessen. Sie war es nicht - weil nichts
+        # gemerkt wurde.
+        #
+        # Nur fuer den mitgelieferten Dienst: ein fremder Anbieter, der das
+        # Feld nicht kennt, wuerde die Anfrage mit einem Fehler abweisen.
+        self.zusatzfelder = {"cache_prompt": True}
         #: Vorladefaden und erste Frage duerfen nicht beide starten.
         self._schloss = threading.Lock()
 

@@ -1029,3 +1029,41 @@ def test_messung_im_fenster_fragt_vorher(portable_root):
                    for m in dialoge.messages)
     finally:
         controller.shutdown()
+
+
+def test_messung_nennt_die_stoppuhrzeit(portable_root):
+    """Die Teilzeiten allein widersprechen der Stoppuhr des Benutzers.
+
+    Gemeldet wurde: die Messung zeigte zwei Durchgaenge, die Stoppuhr
+    daneben acht Minuten. Beides war richtig - die Anzeige nannte nur die
+    Teilzeiten und nicht die Summe. Ohne die Gesamtdauer haelt der Benutzer
+    die Messung fuer falsch.
+    """
+    controller = make_controller(portable_root)
+    controller.bootstrap(build_embeddings=True)
+
+    class Langsam:
+        name = "l"
+        model = "x"
+
+        def available(self):
+            return True, ""
+
+        def generate(self, messages, max_tokens=1024, temperature=0.2, stop=None,
+                     on_token=None):
+            time.sleep(0.05)
+            if on_token:
+                on_token("**ERGEBNIS**\n")
+            return LlmResponse(text="**ERGEBNIS**\nSiehe [1].", provider="l",
+                               model="x", completion_tokens=5)
+
+    controller.llm = LlmManager(Langsam())
+    controller.rag.llm = controller.llm
+    try:
+        ergebnis = controller.modell_messen()
+        assert "messdauer_s" in ergebnis, "die Gesamtdauer fehlt"
+        summe = sum(l.get("gesamt_s", 0.0) for l in ergebnis["laeufe"])
+        assert ergebnis["messdauer_s"] >= summe - 0.2, (
+            "die Gesamtdauer darf nicht kleiner sein als die Summe der Durchgaenge")
+    finally:
+        controller.shutdown()

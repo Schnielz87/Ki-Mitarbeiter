@@ -261,3 +261,36 @@ def test_probeschaltflaeche_fragt_das_modell(fenster, monkeypatch):
         "token_je_sekunde": 12.0, "text": "Antwort."})
     window._modell_probe()
     assert "hat geantwortet" in window.modell_log.buffer
+
+
+def test_die_erfolgsmeldung_verwechselt_probe_und_ladedauer_nicht(fenster, monkeypatch):
+    """Gemeldet: "Es hat in 4.0 Sekunden geantwortet" wurde als Ladedauer gelesen.
+
+    Der Satz stand unmittelbar nach einem Modellbezug, von dem gerade die
+    Rede war - und ein mehrere Gigabyte grosses Modell laedt nicht in vier
+    Sekunden. Die Meldung muss sagen, worauf sich die Zahl bezieht.
+    """
+    window, controller, dialoge = fenster
+    monkeypatch.setattr(controller, "modell_beziehen", lambda *a, **k: {
+        "ok": True, "meldung": "geladen", "quelle": {"name": "Testmodell"},
+        "pfad": "x.gguf", "bytes": 10, "teile": 1})
+    monkeypatch.setattr(controller, "modell_neu_laden", lambda: None)
+    monkeypatch.setattr(controller, "modell_probe", lambda *a, **k: {
+        "ok": True, "dauer_s": 4.0, "token_je_sekunde": 9.0,
+        "text": "UStG steht fuer Umsatzsteuergesetz."})
+    dialoge.answers = [True]
+    window._modell_einrichten()
+
+    meldung = next(m[2] for m in dialoge.messages if m[0] == "info")
+    assert "Probefrage" in meldung, "es muss dastehen, worauf sich die Zahl bezieht"
+    assert "Herunterladen" in meldung, (
+        "die Meldung muss ausschliessen, dass es die Ladedauer ist")
+    assert "Wartezeit messen" in meldung, (
+        "sie muss auf die Messung verweisen, die den Alltag zeigt")
+
+
+def test_lange_dauern_werden_als_minuten_geschrieben(fenster):
+    """8 Minuten 20 Sekunden - so liest der Benutzer seine Stoppuhr ab."""
+    window, _, _ = fenster
+    assert window._dauer_text(500) == "8 Min 20 Sek (500 Sekunden)"
+    assert window._dauer_text(4.2) == "4.2 Sekunden"
