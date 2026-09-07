@@ -110,17 +110,30 @@ class NetStatus:
 
 
 def probe(url: str, timeout: float) -> bool:
-    """Einzelner HEAD/GET-Versuch. Jeder Fehler bedeutet 'nicht erreichbar'."""
-    request = urllib.request.Request(url, method="HEAD")
-    request.add_header("User-Agent", "Portabler-KI-Mitarbeiter/0.1 (Konnektivitaetspruefung)")
-    try:
-        with urllib.request.urlopen(request, timeout=timeout) as response:
-            return 200 <= response.status < 500
-    except urllib.error.HTTPError as exc:
-        # Server antwortet -> Verbindung existiert.
-        return exc.code < 500
-    except (urllib.error.URLError, OSError, ValueError, TimeoutError):
-        return False
+    """Antwortet diese Adresse? Erst HEAD, dann GET.
+
+    Warum zwei Versuche: manche Server beantworten HEAD gar nicht. Wer nur
+    HEAD fragt, haelt eine erreichbare Adresse dann fuer tot - und die
+    Anwendung meldet "keine Internetverbindung", waehrend der Benutzer im
+    selben Moment im Browser surft. Genau das ist im Betrieb passiert.
+
+    Ein Fehlercode des Servers zaehlt als erreichbar: er beweist, dass die
+    Verbindung steht. Es geht hier um das Netz, nicht um die Seite.
+    """
+    kennung = "Portabler-KI-Mitarbeiter/0.1 (Konnektivitaetspruefung)"
+    for verfahren in ("HEAD", "GET"):
+        request = urllib.request.Request(url, method=verfahren)
+        request.add_header("User-Agent", kennung)
+        try:
+            with urllib.request.urlopen(request, timeout=timeout) as response:
+                if verfahren == "GET":
+                    response.read(64)          # nicht die ganze Seite laden
+                return 200 <= response.status < 500
+        except urllib.error.HTTPError as exc:
+            return exc.code < 500              # Server antwortet -> Netz steht
+        except (urllib.error.URLError, OSError, ValueError, TimeoutError):
+            continue
+    return False
 
 
 class NetworkMonitor:

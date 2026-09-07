@@ -70,10 +70,30 @@ DEFAULTS: dict[str, Any] = {
         "check_on_start": True,
         "check_interval_seconds": 60,
         "timeout_seconds": 4,
+        # Geprueft wird, ob ueberhaupt eine Verbindung besteht - nicht, ob
+        # eine bestimmte Behoerdenseite gerade erreichbar ist. Der erste
+        # Entwurf fragte nur zwei amtliche Seiten; antworteten die nicht
+        # (Wartung, Sperre gegen automatische Abrufe, Firewall), meldete die
+        # Anwendung "keine Internetverbindung", waehrend der Benutzer im
+        # selben Moment im Browser surfte.
+        #
+        # Deshalb mehrere, breit erreichbare Adressen. Der erste Erfolg
+        # genuegt; die Reihenfolge beginnt mit der, die fuer das Beziehen
+        # eines Modells wirklich gebraucht wird.
+        # Bewusst nur Adressen, die die Anwendung ohnehin braucht: die
+        # Bezugsquelle der Modelle und die amtlichen Quellen. Ein Aufruf bei
+        # einem beliebigen grossen Anbieter waere zwar zuverlaessiger, wuerde
+        # aber bedeuten, dass eine Buchhaltungsanwendung ungefragt einen
+        # Dritten kontaktiert. Das ist es nicht wert.
         "probe_hosts": [
-            "https://www.gesetze-im-internet.de/",
+            "https://huggingface.co/",
             "https://www.bundesfinanzministerium.de/",
+            "https://www.gesetze-im-internet.de/",
         ],
+        # Wie lange auf eine Antwort gewartet wird. Vier Sekunden sind auf
+        # einer langsamen Leitung zu knapp - und ein zu knapper Wert meldet
+        # "kein Netz", wo nur Geduld gefehlt haette.
+        "probe_timeout_seconds": 8,
         "allow_online_llm": False,
         "allow_web_fetch": True,
     },

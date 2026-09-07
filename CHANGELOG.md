@@ -69,6 +69,28 @@ oeffnet, hat keine Konsole offen und liest das als "geht nicht", nicht als
   stand dort ein Kasten mit drei Klicks und darunter weiter Konsolentext.
   Ein Test vergleicht die genannten Schaltflaechen mit denen im Fenster
 
+### "Keine Internetverbindung" - obwohl Internet da war
+
+Aus dem Betrieb gemeldet, mit Bild: Betriebsmodus HYBRID, Internet an, und
+die Anwendung verweigerte den Modellbezug mit "Zurzeit besteht keine
+Internetverbindung".
+
+Die Netzpruefung fragte genau zwei amtliche Seiten ab - mit HEAD, das
+manche Server gar nicht beantworten -, darunter gesetze-im-internet.de, die
+Adresse, die schon im Bauablauf nicht antwortete. Antwortete keine der
+beiden, galt das Netz als tot.
+
+* Die Pruefung versucht nach erfolglosem HEAD jetzt auch GET
+* Geprueft werden mehrere Adressen, angefuehrt von der Bezugsquelle der
+  Modelle. Bewusst **nur** Adressen, die die Anwendung ohnehin braucht: ein
+  Aufruf bei einem beliebigen Grossanbieter waere zuverlaessiger und wuerde
+  bedeuten, dass eine Buchhaltungsanwendung ungefragt einen Dritten
+  kontaktiert
+* Die Zeitgrenze steigt von vier auf acht Sekunden
+* **Der Modellbezug fragt die Bezugsquelle selbst.** Antwortet sie, wird
+  geladen - ganz gleich, was eine andere Seite gerade tut. Eine Verweigerung
+  wegen einer fremden Seite ist eine Verweigerung mit falscher Begruendung
+
 ### Sichtbar, welche Fassung des Dienstes laeuft
 
 `modell messen` nennt jetzt die laufende Fassung und ob auf Prozessor oder

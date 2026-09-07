@@ -4,7 +4,7 @@ Stand: 06.09.2026 · Branch `claude/portable-ki-buchhalter-xr1qlj`
 
 ## Zusammenfassung
 
-**598 automatische Tests bestanden, 1 uebersprungen** (unter Windows einer
+**608 automatische Tests bestanden, 1 uebersprungen** (unter Windows einer
 mehr uebersprungen). Ausfuehrungszeit rund 25 Sekunden. Reproduzierbar mit:
 
 ```
@@ -288,6 +288,8 @@ aufgefuehrt, weil ein Testbericht ohne Fundstellen wenig wert ist.
 | „Lokales Modell: OK" trotz fehlendem Modell | Der Notbetrieb meldete sich als verfuegbar | Systempruefung meldet HINWEIS und beschreibt den Notbetrieb |
 | HTML-Titel wurde falsch erkannt | `<title>` liegt in `<head>`, das uebersprungen wurde | Titel wird vor der Bereichspruefung ausgewertet |
 | Deutsche Abkuerzungen zerteilten Saetze | „GmbH & Co. KG" wurde als Satzende gelesen | Abkuerzungsliste in der Satztrennung |
+| "Keine Internetverbindung", waehrend der Benutzer surfte | Die Netzpruefung fragte **zwei** amtliche Seiten mit **HEAD** ab, darunter gesetze-im-internet.de - genau die Adresse, die schon im Bauablauf nicht antwortete. Antwortete keine, galt das Netz als tot, und der Modellbezug wurde verweigert. Aus dem Betrieb gemeldet: Internet an, Anwendung sagt nein | Drei Aenderungen. Die Pruefung versucht nach erfolglosem HEAD auch GET. Geprueft werden mehrere Adressen, angefuehrt von der Bezugsquelle der Modelle - und ausschliesslich solche, die die Anwendung ohnehin braucht (kein fremder Grossanbieter). Und der Modellbezug fragt jetzt die **Bezugsquelle selbst**: antwortet sie, wird geladen, ganz gleich was eine andere Seite gerade tut. Zehn neue Tests, zwei Gegenproben |
+| Die Zeitgrenze der Netzpruefung war zu knapp | Vier Sekunden melden auf einer langsamen Leitung "kein Netz", wo nur Geduld gefehlt haette | Acht Sekunden, eigene Einstellung `network.probe_timeout_seconds` |
 | Die eigene Wartezeitmessung war geschoent | Der zweite Durchgang stellte dieselbe Frage wie der erste. Der Modelldienst hatte den gesamten Prompt gemerkt und antwortete in 0,1 Sekunden - eine Zahl, die im Betrieb niemand erlebt, denn dort ist jede Frage neu. Sie stand kurz davor, als Alltagszahl berichtet zu werden | Die Messung stellt jetzt zwei **verschiedene** Fachfragen. Damit ist nur der unveraenderliche Kopf gemerkt - genau wie im Betrieb. Ein Test faellt, sobald wieder zweimal dieselbe Frage gestellt wird |
 | Beenden waehrend des Vorladens konnte einen Dienst zuruecklassen | Der Vorladefaden faehrt den Modelldienst hoch. Wurde die Anwendung in diesem Moment geschlossen, kam er erst danach fertig hoch - und niemand schaltete ihn je wieder ab. Genau der verwaiste Vorgang, den Abschnitt 5 ausschliesst | Der Faden prueft vor jedem Schritt, ob die Anwendung noch laeuft; das Beenden wartet auf ihn. Aufgefallen, weil ein bestehender Test danach unstet wurde - der Hinweis war echt, nicht der Test schuld. Gegenprobe gemacht |
 | Das Antwortschema wurde auch an Begruessungen geschickt | Rund 330 Token Fachschema gingen bei jeder Nachricht ins Modell - und wurden im selben Prompt wieder ausser Kraft gesetzt ("verwende kein Fachschema"). Das Modell musste sie verarbeiten, um sie zu verwerfen | Das Schema ist ausgelagert und geht nur an fachliche Fragen. Ein Test vergleicht den Prompt einer Begruessung mit dem einer Fachfrage; ein zweiter prueft, dass im ausgelagerten Schema kein Abschnitt fehlt. Gegenprobe gemacht |

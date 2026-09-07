@@ -89,6 +89,10 @@ def test_ausgehende_adressen_sind_nur_die_erklaerten():
     erlaubt_teile = (
         "127.0.0.1", "localhost",                                 # lokaler Modelldienst
         "gesetze-im-internet.de", "bundesfinanzministerium.de",   # Netzstatuspruefung
+        # Bezugsquelle der Sprachmodelle. Wird nur beim ausdruecklich
+        # bestaetigten Modellbezug abgerufen - und bei der Netzpruefung,
+        # weil genau diese Adresse dafuer erreichbar sein muss.
+        "huggingface.co",
         "example",                                                # Beispiele
         # XML-Namensraeume der Office-Formate. Das sind Kennungen, keine
         # Abrufadressen: sie stehen in jeder DOCX-, XLSX- und PPTX-Datei und

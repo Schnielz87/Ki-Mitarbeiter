@@ -234,7 +234,8 @@ class AppController:
         # Netz
         self.network = network or NetworkMonitor(
             self.config.get("network.probe_hosts", []),
-            timeout=float(self.config.get("network.timeout_seconds", 4)),
+            timeout=float(self.config.get("network.probe_timeout_seconds",
+                                          self.config.get("network.timeout_seconds", 8))),
             interval=float(self.config.get("network.check_interval_seconds", 60)),
             enabled=bool(self.config.get("network.check_on_start", True)),
         )
@@ -741,7 +742,15 @@ class AppController:
                 "Betriebsart OFFLINE: es wird nichts geladen. Fuer den Bezug "
                 "eines Modells auf HYBRID oder ONLINE umschalten."
             )
-        if not self.lage.online_moeglich:
+        # Die allgemeine Netzpruefung entscheidet hier NICHT allein. Sie fragt
+        # ein paar Adressen an; antwortet keine davon, hiess das bisher
+        # "kein Internet" - und der Bezug wurde verweigert, obwohl die
+        # Bezugsquelle selbst tadellos erreichbar war. Im Betrieb ist genau
+        # das passiert: die Anwendung meldete "keine Internetverbindung",
+        # waehrend der Benutzer im selben Moment im Browser surfte.
+        #
+        # Massgeblich ist deshalb die Adresse, von der wirklich geladen wird.
+        if not self.lage.online_moeglich and not self._quelle_erreichbar(quelle):
             raise ValueError(
                 "Zurzeit besteht keine Internetverbindung. Ein Modell laesst "
                 "sich nur mit Verbindung beziehen - der uebrige Betrieb "
@@ -1054,6 +1063,25 @@ class AppController:
         self.llm.einrichtungsweg = weg
         if isinstance(self.llm.primary, RetrievalOnlyProvider):
             self.llm.primary.weg = weg
+
+    def _quelle_erreichbar(self, quelle) -> bool:
+        """Antwortet die Bezugsquelle selbst?
+
+        Die Gegenprobe zur allgemeinen Netzpruefung. Erreicht die Anwendung
+        die Adresse, von der sie laden will, ist die Frage nach "Internet"
+        beantwortet - unabhaengig davon, ob irgendeine andere Seite gerade
+        stillsteht.
+        """
+        from pkc.netstate import probe
+
+        adressen = quelle.adressen if quelle is not None else []
+        for adresse in adressen[:1]:
+            if probe(adresse, float(self.config.get(
+                    "network.probe_timeout_seconds", 8))):
+                log.info("Bezugsquelle erreichbar, obwohl die allgemeine "
+                         "Netzpruefung nichts fand: %s", adresse)
+                return True
+        return False
 
     def modell_neu_laden(self) -> None:
         """Baut die Modellanbindung neu auf - nach einem Bezug noetig."""
