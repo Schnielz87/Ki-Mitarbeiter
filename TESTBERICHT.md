@@ -392,6 +392,25 @@ verlangt jetzt einen Rueckgang von mindestens einem Sechstel; ein Test
 haelt genau diesen Fall fest. Eine Anzeige, die Rauschen als Erfolg
 meldet, ist schlimmer als keine - sie beendet die Suche nach der Ursache.
 
+Lauf 34155058461 bestaetigt die berichtigte Anzeige woertlich:
+
+    Prompt-Anfang wiederverwendet: NEIN (1232 Textbausteine im ersten,
+    1227 im zweiten Durchgang, 0.4 % weniger)
+
+### Wieviel die Zahlen streuen
+
+Dreimal derselbe Ablauf auf dem Baurechner, "schnell", im laufenden
+Betrieb bis zum ersten Wort: **29,8 s / 36,5 s / 34,5 s** (Laeufe
+34148640961, 34152711836, 34155058461). Das sind bis zu 22 Prozent
+Unterschied bei unveraendertem Programmstand.
+
+Der Grund ist die Umgebung, nicht die Anwendung: der Baurechner ist ein
+geteilter Rechner mit zwei Kernen. Fuer den Vergleich zweier Tempostufen
+reicht das - der Abstand zwischen "schnell" und "ausgewogen" ist in
+**jedem** der drei Laeufe rund die Haelfte. Fuer den Nachweis einer
+Verbesserung von zehn Prozent reicht es nicht, und solche Aussagen werden
+hier deshalb nicht getroffen.
+
 **Ebenfalls nicht belegt** ist die Wirkung der echten statt logischen
 Kernzahl: der Baurechner hat zwei Kerne ohne Hyperthreading, dort kann die
 Kernzahl gar nichts aendern. Beides zeigt erst eine Messung auf einem
