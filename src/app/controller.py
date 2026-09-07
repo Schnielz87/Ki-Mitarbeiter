@@ -1776,10 +1776,28 @@ class AppController:
                 "abschnitte": len(chunks), "pfad": self.paths.relative(target)}
 
     def documents(self, limit: int = 200) -> list[dict]:
-        return [dict(r) for r in self.company_db.query(
+        """Die aufgenommenen Belege - mit der Zahl der erkannten Abschnitte.
+
+        Die Zahl steht nicht am Dokument, sondern ergibt sich aus den
+        Abschnitten. Sie hier mitzuliefern erspart der Oberflaeche eine
+        eigene Datenbankabfrage - und damit Geschaeftslogik an einer
+        Stelle, an der sie nicht hingehoert.
+        """
+        zeilen = [dict(r) for r in self.company_db.query(
             "SELECT * FROM user_documents WHERE status!='deleted' ORDER BY id DESC LIMIT ?",
             (limit,),
         )]
+        if not zeilen:
+            return zeilen
+        try:
+            gezaehlt = {r["doc_id"]: r["anzahl"] for r in self.company_db.query(
+                "SELECT doc_id, COUNT(*) AS anzahl FROM user_chunks GROUP BY doc_id")}
+        except Exception:                # pragma: no cover - defensiv
+            log.debug("Abschnitte nicht zaehlbar", exc_info=True)
+            gezaehlt = {}
+        for zeile in zeilen:
+            zeile["abschnitte"] = int(gezaehlt.get(zeile.get("id"), 0))
+        return zeilen
 
     def search_documents(self, query: str, limit: int = 5) -> list[dict]:
         expression = fts_query(query)

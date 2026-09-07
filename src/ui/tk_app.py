@@ -383,6 +383,43 @@ class MainWindow:
         self.mode_box.pack(side="left", padx=(10, 0))
         self.mode_box.bind("<<ComboboxSelected>>", self._on_mode_changed)
 
+    #: Die Schritte, die ein Wissensupdate durchlaeuft. Reihenfolge und
+    #: Benennung stammen aus der Pipeline selbst, nicht aus dem Entwurf -
+    #: sonst zeigte die Oberflaeche Schritte an, die es nicht gibt.
+    PIPELINE_SCHRITTE = ("Pruefen", "Staging", "Validieren", "Indexieren",
+                         "Aktivieren")
+
+    def _pipeline_setzen(self, erreicht: int, fehler: bool = False) -> None:
+        """Faerbt die Schritte bis zum erreichten ein.
+
+        ``erreicht`` ist die Zahl der abgeschlossenen Schritte. Bei einem
+        Fehler wird der letzte rot - so ist zu sehen, wo es hakte, statt
+        nur dass es hakte.
+        """
+        for nummer, schritt in enumerate(self.PIPELINE_SCHRITTE):
+            label = self._pipeline_schritte.get(schritt)
+            if label is None:
+                continue
+            if nummer < erreicht:
+                zeichen, farbe = "\u25cf", "#1c7a45"
+            elif nummer == erreicht and fehler:
+                zeichen, farbe = "\u25cf", "#a32626"
+            else:
+                zeichen, farbe = "\u25cb", "#9aa8b8"
+            label.configure(text=f"  {zeichen}  {schritt}  ", fg=farbe)
+
+    def _refresh_wissen_kacheln(self, faellig) -> None:
+        werte = {
+            "Wissensstand": (self.controller.knowledge.knowledge_date() or "unbekannt")[:10],
+            "Quellen": f"{len(self.controller.knowledge.sources())} erfasst",
+            "Letzte Pruefung": (faellig.letzte_pruefung or "noch nie")[:16],
+            "Naechste Pruefung": (faellig.naechste_pruefung or "kein Plan")[:16],
+        }
+        for titel, wert in werte.items():
+            label = self._wissen_kachel_widgets.get(titel)
+            if label is not None:
+                label.configure(text=str(wert))
+
     def _refresh_update_lage(self) -> None:
         """Zeigt Wissensstand, Faelligkeit und naechste Pruefung."""
         if not hasattr(self, "update_lage_label"):
@@ -403,6 +440,10 @@ class MainWindow:
         if faellig.naechste_pruefung:
             teile.append(f"Naechste Pruefung: {faellig.naechste_pruefung}")
         self.update_plan_label.configure(text="  ·  ".join(teile))
+        try:
+            self._refresh_wissen_kacheln(faellig)
+        except Exception:               # pragma: no cover - defensiv
+            log.debug("Wissenskacheln nicht aktualisierbar", exc_info=True)
 
     def _on_mode_changed(self, event=None) -> str:
         """Moduswechsel durch den Benutzer - mit Ansage, was jetzt gilt."""
@@ -676,6 +717,13 @@ class MainWindow:
         self.onboarding_label = ttk.Label(top, text="")
         self.onboarding_label.pack(side="right")
 
+        # Kategorien als Kacheln mit Anzahl. Eine flache Liste mit dreissig
+        # Eintraegen sagt nicht, was das Unternehmen ueberhaupt hinterlegt
+        # hat - und ob irgendwo etwas fehlt.
+        self.memory_kacheln = tk.Frame(frame, bg="#f5f7fa")
+        self.memory_kacheln.pack(fill="x", pady=(0, PAD))
+        self._memory_kachel_widgets: dict[str, tuple] = {}
+
         columns = ("schluessel", "kategorie", "titel", "inhalt", "version")
         self.memory_tree = ttk.Treeview(frame, columns=columns, show="headings", height=16)
         for column, heading, width in (
@@ -706,18 +754,35 @@ class MainWindow:
             "belege", "Belege & Dokumente",
             "Hochladen, analysieren, klassifizieren und mit Fachwissen "
             "verknuepfen.", "\u25a5")
-        ttk.Button(frame, text="Beleg hinzufuegen", command=self._add_document).pack(
-            anchor="w", pady=(0, PAD)
-        )
-        columns = ("titel", "art", "hinzugefuegt", "status", "pfad")
+        leiste = ttk.Frame(frame)
+        leiste.pack(fill="x", pady=(0, PAD))
+        ttk.Button(leiste, text="Datei auswaehlen",
+                   command=self._add_document).pack(side="left")
+        for text, befehl in (("Oeffnen", self._beleg_oeffnen),
+                             ("Erneut analysieren", self._beleg_erneut),
+                             ("In Unterhaltung uebernehmen", self._beleg_uebernehmen),
+                             ("Aktualisieren", self._refresh_documents)):
+            ttk.Button(leiste, text=text, command=befehl).pack(side="left", padx=(PAD, 0))
+        self.documents_hint = ttk.Label(leiste, text="", foreground="#5b6b80")
+        self.documents_hint.pack(side="right")
+
+        ttk.Label(frame, foreground="#5b6b80", font=("Segoe UI", 8),
+                  text="Automatische Erkennung \u2192 fachliche Analyse "
+                       "\u2192 Ergebnis \u2192 Quellen").pack(anchor="w",
+                                                                pady=(0, 4))
+
+        columns = ("titel", "art", "hinzugefuegt", "status", "ergebnis", "pfad")
         self.document_tree = ttk.Treeview(frame, columns=columns, show="headings")
         for column, heading, width in (
-            ("titel", "Titel", 320), ("art", "Art", 90), ("hinzugefuegt", "Hinzugefuegt", 180),
-            ("status", "Status", 120), ("pfad", "Ablage auf dem Datentraeger", 420),
+            ("titel", "Dokument", 300), ("art", "Typ", 90),
+            ("hinzugefuegt", "Hinzugefuegt", 160), ("status", "Status", 120),
+            ("ergebnis", "Ergebnis", 200),
+            ("pfad", "Ablage auf dem Datentraeger", 360),
         ):
             self.document_tree.heading(column, text=heading)
             self.document_tree.column(column, width=width, anchor="w")
         self.document_tree.pack(fill="both", expand=True)
+        self.document_tree.bind("<Double-Button-1>", lambda _e: self._beleg_oeffnen())
         self._refresh_documents()
 
     # -- Bereich: Arbeitsergebnisse ------------------------------------
@@ -869,6 +934,43 @@ class MainWindow:
             "wissen_quellen", "Wissen & Quellen",
             "Lokalen Wissensstand, Quellen und Synchronisierung transparent "
             "verwalten.", "\u25eb")
+
+        # Kennzahlen zuerst - vier Zahlen sagen mehr als vier Absaetze.
+        self.wissen_kacheln = tk.Frame(frame, bg="#f5f7fa")
+        self.wissen_kacheln.pack(fill="x", pady=(0, PAD))
+        self._wissen_kachel_widgets: dict[str, object] = {}
+        for spalte, titel in enumerate(
+                ("Wissensstand", "Quellen", "Letzte Pruefung", "Naechste Pruefung")):
+            kachel = tk.Frame(self.wissen_kacheln, bg="#ffffff",
+                              highlightbackground="#dfe5ec", highlightthickness=1)
+            kachel.grid(row=0, column=spalte, sticky="ew", padx=(0, 10))
+            innen = tk.Frame(kachel, bg="#ffffff")
+            innen.pack(fill="x", padx=16, pady=12)
+            tk.Label(innen, text=titel, bg="#ffffff", fg="#14243c", anchor="w",
+                     font=("Segoe UI", 10, "bold")).pack(anchor="w")
+            wert = tk.Label(innen, text="\u2014", bg="#ffffff", fg="#5b6b80",
+                            anchor="w", font=("Segoe UI", 9))
+            wert.pack(anchor="w")
+            self._wissen_kachel_widgets[titel] = wert
+        for spalte in range(4):
+            try:
+                self.wissen_kacheln.columnconfigure(spalte, weight=1)
+            except Exception:           # pragma: no cover - Testdoppel
+                pass
+
+        # Die Schritte des Updates sichtbar machen. Es gab sie laengst -
+        # sie liefen nur unsichtbar ab, und ein Vorgang, den niemand sieht,
+        # wirkt wie ein Stillstand.
+        self.pipeline_rahmen = ttk.LabelFrame(frame, text="Update-Pipeline")
+        self.pipeline_rahmen.pack(fill="x", pady=(0, PAD))
+        self._pipeline_schritte: dict[str, object] = {}
+        schrittzeile = tk.Frame(self.pipeline_rahmen, bg="#f5f7fa")
+        schrittzeile.pack(fill="x", padx=10, pady=8)
+        for schritt in self.PIPELINE_SCHRITTE:
+            label = tk.Label(schrittzeile, text=f"  \u25cb  {schritt}  ",
+                             bg="#f5f7fa", fg="#5b6b80", font=("Segoe UI", 9))
+            label.pack(side="left")
+            self._pipeline_schritte[schritt] = label
 
         info = ttk.Label(
             frame,
@@ -2360,18 +2462,161 @@ class MainWindow:
     def _refresh_documents(self) -> None:
         for row in self.document_tree.get_children():
             self.document_tree.delete(row)
-        for item in self.controller.documents():
+        eintraege = self.controller.documents()
+        for item in eintraege:
+            # Die Ergebnisspalte sagt, was die Analyse ergeben hat - und
+            # sagt es auch dann, wenn sie nichts ergeben hat. Ein
+            # Gedankenstrich laesst offen, ob nichts gefunden wurde oder
+            # ob gar nichts passiert ist.
+            abschnitte = int(item.get("abschnitte") or 0)
+            if item["status"] == "nicht_lesbar":
+                ergebnis = "Text nicht auswertbar"
+            elif abschnitte:
+                ergebnis = f"{abschnitte} Abschnitte erkannt"
+            else:
+                ergebnis = "aufgenommen, kein auswertbarer Text"
             self.document_tree.insert(
                 "", "end",
                 values=(item["title"], item["kind"] or "-", item["added_at"][:19],
-                        item["status"], item["path"]),
+                        item["status"], ergebnis, item["path"]),
             )
+        if hasattr(self, "documents_hint"):
+            self.documents_hint.configure(
+                text=f"{len(eintraege)} Dokumente" if eintraege
+                else "Noch keine Dokumente aufgenommen")
+
+    def _gewaehlter_beleg(self) -> dict:
+        """Der markierte Beleg - oder eine Meldung, was fehlt."""
+        auswahl = self.document_tree.selection()
+        if not auswahl:
+            messagebox.showinfo("Belege", "Bitte zuerst ein Dokument auswaehlen.",
+                                parent=self.root)
+            return {}
+        werte = self.document_tree.item(auswahl[0])["values"]
+        titel = str(werte[0])
+        return next((d for d in self.controller.documents()
+                     if d["title"] == titel), {})
+
+    def _beleg_oeffnen(self) -> None:
+        beleg = self._gewaehlter_beleg()
+        if not beleg:
+            return
+        if not self.controller.datei_oeffnen(beleg["path"]):
+            messagebox.showwarning(
+                "Oeffnen", f"{beleg['title']} liess sich nicht oeffnen.",
+                parent=self.root)
+
+    def _beleg_erneut(self) -> None:
+        """Analysiert einen Beleg noch einmal.
+
+        Sinnvoll, nachdem sich das Unternehmenswissen oder der
+        Wissensstand geaendert hat: dieselbe Datei kann dann zu einem
+        anderen Ergebnis fuehren.
+        """
+        beleg = self._gewaehlter_beleg()
+        if not beleg:
+            return
+        pfad = Path(beleg["path"])
+        if not pfad.is_file():
+            messagebox.showwarning(
+                "Erneut analysieren",
+                f"Die abgelegte Datei ist nicht mehr da:\n{pfad}",
+                parent=self.root)
+            return
+        self._dokument_aufnehmen(pfad)
+
+    def _beleg_uebernehmen(self) -> None:
+        """Uebergibt den Beleg an die laufende Unterhaltung.
+
+        Es wird nichts automatisch gefragt - der Beleg wird genannt und die
+        Frage vorbereitet. Was gefragt wird, entscheidet der Benutzer.
+        """
+        beleg = self._gewaehlter_beleg()
+        if not beleg:
+            return
+        self.schale.zeigen("unterhaltung")
+        self._append_chat(
+            "System",
+            f"Dokument uebernommen: {beleg['title']} "
+            f"({beleg.get('kind') or 'ohne Typangabe'}). "
+            "Es steht der naechsten Frage als Zusammenhang zur Verfuegung.",
+            "system")
+        self.entry.delete("1.0", "end")
+        self.entry.insert("1.0", f"Zum Dokument \u201e{beleg['title']}\u201c: ")
+        try:
+            self.entry.focus_set()
+        except Exception:               # pragma: no cover - defensiv
+            pass
 
     # -- Unternehmenswissen --------------------------------------------
+    #: Die Kacheln des Unternehmenswissens. Beschriftung und Reihenfolge
+    #: folgen dem Zielentwurf; die Kategorien kommen aus dem Schema, damit
+    #: sich beides nicht auseinanderentwickelt.
+    WISSENSKACHELN = (
+        ("Unternehmensprofil", ("profile", "organization")),
+        ("Buchhaltung", ("accounting", "tax")),
+        ("Prozesse & Regeln", ("process", "rule")),
+        ("Personen & Rollen", ("people",)),
+        ("Kunden & Lieferanten", ("case", "erp")),
+        ("Vorlagen & Entscheidungen", ("approval", "preference")),
+    )
+
+    def _refresh_memory_kacheln(self) -> None:
+        """Zaehlt die Eintraege je Kategorie und zeigt sie als Kacheln.
+
+        Ein Klick filtert die Liste darunter. Eine Kachel, die nur eine
+        Zahl anzeigt und sonst nichts tut, waere ein toter Knopf.
+        """
+        if not hasattr(self, "memory_kacheln"):
+            return
+        eintraege = self.controller.memory.list(limit=2000)
+        anzahl: dict[str, int] = {}
+        for eintrag in eintraege:
+            anzahl[eintrag.category] = anzahl.get(eintrag.category, 0) + 1
+
+        for spalte, (titel, kategorien) in enumerate(self.WISSENSKACHELN):
+            summe = sum(anzahl.get(k, 0) for k in kategorien)
+            if titel in self._memory_kachel_widgets:
+                _, zahl_label = self._memory_kachel_widgets[titel]
+                zahl_label.configure(text=f"{summe} Eintraege")
+                continue
+            kachel = tk.Frame(self.memory_kacheln, bg="#ffffff",
+                              highlightbackground="#dfe5ec", highlightthickness=1,
+                              cursor="hand2")
+            kachel.grid(row=spalte // 3, column=spalte % 3, sticky="ew",
+                        padx=(0, 10), pady=(0, 10))
+            innen = tk.Frame(kachel, bg="#ffffff")
+            innen.pack(fill="x", padx=16, pady=12)
+            kopf = tk.Label(innen, text=titel, bg="#ffffff", fg="#14243c",
+                            anchor="w", font=("Segoe UI", 10, "bold"))
+            kopf.pack(anchor="w")
+            zahl = tk.Label(innen, text=f"{summe} Eintraege", bg="#ffffff",
+                            fg="#5b6b80", anchor="w", font=("Segoe UI", 9))
+            zahl.pack(anchor="w")
+            for widget in (kachel, innen, kopf, zahl):
+                widget.bind("<Button-1>",
+                            lambda _e, k=kategorien: self._memory_filtern(k))
+            self._memory_kachel_widgets[titel] = (kachel, zahl)
+        for spalte in range(3):
+            try:
+                self.memory_kacheln.columnconfigure(spalte, weight=1)
+            except Exception:           # pragma: no cover - Testdoppel
+                pass
+
+    def _memory_filtern(self, kategorien) -> None:
+        """Zeigt nur die Eintraege der angeklickten Kachel."""
+        self.memory_filter = tuple(kategorien)
+        self._refresh_memory()
+
     def _refresh_memory(self) -> None:
         query = self.memory_query.get().strip() if hasattr(self, "memory_query") else ""
         entries = self.controller.memory.search(query, limit=200) if query \
             else self.controller.memory.list(limit=500)
+        # Filter einer angeklickten Kachel. Eine Suche hebt ihn auf - wer
+        # tippt, will suchen und nicht im Filter gefangen bleiben.
+        filter_kategorien = getattr(self, "memory_filter", ())
+        if filter_kategorien and not query:
+            entries = [e for e in entries if e.category in filter_kategorien]
         for row in self.memory_tree.get_children():
             self.memory_tree.delete(row)
         for entry in entries:
@@ -2380,10 +2625,12 @@ class MainWindow:
                 values=(entry.mem_key, CATEGORIES.get(entry.category, entry.category),
                         entry.title, entry.content[:160], entry.version),
             )
+        self._refresh_memory_kacheln()
         done, total = self.controller.onboarding_progress()
         self.onboarding_label.configure(text=f"Onboarding: {done} von {total} beantwortet")
 
     def _show_all_memory(self) -> None:
+        self.memory_filter = ()
         self.memory_query.delete(0, "end")
         self._refresh_memory()
 
@@ -2460,6 +2707,7 @@ class MainWindow:
                 return
         self._set_busy(True, "Wissensupdate laeuft ...")
         self.update_progress.configure(value=0, maximum=100)
+        self._pipeline_setzen(0)
 
         # Der Fortschritt kommt aus dem Arbeitsthread. Tkinter darf nur aus
         # dem Oberflaechen-Thread bedient werden, deshalb geht der Wert ueber
@@ -2478,6 +2726,11 @@ class MainWindow:
                 pass
             if wert is not None:
                 self.update_progress.configure(value=wert)
+                # Der Fortschritt der Quellenpruefung ist der erste
+                # Schritt. Was danach kommt, meldet erst das Ergebnis -
+                # eine Anzeige, die weiterlaeuft, ohne dass etwas
+                # weiterlaeuft, waere eine Behauptung.
+                self._pipeline_setzen(1 if wert < 100 else 2)
 
         def work():
             return self.controller.run_update(
@@ -2488,8 +2741,15 @@ class MainWindow:
             self._set_busy(False)
             self.update_progress.configure(value=100 if error is None else 0)
             if error is not None:
+                self._pipeline_setzen(1, fehler=True)
                 self._write_update_log(f"Update fehlgeschlagen:\n{error}")
                 return
+            # Alle Schritte durch - oder beim Validieren gescheitert. Was
+            # der Bericht sagt, sagt auch die Anzeige.
+            geglueckt = str(report.status).lower() in ("ok", "erfolg", "success")
+            self._pipeline_setzen(
+                len(self.PIPELINE_SCHRITTE) if geglueckt else 2,
+                fehler=not geglueckt)
             self._write_update_log(report.as_markdown() + "\n\n" + self._update_overview())
             self._refresh_status()
             messagebox.showinfo(
