@@ -285,3 +285,46 @@ def test_die_anleitung_erklaert_die_recherche_details():
     oberflaeche = (ROOT / "src" / "ui" / "quellenpanel.py").read_text(encoding="utf-8")
     assert 'text="Recherche-Details anzeigen"' in oberflaeche, (
         "Die Anleitung nennt einen Knopf, den es im Quellenpanel nicht gibt.")
+
+
+def test_die_anleitung_enthaelt_die_bildschirmfotos():
+    """Auftrag: Bilder der neuen Ansicht, damit man sich zurechtfindet.
+
+    Geprueft wird das fertige Dokument, nicht das Erzeugungsskript. Ein
+    Skript, das ein Bild einbauen wuerde, hilft niemandem - im Paket liegt
+    die DOCX-Datei.
+    """
+    import zipfile
+
+    datei = ROOT / "docs" / "BEDIENUNGSANLEITUNG.docx"
+    assert datei.exists(), "die Anleitung fehlt"
+    with zipfile.ZipFile(datei) as archiv:
+        bilder = [n for n in archiv.namelist() if n.startswith("word/media/")]
+    assert len(bilder) >= 11, (
+        f"Es sind nur {len(bilder)} Bilder in der Anleitung. Erwartet werden "
+        "das Begruessungsbild und die zehn Bereiche. Neu erzeugen mit "
+        "tools/oberflaeche_fotografieren.py und tools/anleitung_erzeugen.py.")
+
+
+def test_die_bildschirmfotos_liegen_im_repository():
+    """Ohne die Bilddateien laesst sich die Anleitung nicht neu bauen."""
+    ordner = ROOT / "docs" / "Oberflaeche"
+    assert ordner.is_dir(), "docs/Oberflaeche fehlt"
+    erwartet = {
+        "00_Begruessungsbild", "01_Unterhaltung", "02_Unternehmenswissen",
+        "03_Belege_und_Dokumente", "04_Arbeitsergebnisse",
+        "05_Wissen_und_Quellen", "06_Vorlagen", "07_Aufgaben",
+        "08_Plugins", "09_Verbundene_Dienste", "10_Einstellungen_und_Status",
+    }
+    vorhanden = {p.stem for p in ordner.glob("*.png")}
+    fehlt = erwartet - vorhanden
+    assert not fehlt, f"Es fehlen Bildschirmfotos: {sorted(fehlt)}"
+
+
+def test_die_anleitung_verweist_auf_die_bilder():
+    """Die Bilder brauchen eine Beschriftung - sonst stehen sie im Nichts."""
+    assert "So begruesst Sie PORTIVA" in QUELLE
+    assert "Die zehn Bereiche im Bild" in QUELLE
+    assert "aus dem laufenden" in QUELLE, (
+        "die Anleitung muss sagen, dass die Bilder echt sind und nicht "
+        "gezeichnet")

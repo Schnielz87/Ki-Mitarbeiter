@@ -126,3 +126,20 @@ def test_werkzeug_verliert_kein_testergebnis(monkeypatch):
     assert "214 bestanden" in gesehen["test_result"]
     assert "13 Schritte bestanden" in gesehen["test_result"]
     assert gesehen["tests"] == ["pytest", "Windows"]
+
+
+def test_die_paketfassung_ist_eine_zahl():
+    """Der Bauablauf benennt das Paket nach dieser Datei.
+
+    Steht dort etwas anderes als eine Zahl, entsteht ein Paketname wie
+    "Portable-Buchhalter-Windows_V" - und der Auftraggeber kann seine
+    Pakete nicht mehr auseinanderhalten. Das faellt erst am Ende eines
+    halbstuendigen Bauablaufs auf, deshalb steht die Pruefung hier.
+    """
+    from pathlib import Path
+
+    datei = Path(__file__).resolve().parents[1] / "PAKETFASSUNG"
+    assert datei.exists(), "PAKETFASSUNG fehlt - der Bauablauf braucht sie"
+    inhalt = datei.read_text(encoding="utf-8").strip()
+    assert inhalt.isdigit(), f"PAKETFASSUNG muss eine Zahl sein, ist {inhalt!r}"
+    assert int(inhalt) >= 15, "die Nummer darf nicht zurueckgehen"

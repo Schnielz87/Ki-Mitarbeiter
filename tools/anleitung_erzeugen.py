@@ -71,6 +71,43 @@ for abschnitt in doc.sections:
     abschnitt.right_margin = Cm(2.4)
 
 
+#: Wo die Bildschirmfotos liegen. Erzeugt von
+#: ``tools/oberflaeche_fotografieren.py`` aus dem echten Fenster - nicht
+#: gezeichnet und nicht nachgestellt.
+BILDER = REPO / "docs" / "Oberflaeche"
+
+#: Was fehlte, als die Anleitung gebaut wurde. Wird am Ende gemeldet, statt
+#: still ein Dokument ohne Bilder zu schreiben.
+FEHLENDE_BILDER: list[str] = []
+
+
+def bild(name: str, beschriftung: str = "", breite_cm: float = 15.5) -> bool:
+    """Setzt ein Bildschirmfoto mit Beschriftung ein.
+
+    Fehlt die Datei, wird das vermerkt und ein Hinweis in den Text
+    geschrieben - kein stilles Weglassen. Eine Anleitung, die auf ein Bild
+    verweist, das nicht da ist, ist schlimmer als eine ohne Bilder.
+    """
+    pfad = BILDER / f"{name}.png"
+    if not pfad.exists():
+        FEHLENDE_BILDER.append(name)
+        absatz(f"[Bild fehlt: {name}. Erzeugen mit "
+               f"tools/oberflaeche_fotografieren.py]",
+               kursiv=True, farbe=GRAU, groesse=9)
+        return False
+    p = doc.add_paragraph()
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    p.add_run().add_picture(str(pfad), width=Cm(breite_cm))
+    if beschriftung:
+        unterschrift = doc.add_paragraph()
+        unterschrift.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        lauf = unterschrift.add_run(beschriftung)
+        lauf.font.size = Pt(9)
+        lauf.font.color.rgb = GRAU
+        lauf.italic = True
+    return True
+
+
 def absatz(text="", stil=None, fett=False, kursiv=False, farbe=None, groesse=None):
     p = doc.add_paragraph(style=stil)
     lauf = p.add_run(text)
@@ -752,10 +789,17 @@ kasten(
     "gar nicht sehen will, startet mit dem Zusatz --kein-startbild.",
 )
 
+bild("00_Begruessungsbild",
+     "So begruesst Sie PORTIVA: drei Sekunden, dann geht die Startseite auf.")
+
 absatz("Danach sehen Sie links eine dauerhafte Navigation mit zehn "
        "Bereichen. Der Bereich, in dem Sie gerade sind, ist hervorgehoben. "
        "Ueber \"Leiste einklappen\" wird die Navigation schmal - die "
        "Bereiche bleiben dabei anklickbar.")
+
+bild("01_Unterhaltung",
+     "Der Bereich Unterhaltung. Links die Navigation, in der Mitte das "
+     "Gespraech, rechts die Quellen der letzten Antwort.")
 
 tabelle_mit(
     ["Bereich", "Wofuer", "Was Sie dort tun"],
@@ -791,15 +835,53 @@ absatz("Zwei der zehn Bereiche gibt es noch nicht: Vorlagen und Aufgaben. "
 
 absatz("Oben rechts stehen drei Angaben, die Sie im Blick behalten sollten:")
 punkt("Wissensstand - das Datum, auf dem die gespeicherten Fachquellen stehen.")
-punkt("Betriebsmodus - OFFLINE, HYBRID oder ONLINE. Daneben laesst er sich "
-      "sofort umstellen.")
 punkt("Internet - ob eine Verbindung besteht. Das ist etwas anderes als der "
       "Betriebsmodus: \"OFFLINE gewaehlt, Internet verfuegbar\" ist ein "
       "gueltiger Zustand.")
+punkt("Ganz rechts das Auswahlfeld fuer den Betriebsmodus - OFFLINE, HYBRID "
+      "oder ONLINE. Es zeigt den aktuellen Modus und stellt ihn zugleich "
+      "um. Eine zusaetzliche Anzeige daneben gibt es bewusst nicht: "
+      "zweimal dasselbe Wort macht es nicht deutlicher, nur enger.")
 absatz("Unten links in der Navigation stehen dauerhaft Ihr Profil und die "
        "Lage. Ganz unten laeuft eine Statuszeile mit, die auch den Pfad "
        "Ihres Datentraegers nennt - und waehrend einer Frage, worauf gerade "
        "gewartet wird und seit wann.")
+
+doc.add_heading("Die zehn Bereiche im Bild", level=2)
+absatz("Damit Sie sich schneller zurechtfinden, hier jeder Bereich so, wie "
+       "er auf dem Bildschirm aussieht. Die Bilder sind aus dem laufenden "
+       "Programm aufgenommen, nicht gezeichnet - was Sie hier sehen, sehen "
+       "Sie auch dort. Die Beispieldaten darin sind als Beispiel "
+       "gekennzeichnet.")
+
+for _name, _text in [
+    ("02_Unternehmenswissen",
+     "Unternehmenswissen: sechs Kacheln als Filter, darunter die Eintraege."),
+    ("03_Belege_und_Dokumente",
+     "Belege & Dokumente: oben die Aktionen, darunter der Weg vom Beleg "
+     "zum Ergebnis."),
+    ("04_Arbeitsergebnisse",
+     "Arbeitsergebnisse: jede erzeugte Datei mit Format, Fassung und "
+     "Ablageort."),
+    ("05_Wissen_und_Quellen",
+     "Wissen & Quellen: Wissensstand, Update-Pipeline und das "
+     "Quellenregister."),
+    ("06_Vorlagen",
+     "Vorlagen: der Bereich sagt offen, dass es ihn noch nicht gibt - und "
+     "was heute stattdessen hilft."),
+    ("07_Aufgaben",
+     "Aufgaben & Automationen: ebenfalls noch nicht verfuegbar, mit "
+     "Verweis auf den Zeitplan unter Wissen & Quellen."),
+    ("08_Plugins",
+     "Plugins & Erweiterungen: installieren, aktivieren, Berechtigungen "
+     "pruefen."),
+    ("09_Verbundene_Dienste",
+     "Verbundene Dienste: externe Systeme verbinden, testen, trennen."),
+    ("10_Einstellungen_und_Status",
+     "Einstellungen & Status: links die Einstellungen, rechts der "
+     "Systemstatus als Ampel."),
+]:
+    bild(_name, _text)
 
 doc.add_heading("Tastenkuerzel", level=2)
 tabelle_mit(
@@ -1898,3 +1980,10 @@ def zoom_reparieren(datei: Path) -> bool:
 if zoom_reparieren(ziel):
     print("Schemafehler der Vorlage behoben (w:zoom ohne w:percent)")
 print("geschrieben:", ziel, ziel.stat().st_size, "Bytes")
+if FEHLENDE_BILDER:
+    # Nicht nur eine Notiz: eine Anleitung mit Luecken soll nicht
+    # unbemerkt in die Auslieferung gehen.
+    print("FEHLENDE BILDSCHIRMFOTOS: " + ", ".join(FEHLENDE_BILDER))
+    print("  Erzeugen mit: xvfb-run -a python tools/oberflaeche_fotografieren.py")
+    raise SystemExit(3)
+print(f"Bildschirmfotos eingebaut aus {BILDER}")
