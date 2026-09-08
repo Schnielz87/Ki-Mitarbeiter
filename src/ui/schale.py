@@ -156,7 +156,8 @@ class Navigationsschale:
         self.einklapp_knopf = tk.Button(
             self.seitenleiste, text="‹  Leiste einklappen", bg=NAVY,
             fg=TEXT_LEISE, activebackground=NAVY_HELL, activeforeground="#ffffff",
-            relief="flat", borderwidth=0, highlightthickness=0, takefocus=0,
+            relief="flat", borderwidth=0, highlightthickness=1,
+            highlightbackground=NAVY, highlightcolor=AKTIV,
             anchor="w", cursor="hand2",
             font=("Segoe UI", 8), command=self.leiste_umschalten)
         self.einklapp_knopf.pack(fill="x", padx=14, pady=(0, 6))
@@ -215,12 +216,20 @@ class Navigationsschale:
             bg=NAVY, fg=TEXT, activebackground=NAVY_HELL,
             activeforeground="#ffffff", relief="flat", borderwidth=0,
             # ``highlightthickness`` ist nicht dasselbe wie
-            # ``borderwidth``. Tk zeichnet damit einen zusaetzlichen
-            # Fokusrahmen, unter X11 in einem hellen Grau - im Bild sah
-            # jeder Eintrag der Seitenleiste aus wie ein umrandeter
-            # Kasten. In der Vorlage hat nur der aktive Eintrag eine
-            # Flaeche, kein Eintrag einen Rahmen.
-            highlightthickness=0, takefocus=0,
+            # ``borderwidth``. Tk zeichnet damit einen Fokusrahmen, unter
+            # X11 in einem hellen Grau - im Bild sah jeder Eintrag der
+            # Seitenleiste aus wie ein umrandeter Kasten. In der Vorlage
+            # hat nur der aktive Eintrag eine Flaeche.
+            #
+            # Der Rahmen wird deshalb nicht abgeschaltet, sondern
+            # unsichtbar gemacht: in Leistenfarbe, solange der Knopf
+            # keinen Fokus hat, und blau, sobald er ihn bekommt. Ihn
+            # ganz abzuschalten (``highlightthickness=0``) waere der
+            # bequemere Weg gewesen und haette die Leiste fuer die
+            # Tastatur unbrauchbar gemacht - man saehe nicht mehr, wo man
+            # ist. Wer keine Maus benutzt, ist kein Sonderfall.
+            highlightthickness=1, highlightbackground=NAVY,
+            highlightcolor=AKTIV,
             anchor="w", padx=12, pady=10, cursor="hand2",
             font=("Segoe UI", 10),
         )
@@ -311,6 +320,14 @@ class Navigationsschale:
         self.einklapp_knopf.configure(
             text="›" if self.eingeklappt else "‹  Leiste einklappen",
             anchor="center" if self.eingeklappt else "w")
+        # Auch der Rand muss mit: eingeklappt bleiben von 56 Bildpunkten
+        # nach zweimal 14 Abstand nur 28 uebrig, und der Knopf braucht mit
+        # seinem Fokusrahmen 32. Er wurde beschnitten.
+        try:
+            self.einklapp_knopf.pack_configure(
+                padx=4 if self.eingeklappt else 14)
+        except Exception:               # pragma: no cover - Testdoppel
+            pass
         # Marke und Fusszeile im eingeklappten Zustand ausblenden - sonst
         # ragen sie ueber die schmale Leiste hinaus.
         for widget in (getattr(self, "markenbild", None),

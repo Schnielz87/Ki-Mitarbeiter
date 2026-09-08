@@ -70,7 +70,8 @@ class Quellenpanel:
         self.klapp_knopf = tk.Button(
             kopf, text="ausblenden", command=self.umschalten, bg=GRUND,
             fg=NUMMER_TEXT, relief="flat", borderwidth=0, cursor="hand2",
-            highlightthickness=0, takefocus=0, font=("Segoe UI", 8))
+            highlightthickness=1, highlightbackground=GRUND,
+            highlightcolor=NUMMER_TEXT, font=("Segoe UI", 8))
         self.klapp_knopf.pack(side="right")
 
         # ``wraplength`` ist hier Pflicht, kein Feinschliff: der Satz
@@ -91,7 +92,8 @@ class Quellenpanel:
         self.details_knopf = tk.Button(
             fuss, text="Recherche-Details anzeigen", command=self.details_umschalten,
             bg=GRUND, fg=NUMMER_TEXT, relief="flat", borderwidth=0,
-            highlightthickness=0, takefocus=0,
+            highlightthickness=1, highlightbackground=GRUND,
+            highlightcolor=NUMMER_TEXT,
             anchor="w", cursor="hand2", font=("Segoe UI", 9))
         self.details_knopf.pack(fill="x")
         self.details_feld = tk.Text(fuss, height=8, wrap="none",
@@ -157,7 +159,8 @@ class Quellenpanel:
         if url and self.oeffnen is not None:
             tk.Button(innen, text="Oeffnen", command=lambda u=url: self.oeffnen(u),
                       bg=KARTE, fg=NUMMER_TEXT, relief="flat", borderwidth=0,
-                      highlightthickness=0, takefocus=0,
+                      highlightthickness=1, highlightbackground=KARTE,
+                      highlightcolor=NUMMER_TEXT,
                       anchor="w", cursor="hand2",
                       font=("Segoe UI", 8, "bold")).pack(anchor="w", pady=(6, 0))
         return karte
