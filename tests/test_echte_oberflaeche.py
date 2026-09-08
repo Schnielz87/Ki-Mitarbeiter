@@ -244,19 +244,58 @@ def test_auf_einem_kleinen_fenster_wird_nichts_abgeschnitten(fenster):
                           + "\n".join(zu_breit))
 
 
-def test_die_quellenspalte_kommt_auf_breiten_fenstern_zurueck(fenster):
-    """Ausblenden ist nur richtig, wenn es sich auch wieder umkehrt."""
-    fenster.schale.zeigen("unterhaltung")
-    fenster.root.geometry("900x600")
-    _durchatmen(fenster.root, 5)
-    assert fenster._quellenspalte_ist_da is False, (
-        "auf einem schmalen Fenster muss die Quellenspalte weichen")
-    assert fenster.schale.eingeklappt is True, (
-        "und die Navigation zusammenklappen")
+def _breite_setzen(fenster, breite: int, hoehe: int) -> int:
+    """Setzt die Fenstergroesse und gibt die zurueck, die es bekommen hat.
 
-    fenster.root.geometry("1500x940")
-    _durchatmen(fenster.root, 5)
-    assert fenster._quellenspalte_ist_da is True, (
-        "auf einem breiten Fenster muss sie zurueckkommen")
-    assert fenster.schale.eingeklappt is False, (
-        "und die Navigation wieder aufgehen")
+    Nicht dasselbe: ein Fenstermanager darf eine Wunschgroesse kuerzen,
+    und auf einem Bildschirm, der schmaler ist als der Wunsch, tut er das
+    auch. Wer die Wunschgroesse fuer bare Muenze nimmt, prueft am Ende
+    eine Lage, die es gar nicht gibt.
+    """
+    fenster.root.geometry(f"{breite}x{hoehe}")
+    _durchatmen(fenster.root, 6)
+    return int(fenster.root.winfo_width())
+
+
+def test_die_quellenspalte_folgt_der_fensterbreite(fenster):
+    """Ausblenden ist nur richtig, wenn es sich auch wieder umkehrt.
+
+    Geprueft wird gegen die Breite, die das Fenster **tatsaechlich** hat -
+    nicht gegen die, die angefordert wurde. Auf dem Windows-Baurechner
+    schlug die erste Fassung dieses Tests fehl: dort blieb das Fenster
+    schmaler als die angeforderten 1500 Bildpunkte, die Quellenspalte
+    blieb folgerichtig ausgeblendet, und der Test verlangte trotzdem, dass
+    sie da ist. Der Fehler lag im Test, nicht in der Anwendung - aber das
+    war erst zu sehen, nachdem gemessen statt angenommen wurde.
+    """
+    fenster.schale.zeigen("unterhaltung")
+
+    lagen = []
+    for breite, hoehe in ((900, 600), (1500, 940), (1000, 700)):
+        ist = _breite_setzen(fenster, breite, hoehe)
+        erwartet_quellen = ist >= tk_app_modul(fenster).SCHWELLE_QUELLEN
+        erwartet_leiste = ist < tk_app_modul(fenster).SCHWELLE_LEISTE
+        assert fenster._quellenspalte_ist_da is erwartet_quellen, (
+            f"Bei {ist} Bildpunkten Breite muesste die Quellenspalte "
+            f"{'sichtbar' if erwartet_quellen else 'ausgeblendet'} sein.")
+        assert fenster.schale.eingeklappt is erwartet_leiste, (
+            f"Bei {ist} Bildpunkten Breite muesste die Navigation "
+            f"{'eingeklappt' if erwartet_leiste else 'offen'} sein.")
+        lagen.append((ist, erwartet_quellen))
+
+    # Der Test taugt nur etwas, wenn beide Lagen wirklich vorkamen. Sonst
+    # hat er dreimal dasselbe geprueft und nichts ueber das Umschalten
+    # ausgesagt.
+    if len({sichtbar for _breite, sichtbar in lagen}) < 2:
+        pytest.skip(
+            "Auf diesem Bildschirm liessen sich keine zwei verschiedenen "
+            f"Lagen herstellen (gemessene Breiten: "
+            f"{[b for b, _ in lagen]}). Das Umschalten ist damit hier "
+            "nicht pruefbar.")
+
+
+def tk_app_modul(fenster):
+    """Das Modul, aus dem dieses Fenster stammt - fuer die Schwellenwerte."""
+    import sys
+
+    return sys.modules[type(fenster).__module__]
