@@ -46,7 +46,11 @@ RAND = "#dfe5ec"
 TRENNER = "#2b3a4f"
 TITEL = "#14243c"
 
-BREITE_OFFEN = 250
+#: Breite der offenen Seitenleiste. Nicht frei gewaehlt: der laengste
+#: Eintrag ist "Einstellungen & Status" und braucht im aktiven (fetten)
+#: Zustand 241 Bildpunkte. Mit 250 wurde er abgeschnitten - gemessen, nicht
+#: geschaetzt. 272 laesst Luft fuer Systeme mit etwas breiterer Schrift.
+BREITE_OFFEN = 272
 BREITE_ZU = 56
 
 
@@ -57,6 +61,12 @@ class Bereich:
     kennung: str
     titel: str
     untertitel: str = ""
+    #: Kurzform fuer die Navigation. Die Leiste hat eine feste Breite;
+    #: "Plugins & Erweiterungen" passt dort nicht und wurde zu "Plugins &
+    #: Erweiterunge" abgeschnitten. In den Vorlagen steht in der Leiste
+    #: ohnehin die Kurzform und die lange Fassung als Ueberschrift.
+    #: Leer heisst: die Leiste zeigt den vollen Titel.
+    kurz: str = ""
     #: Ein Zeichen als Sinnbild. Bewusst Text und keine Bilddatei: eine
     #: fehlende Bilddatei waere ein leerer Knopf, ein Zeichen ist immer da.
     zeichen: str = "•"
@@ -175,7 +185,7 @@ class Navigationsschale:
 
     # -- Bereiche ------------------------------------------------------
     def bereich_anlegen(self, kennung: str, titel: str, untertitel: str = "",
-                        zeichen: str = "●"):
+                        zeichen: str = "●", kurz: str = ""):
         """Legt einen Hauptbereich an und gibt seine Inhaltsflaeche zurueck.
 
         Ist der Bereich fuer dieses Profil nicht vorgesehen, wird er
@@ -184,7 +194,7 @@ class Navigationsschale:
         """
         flaeche = tk.Frame(self.buehne, bg=GRUND)
         bereich = Bereich(kennung=kennung, titel=titel, untertitel=untertitel,
-                          zeichen=zeichen, rahmen=flaeche)
+                          zeichen=zeichen, rahmen=flaeche, kurz=kurz)
 
         if self.sichtbare is None or kennung in self.sichtbare:
             bereich.knopf = self._navigationsknopf(bereich)
@@ -195,7 +205,7 @@ class Navigationsschale:
     def _navigationsknopf(self, bereich: Bereich):
         knopf = tk.Button(
             self.navigation,
-            text=f"  {bereich.zeichen}   {bereich.titel}",
+            text=f"  {bereich.zeichen}   {bereich.kurz or bereich.titel}",
             command=lambda k=bereich.kennung: self.zeigen(k),
             bg=NAVY, fg=TEXT, activebackground=NAVY_HELL,
             activeforeground="#ffffff", relief="flat", borderwidth=0,

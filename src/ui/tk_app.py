@@ -31,6 +31,21 @@ from pkc.audit import ApprovalState
 from pkc.memory.schema_keys import CATEGORIES
 
 PAD = 8
+
+#: Breite der Quellenspalte in der Unterhaltung. Fest, nicht anteilig:
+#: eine Quellenkarte braucht eine bestimmte Breite, sonst bricht der Titel
+#: nach jedem Wort um. Wird das Fenster breiter, waechst die Unterhaltung.
+QUELLEN_BREITE = 330
+
+#: Mindestbreite der Knopfspalte neben dem Eingabefeld. Ohne sie schneidet
+#: Tk die laengste Beschriftung ab, sobald es eng wird.
+KNOPFSPALTE = 150
+
+#: Breite der Statusspalte in den Einstellungen. Ebenfalls fest: die
+#: Ampelwerte stehen rechtsbuendig, und eine schrumpfende Spalte schiebt
+#: sie aus dem Bild.
+STATUS_BREITE = 430
+
 FONT_BASE = ("Segoe UI", 10)
 FONT_MONO = ("Consolas", 10)
 FONT_TITLE = ("Segoe UI", 14, "bold")
@@ -295,6 +310,10 @@ class MainWindow:
         controller.einrichtungsweg(RetrievalOnlyProvider.WEG_FENSTER)
 
         self.root = tk.Tk()
+        # Das Aussehen zuerst: ttk zeichnet einen Knopf mit dem Stil, der
+        # zum Zeitpunkt seiner Erzeugung gilt. Wer spaeter umstellt, hat
+        # halb alte und halb neue Knoepfe im selben Fenster.
+        self._aussehen_setzen()
         self.brand = load_brand(controller.paths, controller.config)
         self.profil = profilname(controller.profile)
         # PORTIVA ist fest, der Profilname kommt aus dem aktiven Profil -
@@ -370,8 +389,13 @@ class MainWindow:
         chips = self.schale.chips
 
         self.knowledge_label = self._chip(chips, "neutral", fett=False)
-        self.mode_label = self._chip(chips, "neutral")
         self.internet_label = self._chip(chips, "neutral")
+        # Der Betriebsmodus stand hier zweimal: als Chip und gleich
+        # daneben als Auswahlfeld mit demselben Wort. Zwei Anzeigen
+        # derselben Sache sind nicht doppelt so deutlich, sie sind
+        # doppelt so breit - und im Kopf wurde es so eng, dass aus
+        # "OFFLINE" ein "OFFL" wurde. Der Chip entfaellt; das
+        # Auswahlfeld zeigt den Modus und laesst ihn zugleich aendern.
 
         # Moduswahl: eine Entscheidung des Benutzers. Sie gehoert nicht in
         # ein Untermenue, sondern in Reichweite.
@@ -456,6 +480,21 @@ class MainWindow:
         self._refresh_status()
         return "break"
 
+    def _aussehen_setzen(self) -> None:
+        """Legt Farben, Schriften und Knopfformen fest (ui/stil.py).
+
+        Faellt es aus, sieht die Anwendung aus wie vorher - sie laeuft.
+        Ein Aussehen ist nie ein Grund, den Start zu verhindern.
+        """
+        self.thema = ""
+        try:
+            from ui import stil
+
+            self.thema = stil.anwenden(self.root)
+            self.root.configure(bg=stil.GRUND)
+        except Exception:               # pragma: no cover - defensiv
+            log.debug("Aussehen liess sich nicht setzen", exc_info=True)
+
     def _build_body(self) -> None:
         """Baut die Schale und haengt die Ansichten hinein.
 
@@ -505,19 +544,49 @@ class MainWindow:
             "unterhaltung", "Unterhaltung",
             "Natuerlich fragen, Quellen nur bei Bedarf einblenden.", "\u25c9")
 
-        panes = ttk.PanedWindow(frame, orient="horizontal")
-        panes.pack(fill="both", expand=True)
+        # Raster statt Schiebeteiler. Der Schiebeteiler verteilte die
+        # Breite nach Gewichten und hat dabei die Knopfspalte so weit
+        # zusammengedrueckt, dass aus "Senden" ein "Send" wurde und rechts
+        # eine graue Luecke stehenblieb. Im Raster bekommt die Quellen-
+        # spalte eine feste Breite und die Unterhaltung den Rest - das
+        # kann nicht kippen.
+        frame.columnconfigure(0, weight=1)
+        frame.columnconfigure(1, weight=0, minsize=QUELLEN_BREITE)
+        frame.rowconfigure(0, weight=1)
 
-        left = ttk.Frame(panes)
-        panes.add(left, weight=3)
+        left = ttk.Frame(frame)
+        left.grid(row=0, column=0, sticky="nsew", padx=(0, PAD))
+        left.rowconfigure(1, weight=1)          # die Unterhaltung waechst
+        left.columnconfigure(0, weight=1)
 
-        self.chat = scrolledtext.ScrolledText(left, wrap="word", font=FONT_BASE, state="disabled")
-        self.chat.pack(fill="both", expand=True)
+        # Werkzeugleiste ueber der Unterhaltung. "Neue Unterhaltung" und
+        # "Antwort speichern" standen vorher unten neben dem Tastenhinweis
+        # und wurden dort abgeschnitten - im Bild stand "Neue Unt". Oben
+        # haben sie Platz, und der Hinweis unten bleibt ein Hinweis statt
+        # einer Knopfleiste.
+        werkzeuge = ttk.Frame(left)
+        werkzeuge.grid(row=0, column=0, sticky="ew", pady=(0, 6))
+
+        self.chat = scrolledtext.ScrolledText(
+            left, wrap="word", font=FONT_BASE, state="disabled",
+            relief="flat", borderwidth=0, background="#ffffff",
+            padx=16, pady=12, highlightthickness=1,
+            highlightbackground="#dfe5ec", highlightcolor="#dfe5ec")
+        self.chat.grid(row=1, column=0, sticky="nsew")
         self.chat.tag_configure("wer", font=("Segoe UI", 10, "bold"))
         # Abschnitt 23: Frage und Antwort sollen sich auf einen Blick
         # unterscheiden lassen.
         self.chat.tag_configure("sprecher_ich", font=("Segoe UI", 9, "bold"),
-                                foreground="#666666", spacing1=10)
+                                foreground="#5b6b80", spacing1=14)
+        # Die eigene Frage bekommt eine eigene Flaeche - wie in den
+        # Vorlagen. Tk kennt keine runden Ecken; was es kann, ist eine
+        # Hintergrundfarbe mit Innenabstand ueber ``lmargin`` und
+        # ``spacing``. Das genuegt, um Frage und Antwort auf einen Blick
+        # zu trennen, worum es hier geht.
+        self.chat.tag_configure("frage", background="#e8f0fb",
+                                foreground="#14243c", lmargin1=14, lmargin2=14,
+                                rmargin=14, spacing1=8, spacing3=8,
+                                borderwidth=0)
         self.chat.tag_configure("sprecher_ki", font=("Segoe UI", 10, "bold"),
                                 foreground="#1f4e79", spacing1=10)
         # Quellen, Wissensstand und Hinweise stehen unter der Antwort -
@@ -543,9 +612,14 @@ class MainWindow:
 
         # -- Eingabe: dauerhaft unten, Aktionen direkt daneben ----------
         entry_frame = ttk.Frame(left)
-        entry_frame.pack(fill="x", pady=(PAD, 0))
-        self.entry = tk.Text(entry_frame, height=3, font=FONT_BASE, wrap="word")
-        self.entry.pack(side="left", fill="both", expand=True)
+        entry_frame.grid(row=2, column=0, sticky="ew", pady=(PAD, 0))
+        entry_frame.columnconfigure(0, weight=1)
+        self.entry = tk.Text(entry_frame, height=3, font=FONT_BASE, wrap="word",
+                             relief="flat", borderwidth=0, background="#ffffff",
+                             padx=12, pady=8, highlightthickness=1,
+                             highlightbackground="#dfe5ec",
+                             highlightcolor="#1e6fd9")
+        self.entry.grid(row=0, column=0, sticky="nsew")
 
         # Auftrag Abschnitt 33: Eingabe sendet, Umschalt+Eingabe bricht die
         # Zeile um. Bisher war es umgekehrt herum geloest (Strg+Eingabe) -
@@ -558,30 +632,38 @@ class MainWindow:
         self.entry.bind("<Return>", self._auf_eingabetaste)
         self.entry.bind("<Control-Return>", lambda _e: self._send())
 
+        # Die Knopfspalte bekommt eine Mindestbreite. Ohne sie schneidet
+        # Tk die Beschriftung ab, sobald der Platz knapp wird - und ein
+        # Knopf mit der Aufschrift "Send" ist ein Fehler, kein Layout.
         buttons = ttk.Frame(entry_frame)
-        buttons.pack(side="right", fill="y", padx=(PAD, 0))
-        self.send_button = ttk.Button(buttons, text="Senden", command=self._send)
-        self.send_button.pack(fill="x")
+        buttons.grid(row=0, column=1, sticky="nsew", padx=(PAD, 0))
+        entry_frame.columnconfigure(1, weight=0, minsize=KNOPFSPALTE)
+        buttons.columnconfigure(0, weight=1)
+        self.send_button = ttk.Button(buttons, text="Senden", command=self._send,
+                                      style="Betont.TButton")
+        self.send_button.grid(row=0, column=0, sticky="ew")
         # Abschnitt 22: waehrend einer laengeren Antwort abbrechen koennen.
         self.stop_button = ttk.Button(buttons, text="Stoppen",
                                       command=self._abbrechen, state="disabled")
-        self.stop_button.pack(fill="x", pady=(4, 0))
+        self.stop_button.grid(row=1, column=0, sticky="ew", pady=(4, 0))
         ttk.Button(buttons, text="Datei anhaengen",
-                   command=self._add_document).pack(fill="x", pady=(4, 0))
+                   command=self._add_document).grid(row=2, column=0, sticky="ew",
+                                                    pady=(4, 0))
 
         # Ablageflaeche fuer Drag & Drop. Sie ist zugleich ein Klickziel -
         # kommt die Ablage auf diesem System nicht zustande, bleibt der
         # Bereich also benutzbar statt tot zu sein.
         self.drop_hinweis = tk.Label(
-            left, text="Datei hierher ziehen oder \u201eDatei anhaengen\u201c",
+            entry_frame, text="Datei hierher ziehen oder \u201eDatei anhaengen\u201c",
             bg="#eef2f7", fg="#5b6b80", font=("Segoe UI", 8), pady=6,
             cursor="hand2")
-        self.drop_hinweis.pack(fill="x", pady=(6, 0))
+        self.drop_hinweis.grid(row=2, column=0, columnspan=2, sticky="ew",
+                               pady=(6, 0))
         self.drop_hinweis.bind("<Button-1>", lambda _e: self._add_document())
         self._ablage_einrichten()
 
         hinweise = ttk.Frame(left)
-        hinweise.pack(fill="x", pady=(4, 0))
+        hinweise.grid(row=3, column=0, sticky="ew", pady=(4, 0))
         ttk.Label(hinweise,
                   text="Eingabe sendet  ·  Umschalt+Eingabe neue Zeile  ·  "
                        "Strg+N neue Unterhaltung  ·  Esc bricht ab",
@@ -590,32 +672,49 @@ class MainWindow:
         # Erweiterung E4: das Ergebnis soll als Datei herausgehen koennen -
         # ohne installiertes Office und ohne Internet.
         self.datei_format = tk.StringVar(value="pdf")
-        ttk.Combobox(hinweise, textvariable=self.datei_format, state="readonly",
+        ttk.Combobox(werkzeuge, textvariable=self.datei_format, state="readonly",
                      width=6,
                      values=[eintrag["format"] for eintrag
                              in self.controller.artefakt_formate()]).pack(side="right")
-        ttk.Button(hinweise, text="Antwort speichern",
-                   command=self._antwort_speichern).pack(side="right", padx=(0, 4))
-        ttk.Button(hinweise, text="Neue Unterhaltung",
-                   command=self._new_conversation).pack(side="right", padx=(0, 4))
+        ttk.Button(werkzeuge, text="Antwort speichern",
+                   command=self._antwort_speichern).pack(side="right", padx=(0, 6))
+        ttk.Button(werkzeuge, text="Neue Unterhaltung",
+                   command=self._new_conversation).pack(side="right", padx=(0, 6))
 
         # -- Rechts: Quellen als Karten, darunter der Verlauf -----------
-        right = ttk.Frame(panes)
-        panes.add(right, weight=2)
+        # Auch hier ein Raster: die Quellen nehmen die Hoehe, der Verlauf
+        # steht darunter mit fester Hoehe. Vorher lag der Verlauf mit
+        # "side=bottom" ueber der Quellenspalte - im Bild sah es aus, als
+        # haenge eine Liste mitten im Fenster.
+        right = ttk.Frame(frame, width=QUELLEN_BREITE)
+        right.grid(row=0, column=1, sticky="nsew")
+        right.grid_propagate(False)
+        right.columnconfigure(0, weight=1)
+        right.rowconfigure(0, weight=1)
 
         from ui.quellenpanel import Quellenpanel
 
-        self.quellenpanel = Quellenpanel(right, oeffnen=self._quelle_oeffnen)
+        quellenflaeche = ttk.Frame(right)
+        quellenflaeche.grid(row=0, column=0, sticky="nsew")
+        self.quellenpanel = Quellenpanel(quellenflaeche,
+                                         oeffnen=self._quelle_oeffnen,
+                                         breite=QUELLEN_BREITE)
 
         verlauf = ttk.Frame(right)
-        verlauf.pack(side="bottom", fill="x", pady=(PAD, 0))
+        verlauf.grid(row=1, column=0, sticky="ew", pady=(PAD, 0))
+        verlauf.columnconfigure(0, weight=1)
         ttk.Label(verlauf, text="Unterhaltungen",
-                  font=("Segoe UI", 10, "bold")).pack(anchor="w")
-        self.conversation_list = tk.Listbox(verlauf, height=6, font=("Segoe UI", 9))
-        self.conversation_list.pack(fill="x", pady=2)
+                  font=("Segoe UI", 10, "bold")).grid(row=0, column=0,
+                                                      sticky="w")
+        self.conversation_list = tk.Listbox(
+            verlauf, height=6, font=("Segoe UI", 9), relief="flat",
+            borderwidth=0, background="#ffffff", highlightthickness=1,
+            highlightbackground="#dfe5ec", activestyle="none")
+        self.conversation_list.grid(row=1, column=0, sticky="ew", pady=2)
         self.conversation_list.bind("<Double-Button-1>", self._open_conversation)
         ttk.Button(verlauf, text="Unterhaltung exportieren",
-                   command=self._export_conversation).pack(fill="x")
+                   command=self._export_conversation).grid(row=2, column=0,
+                                                           sticky="ew")
 
         # Tastenkuerzel am Fenster, nicht am Eingabefeld: sie sollen auch
         # dann wirken, wenn der Mauszeiger woanders steht.
@@ -702,7 +801,7 @@ class MainWindow:
         frame = self.schale.bereich_anlegen(
             "unternehmenswissen", "Unternehmenswissen",
             "Dauerhafte Unternehmensinformationen verwalten, pruefen und "
-            "versionieren.", "\u25a4")
+            "versionieren.", "\u25a4", kurz="Unternehmenswissen")
 
         top = ttk.Frame(frame)
         top.pack(fill="x", pady=(0, PAD))
@@ -1611,7 +1710,7 @@ class MainWindow:
     # -- Bereiche in Vorbereitung ---------------------------------------
     def _build_pending_tab(self, kennung: str, titel: str, untertitel: str,
                            zeichen: str, zweck: list[str], heute: str,
-                           weg=None) -> None:
+                           weg=None, kurz: str = "") -> None:
         """Ein Bereich, den es noch nicht gibt - ehrlich gekennzeichnet.
 
         Auftrag Abschnitt 34 laesst genau zwei Moeglichkeiten: eine Aktion
@@ -1624,7 +1723,8 @@ class MainWindow:
         Zielentwurf nennt zehn Bereiche, und wer nur acht sieht, sucht die
         beiden anderen.
         """
-        frame = self.schale.bereich_anlegen(kennung, titel, untertitel, zeichen)
+        frame = self.schale.bereich_anlegen(kennung, titel, untertitel, zeichen,
+                                            kurz=kurz)
 
         karte = tk.Frame(frame, bg="#ffffff", highlightbackground="#dfe5ec",
                          highlightthickness=1)
@@ -1691,7 +1791,7 @@ class MainWindow:
             "Faelligkeit und Intervall - zu finden unter "
             "\u201eWissen & Quellen\u201c. Ein allgemeiner Aufgabenplaner "
             "fehlt noch.",
-            weg=("wissen_quellen", "Zu Wissen & Quellen"))
+            weg=("wissen_quellen", "Zu Wissen & Quellen"), kurz="Aufgaben")
 
     # -- Bereich: Plugins ----------------------------------------------
     def _build_plugins_tab(self) -> None:
@@ -1703,7 +1803,7 @@ class MainWindow:
         frame = self.schale.bereich_anlegen(
             "plugins", "Plugins & Erweiterungen",
             "Faehigkeiten installieren, Berechtigungen pruefen und sicher "
-            "verwalten.", "\u25c8")
+            "verwalten.", "\u25c8", kurz="Plugins")
 
         leiste = ttk.Frame(frame)
         leiste.pack(fill="x", pady=(0, PAD))
@@ -1976,8 +2076,17 @@ class MainWindow:
         # Sprachmodell zieht hier ein - es ist kein eigener Hauptbereich,
         # sondern eine Einstellung. Damit sind es genau die zehn Bereiche
         # des Zielentwurfs.
+        # Raster: die Einstellungen wachsen, die Statusspalte hat eine
+        # feste Breite. Mit "pack(side=right, expand=True)" bekam die
+        # Statusspalte nur den Rest - und der reichte nicht: "Lokales
+        # Modell" und "nicht eingerichtet" lagen uebereinander, von
+        # "Sicherung erstellen" blieb ein "S".
+        frame.columnconfigure(0, weight=1)
+        frame.columnconfigure(1, weight=0, minsize=STATUS_BREITE)
+        frame.rowconfigure(0, weight=1)
+
         self.einstellungsgruppen = ttk.Notebook(frame)
-        self.einstellungsgruppen.pack(side="left", fill="both", expand=True)
+        self.einstellungsgruppen.grid(row=0, column=0, sticky="nsew")
 
         left = ttk.Frame(self.einstellungsgruppen)
         self.einstellungsgruppen.add(left, text="Allgemein")
@@ -2056,8 +2165,14 @@ class MainWindow:
 
         # -- Systemstatus als Ampelliste --------------------------------
         right = tk.Frame(frame, bg="#ffffff", highlightbackground="#dfe5ec",
-                         highlightthickness=1)
-        right.pack(side="right", fill="both", expand=True, padx=(PAD * 2, 0))
+                         highlightthickness=1, width=STATUS_BREITE)
+        right.grid(row=0, column=1, sticky="nsew", padx=(PAD * 2, 0))
+        # Die Kinder dieser Flaeche werden mit ``pack`` gesetzt - dann
+        # zaehlt ``pack_propagate``, nicht ``grid_propagate``. Ohne das
+        # zieht das breite Textfeld im Inneren die ganze Spalte auf und
+        # die Einstellungen daneben werden eng.
+        right.pack_propagate(False)
+        right.grid_propagate(False)
         innen = tk.Frame(right, bg="#ffffff")
         innen.pack(fill="both", expand=True, padx=18, pady=16)
         tk.Label(innen, text="Systemstatus", bg="#ffffff", fg="#14243c",
@@ -2069,14 +2184,18 @@ class MainWindow:
         self.statusliste.pack(fill="x", pady=(12, 0))
         self._statuszeilen: dict[str, tuple] = {}
 
+        # Drei Knoepfe nebeneinander passen in diese Spalte nicht. Sie
+        # standen vorher in einer Zeile und wurden am Rand abgeschnitten -
+        # der dritte war nur noch ein "S". Untereinander haben sie Platz
+        # und ihre volle Beschriftung.
         knoepfe = tk.Frame(innen, bg="#ffffff")
         knoepfe.pack(fill="x", pady=(14, 0))
         ttk.Button(knoepfe, text="Status aktualisieren",
-                   command=self._refresh_status).pack(side="left")
+                   command=self._refresh_status).pack(fill="x")
         ttk.Button(knoepfe, text="Sicherung erstellen",
-                   command=self._backup).pack(side="left", padx=(PAD, 0))
+                   command=self._backup).pack(fill="x", pady=(6, 0))
         ttk.Button(knoepfe, text="Sicherung wiederherstellen",
-                   command=self._wiederherstellen).pack(side="left", padx=(PAD, 0))
+                   command=self._wiederherstellen).pack(fill="x", pady=(6, 0))
 
         # Der vollstaendige Zustand als Text bleibt erhalten - er ist das,
         # was bei einer Stoerung kopiert und weitergegeben wird. Nur steht
@@ -2106,12 +2225,16 @@ class MainWindow:
             return
         zeile = tk.Frame(self.statusliste, bg="#ffffff")
         zeile.pack(fill="x", pady=3)
-        namelabel = tk.Label(zeile, text=name, bg="#ffffff", fg="#14243c",
-                             anchor="w", font=("Segoe UI", 9, "bold"))
-        namelabel.pack(side="left")
+        # Der Wert zuerst und rechts, der Name danach mit dem Rest der
+        # Breite. Umgekehrt nahm der Name so viel Platz, wie er wollte,
+        # und schob den Wert aus der Spalte heraus.
         wertlabel = tk.Label(zeile, text=wert, bg=grund, fg=schrift,
                              font=("Segoe UI", 9, "bold"), padx=10, pady=3)
         wertlabel.pack(side="right")
+        namelabel = tk.Label(zeile, text=name, bg="#ffffff", fg="#14243c",
+                             anchor="w", justify="left",
+                             font=("Segoe UI", 9, "bold"))
+        namelabel.pack(side="left", fill="x", expand=True)
         self._statuszeilen[name] = (namelabel, wertlabel)
 
     def _refresh_statusliste(self, status: dict) -> None:
@@ -2175,6 +2298,11 @@ class MainWindow:
         self.chat.insert("end", f"\n{who}\n", self._sprecherstil(who))
         if tag:
             self.chat.insert("end", f"{text}\n", tag)
+        elif who == self._sprecher_ich:
+            # Die eigene Frage auf eigener Flaeche - wie in den Vorlagen.
+            # Sie bekommt kein Markdown: was der Benutzer geschrieben hat,
+            # wird gezeigt wie er es geschrieben hat.
+            self.chat.insert("end", f"{text}\n", "frage")
         else:
             self._text_einfuegen(text)
         self.chat.configure(state="disabled")
@@ -2873,9 +3001,6 @@ class MainWindow:
 
         self._refresh_update_lage()
         lage = self.controller.lage
-        self.mode_label.configure(text=f"Betriebsmodus: {lage.modus.value}")
-        self._chip_faerben(self.mode_label,
-                           "gut" if lage.online_moeglich else "neutral")
         # Internetstatus getrennt anzeigen: "OFFLINE gewaehlt, Internet
         # verfuegbar" ist ein gueltiger und wichtiger Zustand.
         self.internet_label.configure(text=f"Internet: {lage.internet_text}")

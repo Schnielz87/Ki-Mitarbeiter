@@ -73,8 +73,13 @@ class Quellenpanel:
             font=("Segoe UI", 8))
         self.klapp_knopf.pack(side="right")
 
+        # ``wraplength`` ist hier Pflicht, kein Feinschliff: der Satz
+        # "Zu dieser Frage wurde keine Fundstelle herangezogen." ist
+        # laenger als die Spalte breit ist und wurde ohne Umbruch am Rand
+        # abgeschnitten - man las "... herangezoge".
         self.untertitel = tk.Label(self.rahmen, text="nach Relevanz", bg=GRUND,
-                                   fg=LEISE, font=("Segoe UI", 8), anchor="w")
+                                   fg=LEISE, font=("Segoe UI", 8), anchor="w",
+                                   justify="left", wraplength=max(breite - 30, 120))
         self.untertitel.pack(fill="x", padx=12)
 
         self.koerper = tk.Frame(self.rahmen, bg=GRUND)

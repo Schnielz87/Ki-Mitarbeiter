@@ -58,6 +58,10 @@ class Startbild:
         self._root = root
         self.fenster = None
         self.gezeigt = False
+        #: Laeuft gerade ``zeigen``? Dann raeumt ``schliessen`` das
+        #: Wurzelfenster nicht ab - das erledigt ``zeigen`` selbst, nachdem
+        #: sein ``wait_window`` zurueckgekehrt ist.
+        self._wartet = False
 
     # -- Aufbau --------------------------------------------------------
     def _bild_laden(self, fenster):
@@ -145,6 +149,32 @@ class Startbild:
             log.debug("Startbild liess sich nicht mittig setzen", exc_info=True)
 
     # -- Anzeigen ------------------------------------------------------
+    def oeffnen(self):
+        """Zeigt das Bild, **ohne** auf sein Ende zu warten.
+
+        Gedacht fuer die Bildaufnahme der Anleitung
+        (``tools/oberflaeche_fotografieren.py``): dort soll das Bild
+        stehenbleiben, bis es fotografiert ist. Gibt das Fenster zurueck
+        oder ``None``, wenn keines aufgebaut werden konnte.
+
+        **Wer hiermit oeffnet, muss ``schliessen`` aufrufen.** Sonst
+        bleibt das selbst erzeugte Wurzelfenster stehen, und alles, was
+        danach ohne ausdrueckliches Elternteil erzeugt wird - eine
+        ``StringVar`` etwa -, haengt an diesem stehengebliebenen Fenster
+        statt am neuen. Genau das ist passiert: der Betriebsmodus stand in
+        einer Variablen des alten Fensters, und das Auswahlfeld im neuen
+        Fenster zeigte deshalb nichts an. Es sah aus wie ein leeres Feld
+        und war ein Fehler in der Aufraeumung.
+        """
+        try:
+            if not self._aufbauen():
+                return None
+        except Exception:                       # pragma: no cover - defensiv
+            log.debug("Startbild liess sich nicht oeffnen", exc_info=True)
+            return None
+        self.gezeigt = True
+        return self.fenster
+
     def zeigen(self) -> bool:
         """Zeigt das Bild und kehrt nach spaetestens ``dauer_ms`` zurueck.
 
@@ -162,6 +192,7 @@ class Startbild:
             # gleich danach auf None zu und das Begruessungsbild endet in
             # einem Fehler statt in der Anwendung.
             fenster = self.fenster
+            self._wartet = True
             fenster.after(self.dauer_ms, self.schliessen)
             fenster.wait_window()
             return True
@@ -170,16 +201,27 @@ class Startbild:
             self.schliessen()
             return False
         finally:
+            self._wartet = False
             self._root_aufraeumen()
 
     def schliessen(self) -> None:
+        """Schliesst das Bild - und raeumt das Wurzelfenster mit ab.
+
+        Das Abraeumen gehoert hierher und nicht nur ans Ende von
+        ``zeigen``: sonst bleibt nach ``oeffnen`` ein unsichtbares
+        Wurzelfenster stehen (siehe Erklaerung dort). Laeuft gerade
+        ``zeigen``, wird es nicht hier abgeraeumt - dort wartet noch ein
+        ``wait_window`` auf genau dieses Fenster.
+        """
         fenster, self.fenster = self.fenster, None
-        if fenster is None:
-            return
-        try:
-            fenster.destroy()
-        except Exception:                       # pragma: no cover - defensiv
-            log.debug("Startbild liess sich nicht schliessen", exc_info=True)
+        if fenster is not None:
+            try:
+                fenster.destroy()
+            except Exception:                   # pragma: no cover - defensiv
+                log.debug("Startbild liess sich nicht schliessen",
+                          exc_info=True)
+        if not self._wartet:
+            self._root_aufraeumen()
 
     def _root_aufraeumen(self) -> None:
         """Das selbst erzeugte Wurzelfenster wieder abraeumen.

@@ -49,7 +49,10 @@ def test_main_window_builds_all_areas(gui):
         assert bereich.knopf is not None, f"{kennung} ist nicht erreichbar"
     assert window.chat.buffer, "die Begruessung muss im Chat stehen"
     assert "bereit" in window.chat.buffer
-    assert "OFFLINE" in window.mode_label.options["text"]
+    # Der Betriebsmodus steht im Auswahlfeld, nicht mehr zusaetzlich als
+    # Chip daneben - zwei Anzeigen derselben Sache haben den Kopf nur
+    # ueberfuellt.
+    assert window.mode_var.get() == "OFFLINE"
     assert "Wissensstand" in window.knowledge_label.options["text"]
 
 

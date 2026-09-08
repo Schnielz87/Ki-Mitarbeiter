@@ -178,3 +178,61 @@ def test_der_schalter_landet_nicht_in_der_kommandozeile(monkeypatch, tmp_path):
     monkeypatch.setitem(sys.modules, "ui.cli", CliDoppel)
     assert modul.main(["check", "--kein-startbild"]) == 0
     assert gesehen["argv"] == ["check"], "der Schalter darf nicht durchgereicht werden"
+
+
+def test_oeffnen_wartet_nicht_und_liefert_das_fenster(tk_ersatz):
+    """Fuer die Bildaufnahme muss das Bild stehenbleiben duerfen.
+
+    ``zeigen`` wartet, bis das Bild wieder weg ist - richtig fuer den
+    Start, unbrauchbar fuer eine Aufnahme. ``oeffnen`` baut dasselbe Bild
+    auf und kehrt sofort zurueck, damit es fotografiert werden kann.
+    """
+    bild = tk_ersatz.Startbild(Brandattrappe(logo="logo.png"), "Buchhalter")
+    fenster = bild.oeffnen()
+    assert fenster is not None, "das Fenster muss zurueckgegeben werden"
+    assert bild.fenster is fenster, "es muss dasselbe Fenster sein"
+    assert bild.gezeigt is True
+    bild.schliessen()
+    assert bild.fenster is None
+
+
+def test_oeffnen_gibt_nichts_zurueck_wenn_es_kein_logo_gibt(tk_ersatz):
+    """Kein Logo, kein Bild - auch hier kein leerer blauer Kasten."""
+    bild = tk_ersatz.Startbild(Brandattrappe(logo=None), "Buchhalter")
+    assert bild.oeffnen() is None
+    assert bild.gezeigt is False
+
+
+def test_schliessen_raeumt_das_selbst_erzeugte_wurzelfenster_ab(tk_ersatz):
+    """Sonst haengen spaetere Variablen am falschen Fenster.
+
+    Das Begruessungsbild erzeugt sich ein eigenes, unsichtbares
+    Wurzelfenster. Blieb es nach ``oeffnen``/``schliessen`` stehen, hing
+    alles, was danach ohne ausdrueckliches Elternteil erzeugt wurde - eine
+    ``StringVar`` etwa -, an diesem alten Fenster. Im Hauptfenster zeigte
+    das Auswahlfeld fuer den Betriebsmodus deshalb nichts an: der Wert
+    stand in einer Variablen eines Fensters, das niemand mehr sah.
+
+    Gefunden auf einem Bildschirmfoto der echten Oberflaeche, nicht in
+    einem Test - der Test fragte den Wert ab und fand ihn.
+    """
+    bild = tk_ersatz.Startbild(Brandattrappe(logo="logo.png"), "Buchhalter")
+    assert bild.oeffnen() is not None
+    wurzel = bild._root
+    assert wurzel is not None, "es muss ein eigenes Wurzelfenster geben"
+    bild.schliessen()
+    assert bild._root is None, "das Wurzelfenster muss abgeraeumt sein"
+    assert wurzel.destroyed, "und zwar wirklich zerstoert"
+
+
+def test_zeigen_raeumt_erst_nach_dem_warten_ab(tk_ersatz):
+    """Waehrend ``zeigen`` wartet, darf das Wurzelfenster nicht fallen.
+
+    ``zeigen`` plant den Selbstschluss ein und wartet dann auf das
+    Fenster. Wuerde ``schliessen`` dabei gleich das Wurzelfenster
+    mitnehmen, wartete ``wait_window`` auf etwas, das es nicht mehr gibt.
+    """
+    bild = tk_ersatz.Startbild(Brandattrappe(logo="logo.png"), "Buchhalter")
+    assert bild.zeigen() is True
+    assert bild._root is None, "am Ende ist trotzdem abgeraeumt"
+    assert bild._wartet is False

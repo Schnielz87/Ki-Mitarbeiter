@@ -66,6 +66,14 @@ class _Widget:
         return self
     def columnconfigure(self, *a, **k): return self
     def rowconfigure(self, *a, **k): return self
+    def grid_columnconfigure(self, *a, **k): return self
+    def grid_rowconfigure(self, *a, **k): return self
+    # Groessenweitergabe abschalten: echtes Tk laesst einen Rahmen damit
+    # seine gesetzte Groesse behalten, statt auf den Inhalt zu schrumpfen.
+    # Das Doppel muss es kennen, sonst faellt der Aufbau hier aus - und
+    # der Fehler haette nichts mit dem zu tun, was geprueft werden soll.
+    def grid_propagate(self, *a, **k): return self
+    def pack_propagate(self, *a, **k): return self
     def title(self, *a, **k): return self
     def geometry(self, *a, **k): return self
     def minsize(self, *a, **k): return self
@@ -396,9 +404,57 @@ class _Toplevel(_Widget):
         _Toplevel.ERZEUGT.append(self)
 
 
+#: Die Namen, die ``install`` in ``sys.modules`` ersetzt.
+TKINTER_NAMEN = ("tkinter", "tkinter.ttk", "tkinter.scrolledtext",
+                 "tkinter.filedialog", "tkinter.messagebox",
+                 "tkinter.simpledialog")
+
+#: Was vor dem ersten ``install`` unter diesen Namen stand. Wird gebraucht,
+#: um das echte Tkinter wiederherzustellen.
+_ECHTES: dict[str, object] = {}
+
+
+def entfernen() -> None:
+    """Nimmt das Doppel wieder heraus und stellt das echte Tkinter her.
+
+    Ohne das bleibt das Doppel fuer den ganzen Prozess stehen. Tests, die
+    danach ein **echtes** Fenster oeffnen wollen
+    (``test_echte_oberflaeche.py``), bekaemen dann wieder das Doppel und
+    wuerden entweder falsch bestehen oder mit einem Fehler abbrechen, der
+    nichts mit ihrer Sache zu tun hat.
+    """
+    for name in TKINTER_NAMEN:
+        vorher = _ECHTES.get(name, "fehlte")
+        if vorher == "fehlte":
+            sys.modules.pop(name, None)
+        else:
+            sys.modules[name] = vorher
+    ui_module_freigeben()
+
+
+def ui_module_freigeben() -> None:
+    """Loescht die Oberflaechenmodule **und das Paket** aus dem Zwischenspeicher.
+
+    Das Paket mitzuloeschen ist keine Uebervorsicht: ``del
+    sys.modules["ui.tk_app"]`` nimmt zwar den Eintrag heraus, aber das
+    Paketobjekt ``ui`` traegt weiterhin ein Attribut ``tk_app`` mit dem
+    alten Modul. ``from ui import tk_app`` liefert dann genau dieses alte
+    Modul zurueck - mitsamt dem Tkinter, gegen das es geladen wurde.
+
+    Gefunden, als echte und gedoppelte Oberflaechentests im selben Lauf
+    aufeinandertrafen: das Hauptfenster baute Flaechen mit dem echten ttk
+    auf einem Elternteil aus dem Doppel.
+    """
+    for name in [m for m in sys.modules if m == "ui" or m.startswith("ui.")]:
+        del sys.modules[name]
+
+
 def install() -> _Dialogs:
     """Registriert das Doppel als ``tkinter`` und gibt die Dialogerfassung."""
     _Toplevel.ERZEUGT.clear()
+    for name in TKINTER_NAMEN:
+        if name not in _ECHTES:
+            _ECHTES[name] = sys.modules.get(name, "fehlte")
     tk = types.ModuleType("tkinter")
     tk.Tk = _Widget
     tk.Toplevel = _Toplevel
