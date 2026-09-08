@@ -91,7 +91,20 @@ jobs:
         # Linux-Lauf unter xvfb. Das Ergebnis steht im Protokoll.
         timeout-minutes: 4
         continue-on-error: true
-        run: python -m pytest tests/test_echte_oberflaeche.py -q -rs
+        shell: pwsh
+        run: |
+          $ausgabe = python -m pytest tests/test_echte_oberflaeche.py -q -rs 2>&1 |
+            Out-String
+          Write-Host $ausgabe
+          # Das Ergebnis wandert in eine Datei und wird ganz am Ende noch
+          # einmal ausgegeben. Sonst steht es 1800 Protokollzeilen vor dem
+          # Ende und ist praktisch nicht auffindbar - und die Frage, ob
+          # diese Tests wirklich liefen oder sich uebersprangen, ist die
+          # einzige, auf die es hier ankommt.
+          $letzte = ($ausgabe -split "`n" | Where-Object { $_ -match "passed|failed|skipped|error" } |
+                     Select-Object -Last 3) -join " | "
+          if (-not $letzte) { $letzte = "keine Zusammenfassung gefunden" }
+          Set-Content -Path "$env:RUNNER_TEMP\ui_windows.txt" -Value $letzte
 
       - name: Modelldienst llama.cpp besorgen
         shell: pwsh
@@ -564,6 +577,25 @@ jobs:
           Remove-Item "dist\Portable-Buchhalter\models\*.gguf" -Force -ErrorAction SilentlyContinue
           Get-ChildItem "dist\Portable-Buchhalter\models" -ErrorAction SilentlyContinue |
             Format-Table Name, Length | Out-String | Write-Host
+
+      - name: Oberflaechenpruefung unter Windows - Ergebnis im Klartext
+        if: always()
+        shell: pwsh
+        run: |
+          $pfad = "$env:RUNNER_TEMP\ui_windows.txt"
+          Write-Host "===== Oberflaeche auf echtem Windows ====="
+          if (Test-Path $pfad) {
+            $zeile = (Get-Content $pfad -Raw).Trim()
+            Write-Host $zeile
+            if ($zeile -match "skipped") {
+              Write-Host "ACHTUNG: uebersprungen - auf diesem Baurechner"
+              Write-Host "laesst sich kein echtes Fenster oeffnen. Der"
+              Write-Host "Nachweis der Oberflaeche kommt dann allein vom"
+              Write-Host "Linux-Lauf unter xvfb."
+            }
+          } else {
+            Write-Host "Der Schritt hat kein Ergebnis hinterlassen."
+          }
 
       - name: Pruefergebnisse zum Nachlesen ausgeben
         if: always()
