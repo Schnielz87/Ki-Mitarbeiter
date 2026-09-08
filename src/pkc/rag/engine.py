@@ -16,6 +16,7 @@ import re
 from dataclasses import dataclass, field
 from typing import Callable, Sequence
 
+from ..fachrechnen import pruefe_zahlen
 from ..llm.base import ChatMessage, LlmResponse
 from ..llm.manager import LlmManager
 from ..logging_setup import get_logger
@@ -240,6 +241,22 @@ class RagEngine:
                 "belastbare steuerliche Bewertung ist die Primaerquelle zu pruefen - "
                 "Gesetzestext, Verwaltungsanweisung oder Rechtsprechung."
             )
+
+        # Rechenpruefung. Ein Sprachmodell rechnet nicht, es sagt Zahlen
+        # vorher - und bei einer Abgrenzung ueber zwei Kalenderjahre ging
+        # das schief: aus 24.000 EUR wurden 5.995.553,43 EUR, und die
+        # Anwendung hat es ausgeliefert, als waere es ein Ergebnis.
+        #
+        # Diese Pruefung ersetzt kein Fachwissen. Sie faengt das ab, was
+        # ohne jedes Fachwissen erkennbar falsch ist: eine Zahl, die um
+        # Groessenordnungen ueber allem liegt, was in der Aufgabe steht.
+        try:
+            for befund in pruefe_zahlen(question, text):
+                warnings.append(befund.text)
+        except Exception:               # pragma: no cover - defensiv
+            # Eine Pruefung, die selbst abstuerzt, darf die Antwort nicht
+            # verhindern. Dann fehlt der Hinweis - die Antwort kommt.
+            log.debug("Rechenpruefung fehlgeschlagen", exc_info=True)
 
         if not bundle.has_knowledge and einstufung.braucht_recherche:
             # Nur wenn ueberhaupt gesucht wurde. Bei Smalltalk waere der
