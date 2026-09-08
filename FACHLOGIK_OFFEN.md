@@ -3,6 +3,52 @@
 Stand 08.09.2026. Antwort auf die Frage: *„Was ist mit der Fachlogik,
 was muss hier getan werden?"*
 
+## Vorab: was heißt hier überhaupt „Fachlogik"?
+
+„Fachlogik" ist ein Entwicklerwort und erklärt nichts. Also im Klartext.
+
+Ein Programm hat zwei Hälften:
+
+1. **Was du siehst und anklickst.** Die Navigation links, die Knöpfe, die
+   Listen, die Farben. Das ist die Oberfläche — die haben wir gerade neu
+   gebaut.
+2. **Was das Programm weiß und tut.** Die Regeln der eigentlichen Arbeit.
+   Das ist die Fachlogik.
+
+**Ein Bild dazu, das zum Mitarbeiter passt:** Stell dir PORTIVA als ein
+Büro mit zehn Türen vor. Die Oberfläche ist der Flur mit den zehn
+beschrifteten Türen. Die Fachlogik ist das, was hinter der Tür steht —
+der Aktenschrank, die Ablage, und der Kollege, der weiß, was zu tun ist.
+
+Bei acht Türen ist das Zimmer eingerichtet. Bei **Vorlagen** und
+**Aufgaben** hängt das Schild an der Tür, aber der Raum dahinter ist
+leer. Deshalb steht dort auch offen „Dieser Bereich ist noch nicht
+verfügbar" — statt eines Knopfes, der nichts tut.
+
+### Woran du den Unterschied siehst
+
+Nimm **„Belege & Dokumente"** — dort ist beides da:
+
+* *Oberfläche:* der Knopf „Datei auswählen", die Tabelle darunter.
+* *Fachlogik:* Das Programm **liest** die PDF wirklich, **erkennt**, ob
+  es eine Rechnung oder eine Gutschrift ist, **sucht** die passende
+  Fundstelle im Fachwissen und **schreibt** ein Ergebnis. Das sind
+  Regeln, die jemand hinterlegen musste.
+
+Nimm **„Vorlagen"** — dort ist nur die Oberfläche da. Das Programm weiß
+nicht:
+
+* Was ist überhaupt eine Vorlage? Wo liegt sie?
+* Woran erkennt es die Stellen, die gefüllt werden müssen?
+* Woher kommen die Werte, die hineingehören?
+* Was tut es, wenn ein Wert fehlt?
+
+**Das sind die Fragen, die die Fachlogik beantwortet.** Solange sie
+unbeantwortet sind, kann dort auch kein Knopf stehen — er wüsste nicht,
+was er tun soll.
+
+---
+
 Beide Bereiche sind in der Oberfläche angelegt und sagen offen, dass es
 sie noch nicht gibt. Es steht kein Knopf darin, der nichts tut. Was
 fehlt, ist die Fachlogik dahinter.
