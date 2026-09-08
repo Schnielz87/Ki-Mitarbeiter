@@ -48,8 +48,22 @@ HOECHSTZAHL = 50
 _EINGERICHTET: dict[int, object] = {}
 
 
+#: Umgebungsvariable, mit der sich das Ziehen abschalten laesst. Zwei
+#: Gruende dafuer: Erstens greift der Weg ueber ``WM_DROPFILES`` tief in
+#: das Fenster ein - wer damit Aerger hat, soll die Anwendung ohne diesen
+#: Eingriff starten koennen, ohne auf eine neue Fassung zu warten.
+#: Zweitens sollen automatische Oberflaechentests das Fenster nicht mit
+#: einer ersetzten Fensterprozedur aufbauen: die Rueckruffunktion lebt in
+#: Python, das Fenster wird am Testende zerstoert, und die Reihenfolge
+#: dieser beiden Dinge ist nichts, worauf man sich verlassen sollte.
+ABSCHALTER = "PORTIVA_KEINE_DATEIABLAGE"
+
+
 def verfuegbar() -> bool:
     """Kann auf diesem System ueberhaupt abgelegt werden?"""
+    if os.environ.get(ABSCHALTER, "").strip() not in ("", "0", "nein", "false"):
+        log.debug("Dateiablage per %s abgeschaltet", ABSCHALTER)
+        return False
     return os.name == "nt"
 
 
@@ -91,13 +105,35 @@ def _windows_einrichten(fenster, rueckruf) -> bool:   # pragma: no cover - Windo
         wintypes.WPARAM, wintypes.LPARAM)
 
     setzen = getattr(user32, "SetWindowLongPtrW", None) or user32.SetWindowLongW
+    holen = getattr(user32, "GetWindowLongPtrW", None) or user32.GetWindowLongW
     aufrufen = getattr(user32, "CallWindowProcW", None)
     if aufrufen is None:
         return False
-    vorherige = setzen(rahmen, GWL_WNDPROC, 0)       # nur lesen
+
+    # Rueckgabe- und Argumenttypen ausdruecklich setzen. Ohne das nimmt
+    # ctypes ``c_int`` an - 32 Bit. Eine Fensterprozedur liegt auf einem
+    # 64-Bit-Windows aber oberhalb dieser Grenze; die Adresse waere
+    # abgeschnitten, und der Aufruf der alten Prozedur ginge ins Leere.
+    # Das ist kein Schoenheitsfehler, das ist ein Absturz.
+    setzen.restype = ctypes.c_void_p
+    setzen.argtypes = [wintypes.HWND, ctypes.c_int, ctypes.c_void_p]
+    holen.restype = ctypes.c_void_p
+    holen.argtypes = [wintypes.HWND, ctypes.c_int]
+    aufrufen.restype = ctypes.c_long
+    aufrufen.argtypes = [ctypes.c_void_p, wintypes.HWND, ctypes.c_uint,
+                         wintypes.WPARAM, wintypes.LPARAM]
+
+    # Die bisherige Fensterprozedur nur LESEN. Die vorherige Fassung rief
+    # dafuer ``SetWindowLongPtrW(..., GWL_WNDPROC, 0)`` auf - das liest
+    # nicht, das SETZT die Fensterprozedur auf NULL. Zwischen diesem
+    # Aufruf und dem spaeteren Wiedersetzen haette das Fenster keine
+    # Prozedur gehabt; jede Nachricht in dieser Zeitspanne trifft eine
+    # Adresse, an der nichts steht. Ein Kommentar "nur lesen" macht aus
+    # einem Setzen kein Lesen.
+    vorherige = holen(rahmen, GWL_WNDPROC)
     if not vorherige:
-        holen = getattr(user32, "GetWindowLongPtrW", None) or user32.GetWindowLongW
-        vorherige = holen(rahmen, GWL_WNDPROC)
+        log.debug("Fensterprozedur nicht lesbar - Dateiablage unterbleibt")
+        return False
 
     def prozedur(h, nachricht, wparam, lparam):
         if nachricht == WM_DROPFILES:
@@ -112,7 +148,11 @@ def _windows_einrichten(fenster, rueckruf) -> bool:   # pragma: no cover - Windo
         return aufrufen(vorherige, h, nachricht, wparam, lparam)
 
     neue = prozedur_typ(prozedur)
-    setzen(rahmen, GWL_WNDPROC, ctypes.cast(neue, ctypes.c_void_p).value)
+    if not setzen(rahmen, GWL_WNDPROC, ctypes.cast(neue, ctypes.c_void_p).value):
+        # Auch ein Fehlschlag hier ist folgenlos: die alte Prozedur steht
+        # noch, es gibt nur kein Ziehen.
+        if ctypes.get_last_error() if hasattr(ctypes, "get_last_error") else 0:
+            log.debug("Fensterprozedur liess sich nicht ersetzen")
     # Beide Bezuege festhalten - siehe Kommentar bei _EINGERICHTET.
     _EINGERICHTET[hwnd] = (neue, vorherige)
     log.info("Dateiablage eingerichtet (Fenster %s)", rahmen)

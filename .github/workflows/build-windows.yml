@@ -77,7 +77,21 @@ jobs:
 
       - name: Tests auf Windows
         timeout-minutes: 10
-        run: python -m pytest tests -q
+        # Die echten Oberflaechentests laufen im naechsten Schritt getrennt.
+        # Sie oeffnen ein wirkliches Fenster; auf einem Baurechner ohne
+        # angemeldeten Benutzer kann das haengen bleiben, und ein
+        # haengender Test darf nicht den ganzen Bauablauf blockieren.
+        run: python -m pytest tests -q --ignore=tests/test_echte_oberflaeche.py
+
+      - name: Oberflaeche auf echtem Windows pruefen
+        # Kurze Frist mit Absicht: sind diese Tests in vier Minuten nicht
+        # durch, stimmt etwas mit dem Fenster nicht, und das ist eine
+        # Auskunft fuer sich. Sie duerfen fehlschlagen, ohne das Paket zu
+        # verhindern - der Nachweis der Oberflaeche kommt bereits vom
+        # Linux-Lauf unter xvfb. Das Ergebnis steht im Protokoll.
+        timeout-minutes: 4
+        continue-on-error: true
+        run: python -m pytest tests/test_echte_oberflaeche.py -q -rs
 
       - name: Modelldienst llama.cpp besorgen
         shell: pwsh

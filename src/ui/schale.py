@@ -48,9 +48,13 @@ TITEL = "#14243c"
 
 #: Breite der offenen Seitenleiste. Nicht frei gewaehlt: der laengste
 #: Eintrag ist "Einstellungen & Status" und braucht im aktiven (fetten)
-#: Zustand 241 Bildpunkte. Mit 250 wurde er abgeschnitten - gemessen, nicht
-#: geschaetzt. 272 laesst Luft fuer Systeme mit etwas breiterer Schrift.
-BREITE_OFFEN = 272
+#: Zustand gemessene 241 Bildpunkte. Mit 250 wurde er abgeschnitten.
+#:
+#: 290 statt der knapp ausreichenden 272, weil die Messung unter Linux mit
+#: einer Ersatzschrift entstand. Unter Windows gibt es Segoe UI wirklich,
+#: und eine andere Schrift misst anders. Ein Wert, der nur auf dem
+#: Entwicklungsrechner passt, ist kein Wert - er ist ein Zufall.
+BREITE_OFFEN = 290
 BREITE_ZU = 56
 
 
@@ -152,7 +156,8 @@ class Navigationsschale:
         self.einklapp_knopf = tk.Button(
             self.seitenleiste, text="‹  Leiste einklappen", bg=NAVY,
             fg=TEXT_LEISE, activebackground=NAVY_HELL, activeforeground="#ffffff",
-            relief="flat", borderwidth=0, anchor="w", cursor="hand2",
+            relief="flat", borderwidth=0, highlightthickness=0, takefocus=0,
+            anchor="w", cursor="hand2",
             font=("Segoe UI", 8), command=self.leiste_umschalten)
         self.einklapp_knopf.pack(fill="x", padx=14, pady=(0, 6))
 
@@ -209,7 +214,14 @@ class Navigationsschale:
             command=lambda k=bereich.kennung: self.zeigen(k),
             bg=NAVY, fg=TEXT, activebackground=NAVY_HELL,
             activeforeground="#ffffff", relief="flat", borderwidth=0,
-            anchor="w", padx=10, pady=9, cursor="hand2",
+            # ``highlightthickness`` ist nicht dasselbe wie
+            # ``borderwidth``. Tk zeichnet damit einen zusaetzlichen
+            # Fokusrahmen, unter X11 in einem hellen Grau - im Bild sah
+            # jeder Eintrag der Seitenleiste aus wie ein umrandeter
+            # Kasten. In der Vorlage hat nur der aktive Eintrag eine
+            # Flaeche, kein Eintrag einen Rahmen.
+            highlightthickness=0, takefocus=0,
+            anchor="w", padx=12, pady=10, cursor="hand2",
             font=("Segoe UI", 10),
         )
         knopf.pack(fill="x", pady=1)

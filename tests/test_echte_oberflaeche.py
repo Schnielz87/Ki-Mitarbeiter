@@ -34,6 +34,22 @@ if os.name != "nt" and not os.environ.get("DISPLAY"):
                 allow_module_level=True)
 
 
+@pytest.fixture(autouse=True)
+def ohne_dateiablage(monkeypatch):
+    """Kein Eingriff in die Fensterprozedur waehrend der Tests.
+
+    Unter Windows richtet die Anwendung Drag & Drop ein, indem sie die
+    Fensterprozedur durch eine Python-Funktion ersetzt. Fuer den Betrieb
+    ist das richtig. In einem Test ist es gefaehrlich: das Fenster wird am
+    Ende zerstoert, die Rueckruffunktion lebt in Python, und in welcher
+    Reihenfolge beides passiert, ist nichts, worauf man bauen sollte.
+    Geprueft wird hier das Aussehen, nicht die Dateiablage.
+    """
+    from ui import dateiablage
+
+    monkeypatch.setenv(dateiablage.ABSCHALTER, "1")
+
+
 @pytest.fixture
 def fenster(portable_root):
     """Ein echtes Hauptfenster auf einem echten Bildschirm.

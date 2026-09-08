@@ -1990,9 +1990,12 @@ class MainWindow:
         spalten = ("id", "name", "system", "modus", "zustand")
         self.services_tree = ttk.Treeview(frame, columns=spalten, show="headings")
         for spalte, kopf, breite in (
-            ("id", "Kennung", 150), ("name", "Dienst", 260),
-            ("system", "System", 180), ("modus", "Betrieb", 120),
-            ("zustand", "Zustand", 160),
+            # "DATEV Rechnungswesen / Unternehmen online" ist der laengste
+            # Systemname und wurde bei 180 abgeschnitten. Die Kennung
+            # daneben braucht dafuer weniger.
+            ("id", "Kennung", 120), ("name", "Dienst", 230),
+            ("system", "System", 300), ("modus", "Betrieb", 110),
+            ("zustand", "Zustand", 150),
         ):
             self.services_tree.heading(spalte, text=kopf)
             self.services_tree.column(spalte, width=breite, anchor="w")
