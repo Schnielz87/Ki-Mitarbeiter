@@ -59,7 +59,13 @@ jobs:
   build-windows:
     name: EXE bauen und pruefen (Windows)
     runs-on: windows-latest
-    timeout-minutes: 30
+    # 30 Minuten reichten nicht mehr. Der Auftrag ist gewachsen - die
+    # Oberflaechenpruefung kam hinzu, und die Wartezeitmessung braucht je
+    # nach Tagesform des Baurechners zwischen sieben und zwanzig Minuten.
+    # Lief die Zeit ab, wurde der Auftrag mitten in der Messung
+    # abgebrochen und es entstand ueberhaupt kein Paket - obwohl EXE,
+    # Tests und Sprachmodell laengst durch waren.
+    timeout-minutes: 50
     steps:
       - uses: actions/checkout@v4
 
@@ -570,6 +576,9 @@ jobs:
           }
 
       - name: Bezogenes Modell wieder entfernen
+        # Ebenfalls immer: sonst wanderte bei einem Fehlschlag ein halbes
+        # Gigabyte Modelldatei mit ins Paket.
+        if: always()
         shell: pwsh
         run: |
           # Das Modell gehoert nicht ins Auslieferungspaket: es ist mehrere
@@ -620,6 +629,7 @@ jobs:
           }
 
       - name: Paketfassung lesen
+        if: always()
         # Die Datei PAKETFASSUNG traegt eine fortlaufende Nummer. Der
         # Auftraggeber legt seine Pakete als "..._Vxx" ab, damit er die
         # aktuelle Datei erkennt; die Nummer steht deshalb schon im Namen
@@ -633,6 +643,12 @@ jobs:
           "nummer=$nummer" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
 
       - name: Ergebnis bereitstellen
+        # Auch dann, wenn ein spaeterer Pruefschritt fehlgeschlagen ist.
+        # Das Paket ist zu diesem Zeitpunkt gebaut und geprueft; es dem
+        # Auftraggeber vorzuenthalten, weil eine amtliche Adresse nicht
+        # antwortete, waere die falsche Reihenfolge. Was fehlgeschlagen
+        # ist, steht im Protokoll und im Bericht.
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: Portable-Buchhalter-Windows_V${{ steps.fassung.outputs.nummer }}
