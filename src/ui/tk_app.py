@@ -2588,6 +2588,7 @@ class MainWindow:
                 return
             assert outcome is not None
             self._antwort_anzeigen(outcome.answer.text)
+            self._datei_melden(outcome)
             self._show_sources(outcome)
             self._refresh_conversations()
             self._ask_about_candidates(outcome)
@@ -2600,6 +2601,36 @@ class MainWindow:
 
         self._laufende_aufgabe.run(work, done, on_tick=takt)
         return "break"
+
+    def _datei_melden(self, outcome) -> None:
+        """Sagt in der Unterhaltung, dass eine Datei entstanden ist.
+
+        Eine Datei, die stillschweigend im Ordner landet, ist fuer den
+        Anwender keine erzeugte Datei - er weiss nichts von ihr. Deshalb
+        steht es in der Unterhaltung, mit Namen und Ablageort, und die
+        Liste der Arbeitsergebnisse wird gleich mit aufgefrischt.
+        """
+        datei = getattr(outcome, "datei", None)
+        fehler = getattr(outcome, "datei_fehler", "")
+        if datei is None and not fehler:
+            return
+        if fehler:
+            self._append_chat(
+                "System",
+                "Die verlangte Datei konnte nicht erzeugt werden: "
+                f"{fehler}", "hinweis")
+            return
+        self._append_chat(
+            "System",
+            f"Datei erzeugt: {datei.name} ({datei.format.upper()}, "
+            f"{datei.groesse} Bytes)\n"
+            f"Zu finden unter \u201eArbeitsergebnisse\u201c - dort laesst "
+            "sie sich oeffnen, exportieren und umbenennen.",
+            "system")
+        try:
+            self._refresh_results()
+        except Exception:               # pragma: no cover - defensiv
+            log.debug("Arbeitsergebnisse nicht auffrischbar", exc_info=True)
 
     def _wartestand_anzeigen(self) -> None:
         """Sagt waehrend des Wartens, worauf gewartet wird - und wie lange.

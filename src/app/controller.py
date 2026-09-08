@@ -18,6 +18,7 @@ from pathlib import Path
 from typing import Any, Callable, Iterable, Sequence
 
 from pkc.artefakte import Artefaktwerk, aus_markdown
+from pkc.artefakte.wunsch import erkennen as dateiwunsch_erkennen
 from pkc.audit import ApprovalState, ApprovalStore, AuditLog
 from pkc.checkpoint import CheckpointManager
 from pkc.config import Config
@@ -133,6 +134,13 @@ class AskOutcome:
     message_id: int
     capture_candidates: list[CaptureCandidate] = field(default_factory=list)
     stored_automatically: list[str] = field(default_factory=list)
+    #: Die Datei, die zu dieser Frage erzeugt wurde - falls eine
+    #: verlangt war. ``None`` heisst: es wurde keine verlangt.
+    datei: object | None = None
+    #: Warum keine Datei entstand, obwohl eine verlangt war. Leer, wenn
+    #: alles geklappt hat oder nichts verlangt war. Ein Fehlschlag muss
+    #: sichtbar sein - sonst wartet jemand auf eine Datei, die nie kommt.
+    datei_fehler: str = ""
 
 
 class AppController:
@@ -1619,12 +1627,43 @@ class AppController:
                     stored.append(candidate.mem_key)
                 candidates = []
 
+        # Hat die Frage eine Datei verlangt? Dann wird sie erzeugt.
+        #
+        # Der Anlass: Eine Aufgabe verlangte woertlich eine
+        # Excel-Arbeitsmappe. Der Buchhalter antwortete mit Text und
+        # erzeugte nichts. Die Faehigkeit war da - sie wurde nur nie
+        # ausgeloest, weil es dafuer einen Knopf gab, den man haette
+        # druecken muessen. Ein Mitarbeiter, dem man sagt "erstell mir
+        # eine Tabelle", haelt keinen Vortrag ueber Tabellen.
+        datei = None
+        datei_fehler = ""
+        try:
+            wunsch = dateiwunsch_erkennen(question)
+        except Exception:                       # pragma: no cover - defensiv
+            log.debug("Dateiwunsch nicht auswertbar", exc_info=True)
+            wunsch = None
+        if wunsch is not None:
+            try:
+                datei = self.datei_erzeugen(
+                    result.text, wunsch.format, wunsch.name,
+                    angaben={"herkunft": f"Frage in Unterhaltung {uid}"},
+                )
+                log.info("Datei zur Frage erzeugt: %s", datei.name)
+            except Exception as fehler:
+                # Nicht verschweigen. Wer eine Datei bestellt hat und
+                # keine bekommt, muss erfahren warum - sonst sucht er im
+                # Ordner nach etwas, das es nicht gibt.
+                datei_fehler = str(fehler)
+                log.warning("Die verlangte %s-Datei konnte nicht erzeugt "
+                            "werden: %s", wunsch.format, fehler)
+
         self.audit.record(
             "frage", "conversation", uid,
             modellantwort=result.model_answered, fundstellen=len(result.references),
             betriebsart=mode.value,
         )
-        return AskOutcome(result, uid, message_id, candidates, stored)
+        return AskOutcome(result, uid, message_id, candidates, stored,
+                          datei=datei, datei_fehler=datei_fehler)
 
     def require_productive_use(self) -> None:
         """Sperrt die produktive Nutzung ohne gueltige Lizenz (Masterprompt 87).
