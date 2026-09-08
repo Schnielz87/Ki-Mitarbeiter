@@ -299,3 +299,54 @@ def tk_app_modul(fenster):
     import sys
 
     return sys.modules[type(fenster).__module__]
+
+
+def test_das_fenstersymbol_wird_wirklich_gesetzt(fenster):
+    """In der Titelleiste stand die Feder von Tk statt des PORTIVA-P.
+
+    Die vorherige Fassung rief ``iconbitmap(default=...)`` auf und war
+    damit zufrieden. ``default`` setzt aber das Symbol fuer Fenster, die
+    *danach* entstehen; das schon offene Fenster behaelt seines. Der
+    Aufruf meldete keinen Fehler - er tat nur etwas anderes als gemeint.
+
+    Geprueft wird deshalb nicht "es gab keine Ausnahme", sondern dass
+    mindestens ein Weg das Symbol wirklich gesetzt hat, und dass der Weg
+    fuer *dieses* Fenster dabei ist.
+    """
+    from ui import tk_app
+
+    geschafft = tk_app._fenstericon(fenster.root, fenster.brand)
+    assert geschafft, (
+        "Kein Weg hat funktioniert - in der Titelleiste stuende das "
+        "Standardbild von Tk.")
+    fuer_dieses_fenster = {"iconbitmap", "iconphoto"} & set(geschafft)
+    assert fuer_dieses_fenster, (
+        f"Nur {geschafft} - das setzt das Symbol erst fuer spaetere "
+        "Fenster, nicht fuer dieses.")
+
+
+def test_die_symboldateien_gibt_es_und_sie_sind_lesbar():
+    """Ein Symbolweg kann nur greifen, wenn die Datei auch da ist."""
+    from pkc.branding import load_brand
+    from pkc.config import Config
+    from pkc.paths import Paths
+    import tempfile
+
+    wurzel = Path(tempfile.mkdtemp())
+    pfade = Paths(wurzel)
+    pfade.ensure_runtime_dirs()
+    pfade.write_marker()
+    brand = load_brand(pfade, Config.load(pfade))
+
+    ico = brand.icon_pfad
+    assert ico is not None and ico.exists(), "portiva_icon.ico fehlt"
+    png = brand.variante("icon")
+    assert png is not None and png.exists(), "portiva_icon.png fehlt"
+
+    # Die .ico muss die kleinen Groessen enthalten - Windows nimmt fuer
+    # die Titelleiste 16x16. Fehlen sie, skaliert Windows die grosse
+    # Fassung herunter, und das sieht matschig aus.
+    kopf = ico.read_bytes()[:6]
+    assert kopf[:4] == b"\x00\x00\x01\x00", "das ist keine gueltige .ico-Datei"
+    anzahl = int.from_bytes(kopf[4:6], "little")
+    assert anzahl >= 4, f"die .ico enthaelt nur {anzahl} Groessen"

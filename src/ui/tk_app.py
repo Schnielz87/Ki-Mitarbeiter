@@ -26,6 +26,11 @@ from pkc.branding import load_brand, profilname
 from pkc.logging_setup import get_logger
 from pkc.netstate import Mode
 from ui.antwort import teilen
+# Die Farben kommen aus einer Stelle. Sie hier noch einmal als Zahl
+# hinzuschreiben hiesse, sie beim naechsten Umbau an einer davon zu
+# vergessen (OBERFLAECHEN_STANDARD.md Abschnitt 2).
+from ui.stil import (BLAU, BLAU_HELL, GRUND as FLAECHE, KARTE, LEISE, NAVY,
+                     RAND, TEXT)
 from ui.markdown import zerlegen
 from pkc.audit import ApprovalState
 from pkc.memory.schema_keys import CATEGORIES
@@ -184,27 +189,62 @@ def _taskleisten_kennung(brand) -> None:
         pass
 
 
-def _fenstericon(fenster, brand) -> None:
-    """Setzt Fenster- und Taskleistensymbol, soweit das System es zulaesst."""
+def _fenstericon(fenster, brand) -> list[str]:
+    """Setzt Fenster- und Taskleistensymbol, soweit das System es zulaesst.
+
+    Gibt zurueck, welche Wege tatsaechlich funktioniert haben - fuer das
+    Protokoll und damit ein Test nachsehen kann. Nie eine Ausnahme: ein
+    fehlendes Symbol darf den Start nicht verhindern.
+
+    **Warum alle Wege und nicht der erste, der klappt:** Die vorherige
+    Fassung rief ``iconbitmap(default=...)`` auf und kehrte bei Erfolg
+    sofort zurueck. ``default`` setzt aber das Symbol fuer Fenster, die
+    danach entstehen - das bereits erzeugte Fenster behaelt seines. In
+    der Titelleiste stand deshalb weiterhin die Feder, das Standardbild
+    von Tk. Der Aufruf hatte keinen Fehler gemeldet; er hatte nur etwas
+    anderes getan, als gemeint war.
+
+    Deshalb jetzt: erst das Symbol fuer *dieses* Fenster, dann das fuer
+    kuenftige, und zusaetzlich ``iconphoto``. Die Wege stoeren sich nicht
+    gegenseitig, und welcher auf welchem System greift, muss man nicht
+    raten.
+    """
     _taskleisten_kennung(brand)
+    geschafft: list[str] = []
+
     ico = brand.icon_pfad
     if ico is not None:
+        # Ohne "default": das Symbol dieses Fensters.
         try:
-            fenster.iconbitmap(default=str(ico))
-            return
+            fenster.iconbitmap(str(ico))
+            geschafft.append("iconbitmap")
         except Exception as exc:        # unter Linux kennt Tk kein .ico
             log.debug("iconbitmap nicht moeglich (%s)", exc)
+        # Mit "default": das Symbol aller spaeteren Fenster (Dialoge).
+        try:
+            fenster.iconbitmap(default=str(ico))
+            geschafft.append("iconbitmap-default")
+        except Exception as exc:
+            log.debug("iconbitmap default nicht moeglich (%s)", exc)
+
     png = brand.variante("icon")
-    if png is None:
-        return
-    try:
-        bild = tk.PhotoImage(file=str(png))
-        fenster.iconphoto(True, bild)
-        # Referenz halten, sonst raeumt der Sammler das Bild weg und das
-        # Symbol verschwindet wieder.
-        fenster._portiva_icon = bild
-    except Exception as exc:            # pragma: no cover - defensiv
-        log.debug("iconphoto nicht moeglich (%s)", exc)
+    if png is not None:
+        try:
+            bild = tk.PhotoImage(file=str(png), master=fenster)
+            fenster.iconphoto(True, bild)
+            # Referenz halten, sonst raeumt der Sammler das Bild weg und
+            # das Symbol verschwindet wieder.
+            fenster._portiva_icon = bild
+            geschafft.append("iconphoto")
+        except Exception as exc:        # pragma: no cover - defensiv
+            log.debug("iconphoto nicht moeglich (%s)", exc)
+
+    if geschafft:
+        log.info("Fenstersymbol gesetzt (%s)", ", ".join(geschafft))
+    else:
+        log.warning("Fenstersymbol konnte nicht gesetzt werden - in der "
+                    "Titelleiste steht das Standardbild von Tk.")
+    return geschafft
 
 
 class _BrandKopf:
@@ -591,22 +631,22 @@ class MainWindow:
 
         self.chat = scrolledtext.ScrolledText(
             left, wrap="word", font=FONT_BASE, state="disabled",
-            relief="flat", borderwidth=0, background="#ffffff",
+            relief="flat", borderwidth=0, background=KARTE,
             padx=16, pady=12, highlightthickness=1,
-            highlightbackground="#dfe5ec", highlightcolor="#dfe5ec")
+            highlightbackground=RAND, highlightcolor=RAND)
         self.chat.grid(row=1, column=0, sticky="nsew")
         self.chat.tag_configure("wer", font=("Segoe UI", 10, "bold"))
         # Abschnitt 23: Frage und Antwort sollen sich auf einen Blick
         # unterscheiden lassen.
         self.chat.tag_configure("sprecher_ich", font=("Segoe UI", 9, "bold"),
-                                foreground="#5b6b80", spacing1=14)
+                                foreground=LEISE, spacing1=14)
         # Die eigene Frage bekommt eine eigene Flaeche - wie in den
         # Vorlagen. Tk kennt keine runden Ecken; was es kann, ist eine
         # Hintergrundfarbe mit Innenabstand ueber ``lmargin`` und
         # ``spacing``. Das genuegt, um Frage und Antwort auf einen Blick
         # zu trennen, worum es hier geht.
-        self.chat.tag_configure("frage", background="#e8f0fb",
-                                foreground="#14243c", lmargin1=14, lmargin2=14,
+        self.chat.tag_configure("frage", background=BLAU_HELL,
+                                foreground=TEXT, lmargin1=14, lmargin2=14,
                                 rmargin=14, spacing1=8, spacing3=8,
                                 borderwidth=0)
         self.chat.tag_configure("sprecher_ki", font=("Segoe UI", 10, "bold"),
@@ -637,10 +677,10 @@ class MainWindow:
         entry_frame.grid(row=2, column=0, sticky="ew", pady=(PAD, 0))
         entry_frame.columnconfigure(0, weight=1)
         self.entry = tk.Text(entry_frame, height=3, font=FONT_BASE, wrap="word",
-                             relief="flat", borderwidth=0, background="#ffffff",
+                             relief="flat", borderwidth=0, background=KARTE,
                              padx=12, pady=8, highlightthickness=1,
-                             highlightbackground="#dfe5ec",
-                             highlightcolor="#1e6fd9")
+                             highlightbackground=RAND,
+                             highlightcolor=BLAU)
         self.entry.grid(row=0, column=0, sticky="nsew")
 
         # Auftrag Abschnitt 33: Eingabe sendet, Umschalt+Eingabe bricht die
@@ -677,7 +717,7 @@ class MainWindow:
         # Bereich also benutzbar statt tot zu sein.
         self.drop_hinweis = tk.Label(
             entry_frame, text="Datei hierher ziehen oder \u201eDatei anhaengen\u201c",
-            bg="#eef2f7", fg="#5b6b80", font=("Segoe UI", 8), pady=6,
+            bg="#eef2f7", fg=LEISE, font=("Segoe UI", 8), pady=6,
             cursor="hand2")
         self.drop_hinweis.grid(row=2, column=0, columnspan=2, sticky="ew",
                                pady=(6, 0))
@@ -687,7 +727,7 @@ class MainWindow:
         hinweise = ttk.Frame(left)
         hinweise.grid(row=3, column=0, sticky="ew", pady=(4, 0))
         self.tastenhinweis = ttk.Label(
-            hinweise, text=HINWEIS_LANG, foreground="#5b6b80",
+            hinweise, text=HINWEIS_LANG, foreground=LEISE,
             font=("Segoe UI", 8))
         self.tastenhinweis.pack(side="left")
 
@@ -732,8 +772,8 @@ class MainWindow:
                                                       sticky="w")
         self.conversation_list = tk.Listbox(
             verlauf, height=6, font=("Segoe UI", 9), relief="flat",
-            borderwidth=0, background="#ffffff", highlightthickness=1,
-            highlightbackground="#dfe5ec", activestyle="none")
+            borderwidth=0, background=KARTE, highlightthickness=1,
+            highlightbackground=RAND, activestyle="none")
         self.conversation_list.grid(row=1, column=0, sticky="ew", pady=2)
         self.conversation_list.bind("<Double-Button-1>", self._open_conversation)
         ttk.Button(verlauf, text="Unterhaltung exportieren",
@@ -924,7 +964,7 @@ class MainWindow:
         # Kategorien als Kacheln mit Anzahl. Eine flache Liste mit dreissig
         # Eintraegen sagt nicht, was das Unternehmen ueberhaupt hinterlegt
         # hat - und ob irgendwo etwas fehlt.
-        self.memory_kacheln = tk.Frame(frame, bg="#f5f7fa")
+        self.memory_kacheln = tk.Frame(frame, bg=FLAECHE)
         self.memory_kacheln.pack(fill="x", pady=(0, PAD))
         self._memory_kachel_widgets: dict[str, tuple] = {}
 
@@ -971,10 +1011,10 @@ class MainWindow:
                              ("In Unterhaltung uebernehmen", self._beleg_uebernehmen),
                              ("Aktualisieren", self._refresh_documents)):
             ttk.Button(leiste, text=text, command=befehl).pack(side="left", padx=(PAD, 0))
-        self.documents_hint = ttk.Label(leiste, text="", foreground="#5b6b80")
+        self.documents_hint = ttk.Label(leiste, text="", foreground=LEISE)
         self.documents_hint.pack(side="right")
 
-        ttk.Label(frame, foreground="#5b6b80", font=("Segoe UI", 8),
+        ttk.Label(frame, foreground=LEISE, font=("Segoe UI", 8),
                   text="Automatische Erkennung \u2192 fachliche Analyse "
                        "\u2192 Ergebnis \u2192 Quellen").pack(anchor="w",
                                                                 pady=(0, 4))
@@ -1017,7 +1057,7 @@ class MainWindow:
             ttk.Button(leiste, text=text, command=befehl).pack(side="left", padx=(PAD, 0))
         self.results_hint = ttk.Label(
             leiste, text="Zeile auswaehlen, dann eine Aktion",
-            foreground="#5b6b80")
+            foreground=LEISE)
         self.results_hint.pack(side="right")
 
         spalten = ("name", "format", "zeitpunkt", "fassung", "groesse", "zustand")
@@ -1144,19 +1184,19 @@ class MainWindow:
             "verwalten.", "\u25eb")
 
         # Kennzahlen zuerst - vier Zahlen sagen mehr als vier Absaetze.
-        self.wissen_kacheln = tk.Frame(frame, bg="#f5f7fa")
+        self.wissen_kacheln = tk.Frame(frame, bg=FLAECHE)
         self.wissen_kacheln.pack(fill="x", pady=(0, PAD))
         self._wissen_kachel_widgets: dict[str, object] = {}
         for spalte, titel in enumerate(
                 ("Wissensstand", "Quellen", "Letzte Pruefung", "Naechste Pruefung")):
-            kachel = tk.Frame(self.wissen_kacheln, bg="#ffffff",
-                              highlightbackground="#dfe5ec", highlightthickness=1)
+            kachel = tk.Frame(self.wissen_kacheln, bg=KARTE,
+                              highlightbackground=RAND, highlightthickness=1)
             kachel.grid(row=0, column=spalte, sticky="ew", padx=(0, 10))
-            innen = tk.Frame(kachel, bg="#ffffff")
+            innen = tk.Frame(kachel, bg=KARTE)
             innen.pack(fill="x", padx=16, pady=12)
-            tk.Label(innen, text=titel, bg="#ffffff", fg="#14243c", anchor="w",
+            tk.Label(innen, text=titel, bg=KARTE, fg=TEXT, anchor="w",
                      font=("Segoe UI", 10, "bold")).pack(anchor="w")
-            wert = tk.Label(innen, text="\u2014", bg="#ffffff", fg="#5b6b80",
+            wert = tk.Label(innen, text="\u2014", bg=KARTE, fg=LEISE,
                             anchor="w", font=("Segoe UI", 9))
             wert.pack(anchor="w")
             self._wissen_kachel_widgets[titel] = wert
@@ -1172,11 +1212,11 @@ class MainWindow:
         self.pipeline_rahmen = ttk.LabelFrame(frame, text="Update-Pipeline")
         self.pipeline_rahmen.pack(fill="x", pady=(0, PAD))
         self._pipeline_schritte: dict[str, object] = {}
-        schrittzeile = tk.Frame(self.pipeline_rahmen, bg="#f5f7fa")
+        schrittzeile = tk.Frame(self.pipeline_rahmen, bg=FLAECHE)
         schrittzeile.pack(fill="x", padx=10, pady=8)
         for schritt in self.PIPELINE_SCHRITTE:
             label = tk.Label(schrittzeile, text=f"  \u25cb  {schritt}  ",
-                             bg="#f5f7fa", fg="#5b6b80", font=("Segoe UI", 9))
+                             bg=FLAECHE, fg=LEISE, font=("Segoe UI", 9))
             label.pack(side="left")
             self._pipeline_schritte[schritt] = label
 
@@ -1835,34 +1875,34 @@ class MainWindow:
         frame = self.schale.bereich_anlegen(kennung, titel, untertitel, zeichen,
                                             kurz=kurz)
 
-        karte = tk.Frame(frame, bg="#ffffff", highlightbackground="#dfe5ec",
+        karte = tk.Frame(frame, bg=KARTE, highlightbackground=RAND,
                          highlightthickness=1)
         karte.pack(fill="x", pady=(0, PAD))
-        innen = tk.Frame(karte, bg="#ffffff")
+        innen = tk.Frame(karte, bg=KARTE)
         innen.pack(fill="x", padx=20, pady=18)
 
         tk.Label(innen, text="Dieser Bereich ist noch nicht verfuegbar.",
-                 bg="#ffffff", fg="#9a6512", anchor="w",
+                 bg=KARTE, fg="#9a6512", anchor="w",
                  font=("Segoe UI", 11, "bold")).pack(anchor="w")
-        tk.Label(innen, bg="#ffffff", fg="#5b6b80", anchor="w", justify="left",
+        tk.Label(innen, bg=KARTE, fg=LEISE, anchor="w", justify="left",
                  wraplength=760, font=("Segoe UI", 9),
                  text="Er ist geplant und beauftragt, aber noch nicht gebaut. "
                       "Damit hier nichts steht, was nicht funktioniert, gibt "
                       "es vorerst keine Schaltflaechen.").pack(anchor="w",
                                                                pady=(6, 0))
 
-        tk.Label(innen, text="Was der Bereich koennen wird:", bg="#ffffff",
-                 fg="#14243c", anchor="w",
+        tk.Label(innen, text="Was der Bereich koennen wird:", bg=KARTE,
+                 fg=TEXT, anchor="w",
                  font=("Segoe UI", 9, "bold")).pack(anchor="w", pady=(16, 4))
         for punkt in zweck:
-            tk.Label(innen, text=f"   \u2022  {punkt}", bg="#ffffff",
+            tk.Label(innen, text=f"   \u2022  {punkt}", bg=KARTE,
                      fg="#42556e", anchor="w", justify="left", wraplength=740,
                      font=("Segoe UI", 9)).pack(anchor="w", pady=1)
 
-        tk.Label(innen, text="Was heute schon geht:", bg="#ffffff",
-                 fg="#14243c", anchor="w",
+        tk.Label(innen, text="Was heute schon geht:", bg=KARTE,
+                 fg=TEXT, anchor="w",
                  font=("Segoe UI", 9, "bold")).pack(anchor="w", pady=(16, 4))
-        tk.Label(innen, text=heute, bg="#ffffff", fg="#42556e", anchor="w",
+        tk.Label(innen, text=heute, bg=KARTE, fg="#42556e", anchor="w",
                  justify="left", wraplength=740,
                  font=("Segoe UI", 9)).pack(anchor="w")
 
@@ -1924,7 +1964,7 @@ class MainWindow:
                              ("Deinstallieren", self._plugin_entfernen),
                              ("Aktualisieren", self._refresh_plugins)):
             ttk.Button(leiste, text=text, command=befehl).pack(side="left", padx=(PAD, 0))
-        self.plugins_hint = ttk.Label(leiste, text="", foreground="#5b6b80")
+        self.plugins_hint = ttk.Label(leiste, text="", foreground=LEISE)
         self.plugins_hint.pack(side="right")
 
         spalten = ("id", "name", "version", "kategorie", "zustand", "signatur")
@@ -2093,7 +2133,7 @@ class MainWindow:
                              ("Trennen", self._dienst_trennen),
                              ("Aktualisieren", self._refresh_services)):
             ttk.Button(leiste, text=text, command=befehl).pack(side="left", padx=(0, PAD))
-        self.services_hint = ttk.Label(leiste, text="", foreground="#5b6b80")
+        self.services_hint = ttk.Label(leiste, text="", foreground=LEISE)
         self.services_hint.pack(side="right")
 
         spalten = ("id", "name", "system", "modus", "zustand")
@@ -2287,7 +2327,7 @@ class MainWindow:
         )
 
         # -- Systemstatus als Ampelliste --------------------------------
-        right = tk.Frame(frame, bg="#ffffff", highlightbackground="#dfe5ec",
+        right = tk.Frame(frame, bg=KARTE, highlightbackground=RAND,
                          highlightthickness=1, width=STATUS_BREITE)
         right.grid(row=0, column=1, sticky="nsew", padx=(PAD * 2, 0))
         # Die Kinder dieser Flaeche werden mit ``pack`` gesetzt - dann
@@ -2296,14 +2336,14 @@ class MainWindow:
         # die Einstellungen daneben werden eng.
         right.pack_propagate(False)
         right.grid_propagate(False)
-        innen = tk.Frame(right, bg="#ffffff")
+        innen = tk.Frame(right, bg=KARTE)
         innen.pack(fill="both", expand=True, padx=18, pady=16)
-        tk.Label(innen, text="Systemstatus", bg="#ffffff", fg="#14243c",
+        tk.Label(innen, text="Systemstatus", bg=KARTE, fg=TEXT,
                  font=("Segoe UI", 12, "bold"), anchor="w").pack(fill="x")
-        tk.Label(innen, text="Aktueller PORTIVA-Zustand", bg="#ffffff",
-                 fg="#5b6b80", font=("Segoe UI", 8), anchor="w").pack(fill="x")
+        tk.Label(innen, text="Aktueller PORTIVA-Zustand", bg=KARTE,
+                 fg=LEISE, font=("Segoe UI", 8), anchor="w").pack(fill="x")
 
-        self.statusliste = tk.Frame(innen, bg="#ffffff")
+        self.statusliste = tk.Frame(innen, bg=KARTE)
         self.statusliste.pack(fill="x", pady=(12, 0))
         self._statuszeilen: dict[str, tuple] = {}
 
@@ -2311,7 +2351,7 @@ class MainWindow:
         # standen vorher in einer Zeile und wurden am Rand abgeschnitten -
         # der dritte war nur noch ein "S". Untereinander haben sie Platz
         # und ihre volle Beschriftung.
-        knoepfe = tk.Frame(innen, bg="#ffffff")
+        knoepfe = tk.Frame(innen, bg=KARTE)
         knoepfe.pack(fill="x", pady=(14, 0))
         ttk.Button(knoepfe, text="Status aktualisieren",
                    command=self._refresh_status).pack(fill="x")
@@ -2324,7 +2364,7 @@ class MainWindow:
         # was bei einer Stoerung kopiert und weitergegeben wird. Nur steht
         # er jetzt darunter statt an erster Stelle.
         ttk.Label(innen, text="Vollstaendiger Zustand zum Kopieren:",
-                  foreground="#5b6b80").pack(anchor="w", pady=(14, 2))
+                  foreground=LEISE).pack(anchor="w", pady=(14, 2))
         self.status_text = scrolledtext.ScrolledText(
             innen, wrap="word", font=FONT_MONO, height=12, state="disabled")
         self.status_text.pack(fill="both", expand=True)
@@ -2353,7 +2393,7 @@ class MainWindow:
         if self._statuszeilen:
             tk.Frame(self.statusliste, bg="#eef2f7", height=1).pack(
                 fill="x", pady=(4, 0))
-        zeile = tk.Frame(self.statusliste, bg="#ffffff")
+        zeile = tk.Frame(self.statusliste, bg=KARTE)
         zeile.pack(fill="x", pady=5)
         # Der Wert zuerst und rechts, der Name danach mit dem Rest der
         # Breite. Umgekehrt nahm der Name so viel Platz, wie er wollte,
@@ -2361,7 +2401,7 @@ class MainWindow:
         wertlabel = tk.Label(zeile, text=wert, bg=grund, fg=schrift,
                              font=("Segoe UI", 9, "bold"), padx=10, pady=3)
         wertlabel.pack(side="right")
-        namelabel = tk.Label(zeile, text=name, bg="#ffffff", fg="#14243c",
+        namelabel = tk.Label(zeile, text=name, bg=KARTE, fg=TEXT,
                              anchor="w", justify="left",
                              font=("Segoe UI", 9, "bold"))
         namelabel.pack(side="left", fill="x", expand=True)
@@ -2844,18 +2884,18 @@ class MainWindow:
                 _, zahl_label = self._memory_kachel_widgets[titel]
                 zahl_label.configure(text=f"{summe} Eintraege")
                 continue
-            kachel = tk.Frame(self.memory_kacheln, bg="#ffffff",
-                              highlightbackground="#dfe5ec", highlightthickness=1,
+            kachel = tk.Frame(self.memory_kacheln, bg=KARTE,
+                              highlightbackground=RAND, highlightthickness=1,
                               cursor="hand2")
             kachel.grid(row=spalte // 3, column=spalte % 3, sticky="ew",
                         padx=(0, 10), pady=(0, 10))
-            innen = tk.Frame(kachel, bg="#ffffff")
+            innen = tk.Frame(kachel, bg=KARTE)
             innen.pack(fill="x", padx=16, pady=12)
-            kopf = tk.Label(innen, text=titel, bg="#ffffff", fg="#14243c",
+            kopf = tk.Label(innen, text=titel, bg=KARTE, fg=TEXT,
                             anchor="w", font=("Segoe UI", 10, "bold"))
             kopf.pack(anchor="w")
-            zahl = tk.Label(innen, text=f"{summe} Eintraege", bg="#ffffff",
-                            fg="#5b6b80", anchor="w", font=("Segoe UI", 9))
+            zahl = tk.Label(innen, text=f"{summe} Eintraege", bg=KARTE,
+                            fg=LEISE, anchor="w", font=("Segoe UI", 9))
             zahl.pack(anchor="w")
             for widget in (kachel, innen, kopf, zahl):
                 widget.bind("<Button-1>",

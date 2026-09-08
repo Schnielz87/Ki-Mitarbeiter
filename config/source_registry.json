@@ -201,11 +201,14 @@
       "documents": [
         {
           "doc_uid": "BMF_SCHREIBEN_INDEX",
-          "url": "https://www.bundesfinanzministerium.de/Web/DE/Themen/Steuern/Steuerverwaltung-u-steuerrecht/steuerverwaltung-und-steuerrecht.html",
-          "title": "BMF - Steuerverwaltung und Steuerrecht (Einstieg BMF-Schreiben)",
+          "url": "https://www.bundesfinanzministerium.de/Web/DE/Service/Publikationen/BMF_Schreiben/bmf_schreiben.html",
+          "title": "BMF-Schreiben - Uebersicht (Service/Publikationen)",
           "citation": "BMF",
           "format": "html",
-          "kind": "admin"
+          "kind": "admin",
+          "url_geprueft_am": "2026-09-08",
+          "frueher": "https://www.bundesfinanzministerium.de/Web/DE/Themen/Steuern/Steuerverwaltung-u-steuerrecht/steuerverwaltung-und-steuerrecht.html",
+          "aenderungsgrund": "Die bisherige Adresse antwortete mit HTTP 404 - der Herausgeber hat die Seite umgezogen. Neue Adresse ueber die Suche des Herausgebers ermittelt."
         },
         {
           "doc_uid": "BMF_USTAE_INDEX",
@@ -238,11 +241,14 @@
       "documents": [
         {
           "doc_uid": "ELSTER_START",
-          "url": "https://www.elster.de/eportal/infoseite/hilfe",
-          "title": "ELSTER - Hilfe und Informationen",
+          "url": "https://www.elster.de/elsterweb/infoseite/unternehmer",
+          "title": "ELSTER - Informationen fuer Unternehmer",
           "citation": "ELSTER",
           "format": "html",
-          "kind": "authority"
+          "kind": "authority",
+          "url_geprueft_am": "2026-09-08",
+          "frueher": "https://www.elster.de/eportal/infoseite/hilfe",
+          "aenderungsgrund": "Die bisherige Adresse antwortete mit HTTP 404 - der Herausgeber hat die Seite umgezogen. Neue Adresse ueber die Suche des Herausgebers ermittelt."
         }
       ],
       "pruefung": {
@@ -272,19 +278,25 @@
       "documents": [
         {
           "doc_uid": "BZST_USTID",
-          "url": "https://www.bzst.de/DE/Unternehmen/Umsatzsteuer/Umsatzsteuer-Identifikationsnummer/umsatzsteuer-identifikationsnummer_node.html",
+          "url": "https://www.bzst.de/DE/Unternehmen/Identifikationsnummern/Umsatzsteuer-Identifikationsnummer/umsatzsteuer-identifikationsnummer_node.html",
           "title": "BZSt - Umsatzsteuer-Identifikationsnummer",
           "citation": "BZSt USt-IdNr.",
           "format": "html",
-          "kind": "authority"
+          "kind": "authority",
+          "url_geprueft_am": "2026-09-08",
+          "frueher": "https://www.bzst.de/DE/Unternehmen/Umsatzsteuer/Umsatzsteuer-Identifikationsnummer/umsatzsteuer-identifikationsnummer_node.html",
+          "aenderungsgrund": "Die bisherige Adresse antwortete mit HTTP 404 - der Herausgeber hat die Seite umgezogen. Neue Adresse ueber die Suche des Herausgebers ermittelt."
         },
         {
           "doc_uid": "BZST_ZM",
-          "url": "https://www.bzst.de/DE/Unternehmen/Umsatzsteuer/Zusammenfassende_Meldung/zusammenfassende_meldung_node.html",
+          "url": "https://www.bzst.de/DE/Unternehmen/Umsatzsteuer/ZusammenfassendeMeldung/zusammenfassendemeldung_node.html",
           "title": "BZSt - Zusammenfassende Meldung",
           "citation": "BZSt ZM",
           "format": "html",
-          "kind": "authority"
+          "kind": "authority",
+          "url_geprueft_am": "2026-09-08",
+          "frueher": "https://www.bzst.de/DE/Unternehmen/Umsatzsteuer/Zusammenfassende_Meldung/zusammenfassende_meldung_node.html",
+          "aenderungsgrund": "Die bisherige Adresse antwortete mit HTTP 404 - der Herausgeber hat die Seite umgezogen. Neue Adresse ueber die Suche des Herausgebers ermittelt."
         }
       ],
       "pruefung": {
@@ -344,11 +356,14 @@
       "documents": [
         {
           "doc_uid": "BVERFG_ENTSCHEIDUNGEN",
-          "url": "https://www.bundesverfassungsgericht.de/DE/Entscheidungen/Entscheidungen_node.html",
+          "url": "https://www.bundesverfassungsgericht.de/DE/Entscheidungen/entscheidungen_node.html",
           "title": "BVerfG - Entscheidungen",
           "citation": "BVerfG",
           "format": "html",
-          "kind": "case_law"
+          "kind": "case_law",
+          "url_geprueft_am": "2026-09-08",
+          "frueher": "https://www.bundesverfassungsgericht.de/DE/Entscheidungen/Entscheidungen_node.html",
+          "aenderungsgrund": "Die bisherige Adresse antwortete mit HTTP 404 - der Herausgeber hat die Seite umgezogen. Neue Adresse ueber die Suche des Herausgebers ermittelt."
         }
       ],
       "pruefung": {
@@ -444,11 +459,14 @@
       "documents": [
         {
           "doc_uid": "BGBL_START",
-          "url": "https://www.recht.bund.de/de/bgbl/1/",
+          "url": "https://www.recht.bund.de/de/bundesgesetzblatt/bgbl-1/bgbl-1_node.html",
           "title": "Bundesgesetzblatt Teil I",
           "citation": "BGBl. I",
           "format": "html",
-          "kind": "law"
+          "kind": "law",
+          "url_geprueft_am": "2026-09-08",
+          "frueher": "https://www.recht.bund.de/de/bgbl/1/",
+          "aenderungsgrund": "Die bisherige Adresse antwortete mit HTTP 404 - der Herausgeber hat die Seite umgezogen. Neue Adresse ueber die Suche des Herausgebers ermittelt."
         }
       ],
       "pruefung": {
@@ -507,11 +525,14 @@
       "documents": [
         {
           "doc_uid": "DIHK_STEUERN",
-          "url": "https://www.dihk.de/de/themen-und-positionen/wirtschaftspolitik/steuern-und-finanzen",
-          "title": "DIHK - Steuern und Finanzen",
+          "url": "https://www.dihk.de/de/themen-und-positionen/wirtschaftspolitik/steuern-finanzen-mittelstand",
+          "title": "DIHK - Steuern, Finanzen, Mittelstand",
           "citation": "DIHK",
           "format": "html",
-          "kind": "secondary"
+          "kind": "secondary",
+          "url_geprueft_am": "2026-09-08",
+          "frueher": "https://www.dihk.de/de/themen-und-positionen/wirtschaftspolitik/steuern-und-finanzen",
+          "aenderungsgrund": "Die bisherige Adresse antwortete mit HTTP 404 - der Herausgeber hat die Seite umgezogen. Neue Adresse ueber die Suche des Herausgebers ermittelt."
         }
       ],
       "pruefung": {
