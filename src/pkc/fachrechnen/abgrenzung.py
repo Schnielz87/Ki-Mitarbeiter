@@ -30,7 +30,7 @@ verwechselt; deshalb steht es hier ausdruecklich.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal
 
 from .geld import euro
@@ -56,15 +56,21 @@ class Abgrenzung:
     def einheit(self) -> str:
         return "Tage" if self.basis == "tag" else "Monate"
 
+    def _mit_einheit(self, anzahl: int) -> str:
+        """"1 Monat" statt "1 Monate" - Kleinigkeit, aber sie faellt auf."""
+        if anzahl == 1:
+            return f"1 {'Tag' if self.basis == 'tag' else 'Monat'}"
+        return f"{anzahl} {self.einheit}"
+
     def rechenweg(self) -> list[str]:
         zeilen = [
             f"Betrag: {self.betrag} EUR",
             f"Zeitraum: {self.beginn.strftime('%d.%m.%Y')} bis "
-            f"{self.ende.strftime('%d.%m.%Y')} = {self.einheiten_gesamt} "
-            f"{self.einheit}",
+            f"{self.ende.strftime('%d.%m.%Y')} = "
+            f"{self._mit_einheit(self.einheiten_gesamt)}",
             f"Davon bis zum Stichtag {self.stichtag.strftime('%d.%m.%Y')} "
-            f"verbraucht: {self.einheiten_verbraucht} {self.einheit}",
-            f"Offen (nach dem Stichtag): {self.einheiten_offen} {self.einheit}",
+            f"verbraucht: {self._mit_einheit(self.einheiten_verbraucht)}",
+            f"Offen (nach dem Stichtag): {self._mit_einheit(self.einheiten_offen)}",
             f"In der laufenden Periode: {self.betrag} x "
             f"{self.einheiten_verbraucht} / {self.einheiten_gesamt} "
             f"= {self.betrag_periode} EUR",
@@ -85,6 +91,24 @@ class Abgrenzung:
 def _monate_gesamt(beginn: date, ende: date) -> int:
     """Angefangene Monate eines Zeitraums, beide Enden eingeschlossen."""
     return ((ende.year - beginn.year) * 12 + (ende.month - beginn.month)) + 1
+
+
+def _letzter_tag(tag: date) -> bool:
+    """Ist das der letzte Tag seines Monats?"""
+    naechster = (tag.replace(day=28) + timedelta(days=4)).replace(day=1)
+    return (naechster - timedelta(days=1)) == tag
+
+
+def ganze_monate(beginn: date, ende: date) -> bool:
+    """Deckt der Zeitraum volle Kalendermonate ab?
+
+    Nur dann ist eine monatsweise Aufteilung sinnvoll. Ein Zeitraum vom
+    15.09. bis zum 14.09. des Folgejahres ist ein Jahr - beruehrt aber
+    dreizehn Kalendermonate. Wer ihn durch dreizehn teilt, bekommt eine
+    Zahl, die zu nichts passt; und genau das stand zuerst in der
+    Antwort: "13 Monate" fuer eine Jahreslizenz.
+    """
+    return beginn.day == 1 and _letzter_tag(ende)
 
 
 def abgrenzen(betrag, beginn: date, ende: date, stichtag: date,

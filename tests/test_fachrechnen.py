@@ -203,3 +203,34 @@ def test_summen_ueber_viele_posten_gelten_nicht_als_unmoeglich():
     frage = "Posten von je 50.000 EUR bis 90.000 EUR."
     antwort = "Die Summe betraegt 850.000 EUR."
     assert pruefe_zahlen(frage, antwort) == []
+
+
+# -- Ganze Monate ------------------------------------------------------
+def test_monatsweise_nur_bei_vollen_kalendermonaten():
+    """15.09. bis 14.09. ist ein Jahr - und beruehrt dreizehn Monate.
+
+    Wer den Betrag durch dreizehn teilt, bekommt eine Zahl, die zu
+    nichts passt. Genau das stand zuerst in der Antwort: "13 Monate"
+    fuer eine Jahreslizenz.
+    """
+    from pkc.fachrechnen.abgrenzung import ganze_monate
+
+    assert ganze_monate(date(2026, 8, 1), date(2027, 7, 31)) is True
+    assert ganze_monate(date(2026, 9, 15), date(2027, 9, 14)) is False
+    assert ganze_monate(date(2026, 1, 1), date(2026, 2, 28)) is True   # kein Schaltjahr
+    assert ganze_monate(date(2024, 1, 1), date(2024, 2, 29)) is True   # Schaltjahr
+    assert ganze_monate(date(2026, 1, 1), date(2026, 2, 27)) is False
+
+
+def test_einzahl_und_mehrzahl_stimmen():
+    """"1 Monate" faellt auf und sieht nach Maschine aus."""
+    a = abgrenzen(1200, date(2026, 1, 1), date(2026, 12, 31),
+                  date(2026, 1, 31), art="ARAP", basis="monat")
+    import re
+
+    weg = " ".join(a.rechenweg())
+    assert "verbraucht: 1 Monat" in weg
+    # Mit Wortgrenze pruefen: "11 Monate" enthaelt "1 Monate" als
+    # Teilzeichenkette. Die erste Fassung dieses Tests ist genau darueber
+    # gestolpert und hat einen richtigen Text bemaengelt.
+    assert not re.search(r"(?<!\d)1 Monate\b", weg), weg

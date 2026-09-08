@@ -17,6 +17,7 @@ from dataclasses import dataclass, field
 from typing import Callable, Sequence
 
 from ..fachrechnen import pruefe_zahlen
+from ..fachrechnen.aufgabenleser import Rechnung, lesen as rechenangaben_lesen
 from ..llm.base import ChatMessage, LlmResponse
 from ..llm.manager import LlmManager
 from ..logging_setup import get_logger
@@ -115,6 +116,7 @@ class RagEngine:
         mode: str = "OFFLINE",
         knowledge_date: str | None = None,
         einstufung: Einstufung | None = None,
+        rechnungen: Sequence[Rechnung] = (),
     ) -> list[ChatMessage]:
         header = [
             self.profile.system_prompt,
@@ -155,6 +157,30 @@ class RagEngine:
         # Antworttiefe an die Art der Frage anpassen. Eine Begruessung mit dem
         # vollstaendigen Fachschema zu beantworten waere ebenso falsch wie ein
         # verwickelter Sachverhalt in zwei Saetzen.
+        # Die ausgerechneten Werte als bindende Vorgabe. Sie stehen VOR
+        # der Antworttiefe, damit sie nicht am Ende eines langen Textes
+        # untergehen.
+        #
+        # Warum das noetig ist: Ein Sprachmodell rechnet nicht, es sagt
+        # Zahlen vorher. Bei einer Abgrenzung ueber zwei Kalenderjahre
+        # wurden aus 24.000 EUR einmal 5.995.553,43 EUR. Was sich
+        # ausrechnen laesst, ist deshalb schon ausgerechnet, wenn das
+        # Modell anfaengt - es soll formulieren, nicht rechnen.
+        if rechnungen:
+            header += ["", "## BEREITS AUSGERECHNET - NICHT NACHRECHNEN", ""]
+            header += [
+                "Die folgenden Werte hat die Anwendung selbst berechnet. Sie "
+                "sind verbindlich. Uebernimm sie unveraendert und rechne sie "
+                "nicht nach - jede abweichende Zahl waere ein Fehler.",
+                "",
+            ]
+            for rechnung in rechnungen:
+                header.append(f"**{rechnung.bezeichnung}** ({rechnung.art})")
+                header += [f"* {zeile}" for zeile in rechnung.zeilen]
+                if rechnung.offene_frage:
+                    header.append(f"* Offen: {rechnung.offene_frage}")
+                header.append("")
+
         header += ["", "## ANTWORTTIEFE FUER DIESE NACHRICHT", ""]
         header += _tiefenanweisung(typ, self.profile)
         messages = [ChatMessage("system", "\n".join(header))]
@@ -192,8 +218,19 @@ class RagEngine:
         else:
             hits, entries = [], self.memory.list(limit=40) if self.memory else []
         bundle = self.builder.build(hits, entries, tiefe=tiefe)
+
+        # Ausrechnen, bevor das Modell anfaengt. Findet der Leser nichts
+        # eindeutig Rechenbares, bleibt die Liste leer - das ist der
+        # Normalfall und kein Fehler.
+        try:
+            rechnungen = rechenangaben_lesen(question)
+        except Exception:               # pragma: no cover - defensiv
+            log.debug("Rechenangaben nicht lesbar", exc_info=True)
+            rechnungen = []
+
         messages = self.build_messages(question, bundle, history, mode,
-                                       knowledge_date, einstufung)
+                                       knowledge_date, einstufung,
+                                       rechnungen=rechnungen)
 
         # ``on_token`` gibt die Antwort waehrend der Erzeugung heraus
         # (Abschnitt 21). Es aendert nichts am Ergebnis: Quellenteil,
@@ -268,7 +305,8 @@ class RagEngine:
             )
 
         text = self._append_footer(
-            text, bundle, used, mode, knowledge_date, response, warnings, einstufung
+            text, bundle, used, mode, knowledge_date, response, warnings,
+            einstufung, rechnungen,
         )
         return AnswerResult(
             text=text, references=bundle.references, used_references=used,
@@ -281,8 +319,29 @@ class RagEngine:
         self, text: str, bundle: ContextBundle, used: Sequence[SourceReference],
         mode: str, knowledge_date: str | None, response: LlmResponse,
         warnings: Sequence[str], einstufung: Einstufung | None = None,
+        rechnungen: Sequence[Rechnung] = (),
     ) -> str:
         parts = [text.rstrip()]
+
+        # Der Rechenweg direkt unter der Antwort - von der Anwendung
+        # ausgerechnet, nicht vom Modell geschrieben. Er steht auch dann
+        # da, wenn das Modell etwas anderes behauptet hat: dann sieht man
+        # den Widerspruch, statt der falschen Zahl zu glauben.
+        if rechnungen:
+            zeilen = [
+                "**NACHGERECHNET**",
+                "Diese Werte hat die Anwendung selbst berechnet, nicht das "
+                "Sprachmodell. Weicht die Antwort oben davon ab, gilt diese "
+                "Rechnung.",
+                "",
+            ]
+            for rechnung in rechnungen:
+                zeilen.append(f"*{rechnung.bezeichnung}* - {rechnung.ergebnis}")
+                zeilen += [f"    {z}" for z in rechnung.zeilen]
+                if rechnung.offene_frage:
+                    zeilen.append(f"    Zu entscheiden: {rechnung.offene_frage}")
+                zeilen.append("")
+            parts.append("\n".join(zeilen).rstrip())
 
         # Bei Smalltalk wurde bewusst nicht recherchiert - dann gehoert auch
         # kein Quellenabschnitt darunter.
