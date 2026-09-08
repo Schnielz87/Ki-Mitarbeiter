@@ -1,8 +1,14 @@
 # Regressionsbericht nach dem UI/UX-Umbau
 
 Nach Masterprompt Abschnitt 57. Gegenstand: Zweig
-`claude/portable-ki-buchhalter-xr1qlj`, Stand `7f85213`.
+`claude/portable-ki-buchhalter-xr1qlj`. Die Abschnitte 1 bis 6 beziehen
+sich auf den Stand `7f85213`, der Nachtrag 6a auf den Stand danach.
 Gegenübergestellt wird `BASELINE_VOR_UI_UMBAU.md` (Commit `ee18e88`).
+
+**Lesehinweis:** Abschnitt 1 bis 6 sind so stehengeblieben, wie sie
+geschrieben wurden. Abschnitt 6a widerlegt einen Teil davon. Das ist
+Absicht — einen Bericht nachträglich glattzuziehen hiesse, den Irrtum zu
+verstecken, statt ihn zu zeigen.
 
 Die Frage, die dieser Bericht beantworten muss, lautet nicht „sieht es
 besser aus". Sie lautet: **ist etwas, das vorher funktioniert hat, jetzt
@@ -184,11 +190,11 @@ falschen Grund bestanden. Sie sind in
 Unverändert offen gegenüber der Ausgangsaufnahme, und durch den Umbau
 teils gewachsen:
 
-1. **Die echte Tkinter-Oberfläche wurde nie geöffnet.** In dieser
-   Umgebung gibt es keinen Bildschirm. Geprüft wird gegen ein Doppel
-   (`tests/tk_double.py`). Ob Abstände, Schriftgrößen und Farben auf
-   einem echten Windows-Bildschirm so wirken wie in den Vorlagen, zeigt
-   erst der erste Start.
+1. ~~Die echte Tkinter-Oberfläche wurde nie geöffnet.~~ **Erledigt** —
+   siehe Abschnitt 6a. Sie ist geöffnet, fotografiert und wird jetzt
+   automatisch geprüft. Offen bleibt: wie Schriftglättung und Farben auf
+   einem echten Windows-Bildschirm wirken. Die Bilder in dieser Umgebung
+   entstehen mit einer Ersatzschrift, nicht mit Segoe UI.
 2. **Drag & Drop wurde nie mit einer echten Maus erprobt.** Der Weg über
    `WM_DROPFILES` ist so gebaut, dass ein Fehlschlag folgenlos bleibt und
    der Knopf zum Auswählen weiter funktioniert — belegt ist das aber nur
@@ -203,6 +209,59 @@ teils gewachsen:
    damit aber nicht.
 6. **Sieben Adressen im Quellenregister zeigen ins Leere** (HTTP 404).
    Bekannt, dokumentiert, unberichtigt.
+
+## 6a. Nachtrag: die Oberflaeche zum ersten Mal wirklich gesehen
+
+Der Bericht oben endete mit dem Satz, die echte Tkinter-Oberflaeche sei
+nie geoeffnet worden. Das hat sich geändert, und es hat den Bericht
+teilweise widerlegt.
+
+In dieser Umgebung gibt es zwar keinen Bildschirm, aber `Xvfb` — einen
+Bildschirm ohne Bildschirm. Damit lässt sich das echte Fenster öffnen und
+fotografieren. Beim ersten Blick darauf war das Ergebnis unbrauchbar,
+obwohl alle 745 Tests grün waren:
+
+| Was zu sehen war | Ursache |
+|---|---|
+| „Send" statt „Senden", „Date" statt „Datei anhaengen" | Der Schiebeteiler verteilte Breite nach Gewichten und drückte die Knopfspalte zusammen |
+| Die Unterhaltungsliste hing mitten im Bild über der Quellenspalte | `side="bottom"` in einem Bereich, der bereits anders belegt war |
+| **Jedes** Auswahlfeld war leer — Zeitplan, Fundstellen, Antworttempo, Kontextgröße, Betriebsmodus | Ein Feld mit `state="readonly"` zeichnet seinen Text *markiert*; die Markierungsschrift des Themas ist weiß — auf weißem Feld |
+| „Lokales Modell" und „nicht eingerichtet" lagen übereinander | Die Statusspalte bekam nur den Rest der Breite |
+| „Plugins & Erweiterunge" in der Navigation | Die Leiste war 250 Bildpunkte breit, der aktive (fette) Eintrag braucht mehr |
+| Bei 900×600 war die Unterhaltung ein Streifen von 130 Bildpunkten | Seitenleiste, Quellenspalte und Knopfspalte teilten den Platz unter sich auf |
+
+**Kein einziger dieser Fehler war durch einen Test gegen das Doppel
+auffindbar.** Ein Doppel sagt, dass ein Knopf angelegt wurde und eine
+Funktion hinterlegt ist. Es sagt nicht, ob er breit genug ist für seine
+Beschriftung. Der Satz aus Abschnitt 1 — „keine Kernfunktion beschädigt" —
+war richtig und zugleich wertlos: die Funktionen liefen, man konnte sie
+nur nicht bedienen.
+
+Dazu kamen zwei Fehler, die nur unter Windows wirken und die beim
+Nachdenken über einen hängenden Bauablauf auffielen:
+
+* `SetWindowLongPtrW(..., GWL_WNDPROC, 0)` stand da mit dem Kommentar
+  „nur lesen". Das liest nicht, das **setzt** die Fensterprozedur auf
+  NULL. Ein Kommentar macht aus einem Setzen kein Lesen.
+* Ohne `restype`/`argtypes` nimmt `ctypes` 32 Bit an. Die Adresse einer
+  Fensterprozedur liegt auf einem 64-Bit-Windows darüber und wäre
+  abgeschnitten worden.
+
+Beide betreffen die ausgelieferte Anwendung, nicht nur den Test.
+
+### Was daraus folgt
+
+`tests/test_echte_oberflaeche.py` prüft jetzt mit echtem Tkinter, ob ein
+Element mehr Breite braucht, als es hat — je Navigationseintrag im
+aktiven Zustand, für die Knöpfe der Unterhaltung, die Statusspalte, und
+für das **ganze** Fenster bei 900×600. Diese Tests laufen im Bauablauf
+unter Linux mit `xvfb` und unter Windows; ein eigener Schritt prüft nach,
+dass sie nicht übersprungen wurden.
+
+Die erste Fassung dieser Tests fand nichts. Sie maß die Einträge im
+nicht-aktiven Zustand, und der aktive wird fett — fett ist breiter. Das
+fiel an einer Gegenprobe auf, die nicht ansprang. Die korrigierte Fassung
+fand sofort eine Abschneidung, die ich übersehen hatte.
 
 ## 7. Bewertung
 
