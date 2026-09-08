@@ -133,8 +133,11 @@ def aufnehmen(ziel: Path, mit_frage: bool = True) -> list[Path]:
     if mit_frage:
         # Eine leere Unterhaltung zeigt nichts von dem, was die Ansicht
         # ausmacht. Also erst eine Frage stellen, dann fotografieren.
-        fenster.entry.insert("end", "Kannst Du mir eine Eingangsrechnung "
-                                    "aus Frankreich erklaeren?")
+        # Bewusst eine Frage, zu der es im Fachwissen wirklich Fundstellen
+        # gibt. Ein Bild mit leerer Quellenspalte erklaert nichts - und
+        # die Quellenspalte ist der Teil, den die Anleitung zeigen soll.
+        fenster.entry.insert("end", "Welche Pflichtangaben muss eine "
+                                    "Rechnung enthalten?")
         fenster._send()
         _durchatmen(dach)
 
