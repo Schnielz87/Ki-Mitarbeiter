@@ -328,3 +328,35 @@ def test_die_anleitung_verweist_auf_die_bilder():
     assert "aus dem laufenden" in QUELLE, (
         "die Anleitung muss sagen, dass die Bilder echt sind und nicht "
         "gezeichnet")
+
+
+def test_die_anleitung_erklaert_den_unterschied_zwischen_bild_und_bildschirm():
+    """Die Bilder entstehen unter Linux, benutzt wird unter Windows.
+
+    Im Bild steht "Ziehen ist auf diesem System nicht verfuegbar" - auf
+    dem Rechner des Anwenders steht dort etwas anderes. Wer das nicht
+    weiss, haelt das Bild fuer falsch oder die Anwendung fuer kaputt.
+    """
+    # Geprueft wird das fertige Dokument, nicht der Quelltext des
+    # Erzeugungsskripts. Im Skript ist der Satz ueber mehrere Zeilen
+    # verteilt; im Dokument steht er zusammenhaengend. Der Anwender liest
+    # das Dokument.
+    import re
+    import zipfile
+
+    datei = ROOT / "docs" / "BEDIENUNGSANLEITUNG.docx"
+    with zipfile.ZipFile(datei) as archiv:
+        roh = archiv.read("word/document.xml").decode("utf-8")
+    text = re.sub(r"<[^>]+>", "", roh)
+
+    assert "PORTIVA_KEINE_DATEIABLAGE" in text, (
+        "der Abschalter fuer das Ziehen muss in der Anleitung stehen")
+    assert "Segoe UI" in text, (
+        "die Anleitung muss sagen, warum die Schrift im Bild anders aussieht")
+    assert "Ziehen ist auf diesem System nicht verfuegbar" in text, (
+        "die Anleitung muss den Satz nennen, der im Bild steht")
+
+    quelle = (ROOT / "src" / "ui" / "dateiablage.py").read_text(encoding="utf-8")
+    assert 'ABSCHALTER = "PORTIVA_KEINE_DATEIABLAGE"' in quelle, (
+        "Die Anleitung nennt eine Umgebungsvariable, die es im Code nicht "
+        "gibt.")

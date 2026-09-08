@@ -801,6 +801,23 @@ bild("01_Unterhaltung",
      "Der Bereich Unterhaltung. Links die Navigation, in der Mitte das "
      "Gespraech, rechts die Quellen der letzten Antwort.")
 
+kasten(
+    "Ein Unterschied zwischen Bild und Ihrem Bildschirm",
+    "Die Bilder in dieser Anleitung entstehen auf einem Linux-Rechner. "
+    "Dort kann Windows-typisches Ziehen und Ablegen nicht funktionieren, "
+    "und der schmale Streifen unter dem Eingabefeld sagt das auch: "
+    "\u201eDatei anhaengen (Ziehen ist auf diesem System nicht "
+    "verfuegbar)\u201c.\n\n"
+    "Auf Ihrem Windows-Rechner steht dort \u201eDatei hierher ziehen oder "
+    "\u201aDatei anhaengen\u2018\u201c - und Sie koennen eine Datei "
+    "wirklich auf das Fenster ziehen. Klappt es bei Ihnen nicht, bleibt "
+    "der Streifen ein Klickziel und der Knopf \u201eDatei anhaengen\u201c "
+    "tut dasselbe. Wer das Ziehen gar nicht will, startet die Anwendung "
+    "mit gesetzter Umgebungsvariable PORTIVA_KEINE_DATEIABLAGE=1.\n\n"
+    "Auch die Schrift sieht bei Ihnen etwas anders aus: Windows hat "
+    "Segoe UI, der Bildrechner nur einen Ersatz dafuer.",
+)
+
 tabelle_mit(
     ["Bereich", "Wofuer", "Was Sie dort tun"],
     [
