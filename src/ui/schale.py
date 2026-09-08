@@ -300,11 +300,17 @@ class Navigationsschale:
             bereich = self.bereiche[kennung]
             if bereich.knopf is None:
                 continue
+            # Eingeklappt steht nur das Sinnbild da - mittig und ohne
+            # den fuehrenden Abstand. Mit Abstand und linksbuendig
+            # brauchte der Knopf mehr Breite, als die schmale Leiste hat.
             bereich.knopf.configure(
-                text=f"  {bereich.zeichen}" if self.eingeklappt
-                else f"  {bereich.zeichen}   {bereich.titel}")
+                text=bereich.zeichen if self.eingeklappt
+                else f"  {bereich.zeichen}   {bereich.kurz or bereich.titel}",
+                anchor="center" if self.eingeklappt else "w",
+                padx=2 if self.eingeklappt else 12)
         self.einklapp_knopf.configure(
-            text="›" if self.eingeklappt else "‹  Leiste einklappen")
+            text="›" if self.eingeklappt else "‹  Leiste einklappen",
+            anchor="center" if self.eingeklappt else "w")
         # Marke und Fusszeile im eingeklappten Zustand ausblenden - sonst
         # ragen sie ueber die schmale Leiste hinaus.
         for widget in (getattr(self, "markenbild", None),

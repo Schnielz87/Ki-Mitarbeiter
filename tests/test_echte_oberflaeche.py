@@ -197,3 +197,66 @@ def test_die_statusspalte_schneidet_ihre_werte_nicht_ab(fenster):
                     f"{name}: {label.cget('text')!r} braucht "
                     f"{label.winfo_reqwidth()}, hat {label.winfo_width()}")
     assert not zu_breit, "\n".join(zu_breit)
+
+
+def _alles_abgeschnittene(widget, treffer=None):
+    """Sucht das ganze Fenster nach beschnittenem Text ab."""
+    treffer = [] if treffer is None else treffer
+    try:
+        kinder = widget.winfo_children()
+    except Exception:                                # pragma: no cover
+        return treffer
+    for kind in kinder:
+        try:
+            if _abgeschnitten(kind):
+                text = ""
+                try:
+                    text = str(kind.cget("text"))
+                except Exception:                    # kein Textelement
+                    text = ""
+                if text.strip():
+                    treffer.append(
+                        f"{kind.winfo_class()} {text[:50]!r}: braucht "
+                        f"{kind.winfo_reqwidth()}, hat {kind.winfo_width()}")
+        except Exception:                            # pragma: no cover
+            pass
+        _alles_abgeschnittene(kind, treffer)
+    return treffer
+
+
+def test_auf_einem_kleinen_fenster_wird_nichts_abgeschnitten(fenster):
+    """Die Mindestgroesse muss benutzbar sein, nicht nur die Wunschgroesse.
+
+    Bei 900 mal 600 war die Unterhaltung ein Streifen von 130
+    Bildpunkten: Seitenleiste, Quellenspalte und Knopfspalte hatten den
+    Platz unter sich aufgeteilt. Die Oberflaeche raeumt jetzt selbst auf -
+    Quellenspalte weg, Navigation auf die Sinnbilder, kurzer
+    Tastenhinweis.
+
+    Geprueft wird das ganze Fenster, nicht einzelne Elemente. Was hier
+    durchrutscht, sieht der Anwender.
+    """
+    fenster.schale.zeigen("unterhaltung")
+    fenster.root.geometry("900x600")
+    _durchatmen(fenster.root, 6)
+    zu_breit = _alles_abgeschnittene(fenster.root)
+    assert not zu_breit, ("Auf 900x600 wird Text abgeschnitten:\n"
+                          + "\n".join(zu_breit))
+
+
+def test_die_quellenspalte_kommt_auf_breiten_fenstern_zurueck(fenster):
+    """Ausblenden ist nur richtig, wenn es sich auch wieder umkehrt."""
+    fenster.schale.zeigen("unterhaltung")
+    fenster.root.geometry("900x600")
+    _durchatmen(fenster.root, 5)
+    assert fenster._quellenspalte_ist_da is False, (
+        "auf einem schmalen Fenster muss die Quellenspalte weichen")
+    assert fenster.schale.eingeklappt is True, (
+        "und die Navigation zusammenklappen")
+
+    fenster.root.geometry("1500x940")
+    _durchatmen(fenster.root, 5)
+    assert fenster._quellenspalte_ist_da is True, (
+        "auf einem breiten Fenster muss sie zurueckkommen")
+    assert fenster.schale.eingeklappt is False, (
+        "und die Navigation wieder aufgehen")

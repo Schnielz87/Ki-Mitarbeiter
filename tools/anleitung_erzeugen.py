@@ -1316,7 +1316,7 @@ tabelle_mit(
         ["Kategorie", "Einordnung, z. B. accounting, tax, process"],
         ["Titel", "Die verstaendliche Bezeichnung, z. B. Kontenrahmen"],
         ["Inhalt", "Was gespeichert ist"],
-        ["V", "Version - wie oft dieser Eintrag geaendert wurde"],
+        ["Fassung", "Wie oft dieser Eintrag geaendert wurde"],
     ],
     breiten=[4.0, 11.0],
 )

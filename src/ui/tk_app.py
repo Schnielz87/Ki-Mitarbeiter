@@ -46,6 +46,23 @@ KNOPFSPALTE = 150
 #: sie aus dem Bild.
 STATUS_BREITE = 430
 
+#: Ab dieser Fensterbreite passt die Quellenspalte neben die Unterhaltung.
+#: Darunter wird sie ausgeblendet - eine Unterhaltung, die nur noch 130
+#: Bildpunkte breit ist, ist keine Unterhaltung mehr. Ueber "einblenden"
+#: laesst sie sich jederzeit zurueckholen.
+SCHWELLE_QUELLEN = 1150
+
+#: Ab dieser Breite bleibt die Navigation ausgeschrieben. Darunter klappt
+#: sie auf die Sinnbilder zusammen und gibt 234 Bildpunkte frei.
+SCHWELLE_LEISTE = 1000
+
+#: Der Tastenhinweis unter dem Eingabefeld - lang und kurz. Die lange
+#: Fassung passt auf ein schmales Fenster nicht und wurde dort mitten im
+#: Wort abgeschnitten. Ein halber Hinweis hilft niemandem.
+HINWEIS_LANG = ("Eingabe sendet  ·  Umschalt+Eingabe neue Zeile  ·  "
+                "Strg+N neue Unterhaltung  ·  Esc bricht ab")
+HINWEIS_KURZ = "Eingabe sendet  ·  Umschalt+Eingabe neue Zeile"
+
 FONT_BASE = ("Segoe UI", 10)
 FONT_MONO = ("Consolas", 10)
 FONT_TITLE = ("Segoe UI", 14, "bold")
@@ -320,8 +337,13 @@ class MainWindow:
         # nach einem Profilwechsel heisst das Fenster automatisch anders.
         self.root.title(self.brand.titel(self.profil))
         _fenstericon(self.root, self.brand)
-        self.root.geometry("1180x760")
-        self.root.minsize(900, 600)
+        self.root.geometry("1280x820")
+        self.root.minsize(880, 600)
+        #: Zuletzt gesetzter Zustand der Breitenanpassung. Ohne dieses
+        #: Merken liefe bei jedem Mausziehen am Fensterrand der ganze
+        #: Umbau erneut - hundertmal in der Sekunde.
+        self._breitenlage: tuple[bool, bool] | None = None
+        self._leiste_auto_zu = False
         self.root.protocol("WM_DELETE_WINDOW", self._on_close)
 
         # Abschnitt 23: die Unterhaltung soll sich wie ein Gespraech lesen.
@@ -664,10 +686,10 @@ class MainWindow:
 
         hinweise = ttk.Frame(left)
         hinweise.grid(row=3, column=0, sticky="ew", pady=(4, 0))
-        ttk.Label(hinweise,
-                  text="Eingabe sendet  ·  Umschalt+Eingabe neue Zeile  ·  "
-                       "Strg+N neue Unterhaltung  ·  Esc bricht ab",
-                  foreground="#5b6b80", font=("Segoe UI", 8)).pack(side="left")
+        self.tastenhinweis = ttk.Label(
+            hinweise, text=HINWEIS_LANG, foreground="#5b6b80",
+            font=("Segoe UI", 8))
+        self.tastenhinweis.pack(side="left")
 
         # Erweiterung E4: das Ergebnis soll als Datei herausgehen koennen -
         # ohne installiertes Office und ohne Internet.
@@ -688,6 +710,8 @@ class MainWindow:
         # haenge eine Liste mitten im Fenster.
         right = ttk.Frame(frame, width=QUELLEN_BREITE)
         right.grid(row=0, column=1, sticky="nsew")
+        self._quellenspalte = right
+        self._quellenspalte_ist_da = True
         right.grid_propagate(False)
         right.columnconfigure(0, weight=1)
         right.rowconfigure(0, weight=1)
@@ -718,9 +742,90 @@ class MainWindow:
 
         # Tastenkuerzel am Fenster, nicht am Eingabefeld: sie sollen auch
         # dann wirken, wenn der Mauszeiger woanders steht.
+        # Auf schmalen Fenstern raeumt die Oberflaeche selbst auf. Ohne
+        # das war die Unterhaltung bei 900 Bildpunkten Breite nur noch ein
+        # Streifen von 130 - die Seitenleiste, die Quellenspalte und die
+        # Knopfspalte hatten den Platz unter sich aufgeteilt.
+        self.root.bind("<Configure>", self._auf_groessenaenderung)
+
         self.root.bind("<Control-n>", lambda _e: self._new_conversation())
         self.root.bind("<Control-N>", lambda _e: self._new_conversation())
         self.root.bind("<Escape>", self._auf_escape)
+
+    def _auf_groessenaenderung(self, ereignis=None) -> None:
+        """Passt die Aufteilung an die Fensterbreite an.
+
+        Zwei Stellschrauben, in dieser Reihenfolge: unter
+        ``SCHWELLE_QUELLEN`` verschwindet die Quellenspalte, unter
+        ``SCHWELLE_LEISTE`` klappt zusaetzlich die Navigation zusammen.
+        Wird das Fenster wieder breiter, kommt beides zurueck - aber die
+        Navigation nur, wenn *diese* Automatik sie zugeklappt hat und
+        nicht der Benutzer selbst. Sonst wuerde die Anwendung eine
+        Entscheidung des Benutzers ueberschreiben.
+        """
+        if ereignis is not None and getattr(ereignis, "widget", None) not in (
+                self.root, None):
+            return                      # Meldungen von Kindfenstern ignorieren
+        try:
+            breite = int(self.root.winfo_width())
+        except Exception:               # pragma: no cover - Testdoppel
+            return
+        if breite <= 1:                 # noch nicht gezeichnet
+            return
+        quellen_zeigen = breite >= SCHWELLE_QUELLEN
+        leiste_zu = breite < SCHWELLE_LEISTE
+        if self._breitenlage == (quellen_zeigen, leiste_zu):
+            return
+        self._breitenlage = (quellen_zeigen, leiste_zu)
+        self._quellenspalte_zeigen(quellen_zeigen)
+        self._leiste_anpassen(leiste_zu)
+        # Auf schmalen Fenstern muss ein Chip weichen, sonst quetscht die
+        # Kopfzeile das Auswahlfeld fuer den Betriebsmodus auf wenige
+        # Bildpunkte zusammen. Der Wissensstand ist der am ehesten
+        # entbehrliche der drei - er steht auch in der Statuszeile unten
+        # und unter "Wissen & Quellen".
+        hinweis = getattr(self, "tastenhinweis", None)
+        if hinweis is not None:
+            try:
+                hinweis.configure(text=HINWEIS_KURZ if leiste_zu else HINWEIS_LANG)
+            except Exception:           # pragma: no cover - Testdoppel
+                pass
+        marke = getattr(self, "knowledge_label", None)
+        if marke is not None:
+            try:
+                if leiste_zu:
+                    marke.pack_forget()
+                else:
+                    marke.pack(side="left", padx=(8, 0), before=self.internet_label)
+            except Exception:           # pragma: no cover - Testdoppel
+                pass
+
+    def _quellenspalte_zeigen(self, zeigen: bool) -> None:
+        spalte = getattr(self, "_quellenspalte", None)
+        if spalte is None or zeigen == self._quellenspalte_ist_da:
+            return
+        try:
+            if zeigen:
+                spalte.grid()
+            else:
+                spalte.grid_remove()    # merkt sich die Rasterangaben
+        except Exception:               # pragma: no cover - Testdoppel
+            return
+        self._quellenspalte_ist_da = zeigen
+
+    def _leiste_anpassen(self, zuklappen: bool) -> None:
+        schale = getattr(self, "schale", None)
+        if schale is None:
+            return
+        try:
+            if zuklappen and not schale.eingeklappt:
+                schale.leiste_umschalten()
+                self._leiste_auto_zu = True
+            elif not zuklappen and schale.eingeklappt and self._leiste_auto_zu:
+                schale.leiste_umschalten()
+                self._leiste_auto_zu = False
+        except Exception:               # pragma: no cover - defensiv
+            log.debug("Leiste liess sich nicht anpassen", exc_info=True)
 
     def _auf_eingabetaste(self, ereignis=None) -> str:
         """Eingabe sendet - ausser bei gedrueckter Umschalttaste.
@@ -827,7 +932,11 @@ class MainWindow:
         self.memory_tree = ttk.Treeview(frame, columns=columns, show="headings", height=16)
         for column, heading, width in (
             ("schluessel", "Schluessel", 220), ("kategorie", "Kategorie", 150),
-            ("titel", "Titel", 180), ("inhalt", "Inhalt", 460), ("version", "V", 40),
+            # "V" mit 40 Bildpunkten sah aus wie eine abgeschnittene
+            # Ueberschrift und war eine. Eine Spalte, deren Name erklaert
+            # werden muss, ist keine gute Spalte.
+            ("titel", "Titel", 180), ("inhalt", "Inhalt", 420),
+            ("version", "Fassung", 80),
         ):
             self.memory_tree.heading(column, text=heading)
             self.memory_tree.column(column, width=width, anchor="w")
