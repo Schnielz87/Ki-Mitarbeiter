@@ -525,14 +525,14 @@
       "documents": [
         {
           "doc_uid": "DIHK_STEUERN",
-          "url": "https://www.dihk.de/de/themen-und-positionen/wirtschaftspolitik/steuern-finanzen-mittelstand",
-          "title": "DIHK - Steuern, Finanzen, Mittelstand",
+          "url": "https://www.dihk.de/themenfelder/recht-steuern/steuern/unternehmensteuern",
+          "title": "DIHK - Unternehmensteuern (Themenfeld Recht und Steuern)",
           "citation": "DIHK",
           "format": "html",
           "kind": "secondary",
           "url_geprueft_am": "2026-09-08",
           "frueher": "https://www.dihk.de/de/themen-und-positionen/wirtschaftspolitik/steuern-und-finanzen",
-          "aenderungsgrund": "Die bisherige Adresse antwortete mit HTTP 404 - der Herausgeber hat die Seite umgezogen. Neue Adresse ueber die Suche des Herausgebers ermittelt."
+          "aenderungsgrund": "Zweite Berichtigung: die erste neue Adresse (.../wirtschaftspolitik/steuern-finanzen-mittelstand) antwortete im Bauablauf ebenfalls mit HTTP 404. Der DIHK hat seine Steuerthemen von /de/themen-und-positionen/ nach /themenfelder/recht-steuern/ verlegt."
         }
       ],
       "pruefung": {

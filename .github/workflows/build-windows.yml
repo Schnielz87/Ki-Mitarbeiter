@@ -596,11 +596,23 @@ jobs:
           if (Test-Path $pfad) {
             $zeile = (Get-Content $pfad -Raw).Trim()
             Write-Host $zeile
-            if ($zeile -match "skipped") {
-              Write-Host "ACHTUNG: uebersprungen - auf diesem Baurechner"
-              Write-Host "laesst sich kein echtes Fenster oeffnen. Der"
-              Write-Host "Nachweis der Oberflaeche kommt dann allein vom"
-              Write-Host "Linux-Lauf unter xvfb."
+            # Uebersprungen heisst nicht automatisch "kein Fenster".
+            # Beim ersten Mal stand hier die Warnung, auf diesem Rechner
+            # liesse sich kein Fenster oeffnen - dabei waren acht Tests
+            # durchgelaufen und nur einer hatte sich uebersprungen, weil
+            # der Bildschirm des Baurechners fuer die geprueften Breiten
+            # zu schmal ist. Die Meldung war falsch und haette in die
+            # Irre gefuehrt. Jetzt wird unterschieden.
+            if ($zeile -match "^\s*0 passed" -or $zeile -notmatch "passed") {
+              Write-Host "ACHTUNG: es lief kein einziger Test. Auf diesem"
+              Write-Host "Baurechner laesst sich offenbar kein echtes"
+              Write-Host "Fenster oeffnen. Der Nachweis der Oberflaeche"
+              Write-Host "kommt dann allein vom Linux-Lauf unter xvfb."
+            } elseif ($zeile -match "skipped") {
+              Write-Host "Hinweis: einzelne Pruefungen wurden mit"
+              Write-Host "Begruendung uebersprungen (siehe Zeile darueber)."
+              Write-Host "Die uebrigen sind auf einem echten Fenster"
+              Write-Host "gelaufen."
             }
           } else {
             Write-Host "Der Schritt hat kein Ergebnis hinterlassen."
