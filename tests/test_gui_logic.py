@@ -141,6 +141,13 @@ def test_send_question_shows_answer_and_sources(gui):
     # Die Quellen stehen jetzt als Karten im rechten Panel, nicht mehr als
     # Fliesstext in einem Textfeld (Auftrag Abschnitt 18).
     assert window.quellenpanel.anzahl > 0, "es muessen Quellenkarten entstehen"
+    # Frueher stand hier: "Fachmodul" in window.sources.buffer. Diese
+    # inhaltliche Pruefung darf durch den Umbau nicht verlorengehen - sie
+    # belegt, dass die Fundstellen wirklich aus dem Fachmodul kommen und
+    # nicht irgendwoher. Sie steht jetzt an den Recherche-Details, denn
+    # dorthin gehoeren Kennungen (Erweiterung E6 Paragraf 18).
+    assert "MODUL_BUCHHALTER" in window.quellenpanel.detailtext, \
+        "die Fundstellen muessen aus dem Fachmodul stammen"
     assert len(controller.messages()) == 2
 
 

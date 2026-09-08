@@ -1073,6 +1073,19 @@ kasten(
     "belegt aus wie eine aus dem Gesetzestext.",
 )
 
+absatz("Unter den Quellen steht \"Recherche-Details anzeigen\". Dahinter "
+       "liegen die technischen Angaben: wie viele Fundstellen gefunden und "
+       "wie viele davon verwendet wurden, die Bewertungszahl je Fundstelle "
+       "und ihre interne Kennung. Der Bereich ist absichtlich zugeklappt und "
+       "steht absichtlich nicht in der Antwort. Eine Bewertungszahl neben "
+       "einer Gesetzesangabe sieht aus, als gehoere sie zur fachlichen "
+       "Aussage - sie tut es nicht, sie sagt nur, wie aehnlich ein Textstueck "
+       "Ihrer Frage war. Aufklappen lohnt, wenn Sie wissen wollen, warum "
+       "eine bestimmte Fundstelle herangezogen wurde.")
+absatz("Mit \"ausblenden\" oben rechts verschwindet die ganze Quellenspalte "
+       "und die Antwort bekommt die volle Breite. Mit \"einblenden\" kommt "
+       "sie zurueck.")
+
 doc.add_heading("Wenn kein Sprachmodell eingerichtet ist", level=2)
 absatz("Dann schreibt der Buchhalter offen: \"Hinweis: Es wurde keine "
        "Modellantwort erzeugt.\" Er recherchiert trotzdem in seinen Quellen "

@@ -266,3 +266,22 @@ def test_die_anleitung_erklaert_das_begruessungsbild():
     assert "--kein-startbild" in QUELLE, (
         "der Schalter zum Abschalten muss dokumentiert sein")
     assert "drei Sekunden" in QUELLE
+
+
+def test_die_anleitung_erklaert_die_recherche_details():
+    """Auftrag Abschnitt 19 und Erweiterung E6 Paragraf 18.
+
+    Die technischen Angaben - Bewertungen, Kennungen - sind bewusst aus der
+    Antwort herausgenommen und in einen zugeklappten Bereich verlegt. Wer
+    das nicht weiss, sucht die Zahlen dort, wo sie frueher standen, und
+    haelt ihr Fehlen fuer einen Verlust. Die Anleitung muss sagen, wohin
+    sie gewandert sind und was sie bedeuten.
+    """
+    assert "Recherche-Details anzeigen" in QUELLE, (
+        "der Knopf fuer die technischen Angaben fehlt in der Anleitung")
+    assert "Bewertungszahl" in QUELLE, (
+        "die Anleitung muss sagen, was die Bewertungszahl ist - und was nicht")
+
+    oberflaeche = (ROOT / "src" / "ui" / "quellenpanel.py").read_text(encoding="utf-8")
+    assert 'text="Recherche-Details anzeigen"' in oberflaeche, (
+        "Die Anleitung nennt einen Knopf, den es im Quellenpanel nicht gibt.")
