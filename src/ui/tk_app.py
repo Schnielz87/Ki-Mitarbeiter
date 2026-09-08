@@ -2197,14 +2197,25 @@ class MainWindow:
         frame.columnconfigure(1, weight=0, minsize=STATUS_BREITE)
         frame.rowconfigure(0, weight=1)
 
-        self.einstellungsgruppen = ttk.Notebook(frame)
-        self.einstellungsgruppen.grid(row=0, column=0, sticky="nsew")
+        # Karten statt Karteireiter - wie in den Vorlagen. Die
+        # Schnittstelle ist dieselbe wie beim Notebook (``add`` mit
+        # ``text``), deshalb bleibt der Code, der die Inhalte baut,
+        # unveraendert. Genau darum geht es bei einem Umbau der
+        # Oberflaeche: der Rahmen wechselt, der Inhalt nicht.
+        from ui.schale import Kartenwahl
 
-        left = ttk.Frame(self.einstellungsgruppen)
-        self.einstellungsgruppen.add(left, text="Allgemein")
+        self.einstellungsgruppen = Kartenwahl(frame)
+        self.einstellungsgruppen.rahmen.grid(row=0, column=0, sticky="nsew")
 
-        self.gruppe_modelle = ttk.Frame(self.einstellungsgruppen)
-        self.einstellungsgruppen.add(self.gruppe_modelle, text="KI & Modelle")
+        left = ttk.Frame(self.einstellungsgruppen.buehne)
+        self.einstellungsgruppen.add(
+            left, text="Allgemein",
+            untertitel="Wissensupdate, Speichern, Protokollierung")
+
+        self.gruppe_modelle = ttk.Frame(self.einstellungsgruppen.buehne)
+        self.einstellungsgruppen.add(
+            self.gruppe_modelle, text="KI & Modelle",
+            untertitel="Sprachmodell, Antworttempo, Rechenleistung")
 
         ttk.Label(left, text="Einstellungen", font=("Segoe UI", 11, "bold")).pack(anchor="w")
         self.setting_vars: dict[str, tk.Variable] = {}
@@ -2335,8 +2346,15 @@ class MainWindow:
             _, wertlabel = self._statuszeilen[name]
             wertlabel.configure(text=wert, bg=grund, fg=schrift)
             return
+        # Eine haarfeine Linie zwischen den Zeilen - wie in den Vorlagen.
+        # Ohne sie schwimmen Name und Wert in der Flaeche und es ist auf
+        # den ersten Blick nicht klar, welcher Wert zu welcher Zeile
+        # gehoert. Die erste Zeile bekommt keine.
+        if self._statuszeilen:
+            tk.Frame(self.statusliste, bg="#eef2f7", height=1).pack(
+                fill="x", pady=(4, 0))
         zeile = tk.Frame(self.statusliste, bg="#ffffff")
-        zeile.pack(fill="x", pady=3)
+        zeile.pack(fill="x", pady=5)
         # Der Wert zuerst und rechts, der Name danach mit dem Rest der
         # Breite. Umgekehrt nahm der Name so viel Platz, wie er wollte,
         # und schob den Wert aus der Spalte heraus.

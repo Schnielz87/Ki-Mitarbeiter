@@ -386,3 +386,125 @@ class Chip:
     def setzen(self, text: str, art: str = "neutral") -> None:
         grund, schrift = self.FARBEN.get(art, self.FARBEN["neutral"])
         self.label.configure(text=text, bg=grund, fg=schrift)
+
+
+class Kartenwahl:
+    """Eine Auswahl von Gruppen als Karten - statt Karteireitern.
+
+    In den Vorlagen des Auftraggebers stehen die Einstellungsgruppen als
+    Karten untereinander: Titel, darunter eine Zeile, was in der Gruppe
+    steckt. Die gewaehlte Karte ist hervorgehoben, ihr Inhalt steht
+    rechts daneben.
+
+    Die Schnittstelle ist bewusst dieselbe wie bei ``ttk.Notebook``::
+
+        wahl = Kartenwahl(eltern)
+        flaeche = tk.Frame(wahl.buehne)
+        wahl.add(flaeche, text="Allgemein", untertitel="Sprache, Profil")
+
+    Damit bleibt der Code, der die Inhalte baut, unveraendert - genau
+    darum geht es bei einem Umbau der Oberflaeche.
+    """
+
+    #: Breite der Kartenspalte.
+    BREITE = 260
+
+    def __init__(self, eltern, breite: int = BREITE):
+        self.breite = int(breite)
+        self.rahmen = tk.Frame(eltern, bg=GRUND)
+        self.rahmen.columnconfigure(1, weight=1)
+        self.rahmen.rowconfigure(0, weight=1)
+
+        self.spalte = tk.Frame(self.rahmen, bg=GRUND, width=breite)
+        self.spalte.grid(row=0, column=0, sticky="nsw")
+        try:
+            self.spalte.grid_propagate(False)
+            self.spalte.pack_propagate(False)
+        except Exception:               # pragma: no cover - Testdoppel
+            pass
+
+        #: Hierhinein gehoeren die Inhaltsflaechen.
+        self.buehne = tk.Frame(self.rahmen, bg=GRUND)
+        self.buehne.grid(row=0, column=1, sticky="nsew", padx=(14, 0))
+
+        self.karten: list = []
+        self.flaechen: list = []
+        self.aktiv = -1
+
+    # -- wie ttk.Notebook ----------------------------------------------
+    def add(self, flaeche, text: str = "", untertitel: str = "", **_egal):
+        """Nimmt eine Flaeche auf und legt ihre Karte an."""
+        nummer = len(self.flaechen)
+        self.flaechen.append(flaeche)
+        karte = tk.Frame(self.spalte, bg=KARTE, highlightbackground=RAND,
+                         highlightthickness=1, cursor="hand2")
+        karte.pack(fill="x", pady=(0, 8))
+        innen = tk.Frame(karte, bg=KARTE)
+        innen.pack(fill="x", padx=14, pady=11)
+        # ``wraplength`` an beiden Beschriftungen: die Karte hat eine
+        # feste Breite, und ohne Umbruch wird abgeschnitten statt
+        # umgebrochen - aus "Protokollierung" wurde "Protokollieru".
+        umbruch = max(self.breite - 40, 120)
+        titel = tk.Label(innen, text=text, bg=KARTE, fg=TITEL, anchor="w",
+                         justify="left", wraplength=umbruch,
+                         font=("Segoe UI", 10, "bold"))
+        titel.pack(fill="x")
+        unter = None
+        if untertitel:
+            unter = tk.Label(innen, text=untertitel, bg=KARTE, fg="#5b6b80",
+                             anchor="w", justify="left", wraplength=umbruch,
+                             font=("Segoe UI", 8))
+            unter.pack(fill="x")
+        # Die ganze Karte ist das Klickziel, nicht nur der Titel. Wer auf
+        # den Untertitel klickt, meint dieselbe Gruppe.
+        for teil in (karte, innen, titel, unter):
+            if teil is None:
+                continue
+            try:
+                teil.bind("<Button-1>", lambda _e, n=nummer: self.waehlen(n))
+            except Exception:           # pragma: no cover - Testdoppel
+                pass
+        self.karten.append((karte, innen, titel, unter))
+        if nummer == 0:
+            self.waehlen(0)
+        return flaeche
+
+    def waehlen(self, nummer: int) -> None:
+        """Zeigt die Gruppe mit dieser Nummer."""
+        if not (0 <= nummer < len(self.flaechen)) or nummer == self.aktiv:
+            return
+        for flaeche in self.flaechen:
+            try:
+                flaeche.pack_forget()
+            except Exception:           # pragma: no cover - Testdoppel
+                pass
+        self.aktiv = nummer
+        try:
+            self.flaechen[nummer].pack(fill="both", expand=True)
+        except Exception:               # pragma: no cover - Testdoppel
+            pass
+        self._hervorheben()
+
+    def _hervorheben(self) -> None:
+        for stelle, (karte, innen, titel, unter) in enumerate(self.karten):
+            ist_aktiv = stelle == self.aktiv
+            grund = AKTIV if ist_aktiv else KARTE
+            schrift = AKTIV_TEXT if ist_aktiv else TITEL
+            leise = "#d7e6fb" if ist_aktiv else "#5b6b80"
+            for teil, farbe in ((karte, grund), (innen, grund)):
+                try:
+                    teil.configure(bg=farbe)
+                except Exception:       # pragma: no cover - Testdoppel
+                    pass
+            try:
+                titel.configure(bg=grund, fg=schrift)
+                if unter is not None:
+                    unter.configure(bg=grund, fg=leise)
+                karte.configure(highlightbackground=AKTIV if ist_aktiv else RAND)
+            except Exception:           # pragma: no cover - Testdoppel
+                pass
+
+    # -- Auskunft fuer Tests -------------------------------------------
+    @property
+    def anzahl(self) -> int:
+        return len(self.flaechen)
