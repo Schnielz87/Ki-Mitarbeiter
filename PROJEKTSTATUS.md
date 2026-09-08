@@ -36,11 +36,13 @@ Geheimnistresor, Freigabepflicht, Connector-Rahmen, Dateiausgabe in acht
 Formaten, Plugin-System mit eigenem Vorgang je Plugin, mitgeliefertem
 Modelldienst und gefuehrtem Weg zum Sprachmodell, grafische Oberflaeche und
 Kommandozeile -
-abgesichert durch **745 automatische Tests**.
+abgesichert durch **754 automatische Tests**, davon sieben mit einem
+**echten Fenster** auf einem echten Bildschirm.
 
-**Noch nicht abgenommen** sind die Schritte, die zwingend Windows, eine
-echte grafische Oberflaeche, ein echtes Sprachmodell oder Zugriff auf die
-echten amtlichen Server verlangen. Sie konnten in der Entwicklungsumgebung
+**Noch nicht abgenommen** sind die Schritte, die zwingend Windows, ein
+echtes Sprachmodell oder Zugriff auf die echten amtlichen Server
+verlangen. Die grafische Oberflaeche gehoert seit dem 08.09.2026 nicht
+mehr dazu: sie wird mit einem echten Fenster geprueft. Sie konnten in der Entwicklungsumgebung
 nicht ausgefuehrt werden und werden hier auch nicht als erledigt behauptet.
 
 Der Status lautet daher **noch nicht** „PORTABLER BUCHHALTER MVP FERTIG".
@@ -132,7 +134,7 @@ und mit stark eingeschraenktem Netzzugang** statt.
 | Punkt | Lage | Abnahme |
 |---|---|---|
 | Windows-EXE | **Erledigt.** In dieser Entwicklungsumgebung nicht baubar, aber auf einem echten Windows-Rechner gebaut und ausgefuehrt - siehe Abschnitt 1. Das Paket kann als Artefakt heruntergeladen werden, statt selbst zu bauen. | `docs/ABNAHME.md` A |
-| Tkinter-Oberflaeche | Weder Tkinter noch Bildschirm in der Entwicklungsumgebung. Die Oberflaechenlogik ist gegen ein Tkinter-Doppel geprueft, und auf Windows ist Tkinter nachweislich vorhanden - **das Fenster selbst wurde aber nie geoeffnet**. | B |
+| Tkinter-Oberflaeche | **Geloest.** Mit `xvfb` laesst sich hier ein echtes Fenster oeffnen. Es ist geoeffnet, fotografiert (`docs/Oberflaeche/`) und wird von `tests/test_echte_oberflaeche.py` automatisch geprueft - im Bauablauf unter Linux und unter Windows. Beim ersten Blick darauf war die Oberflaeche unbrauchbar, obwohl 745 Tests gruen waren; siehe `UI_REGRESSION_TEST_REPORT.md` Abschnitt 6a. Offen bleibt allein, wie Schriftglaettung und Farben auf einem echten Windows-Bildschirm wirken. | C |
 | Lokales Sprachmodell | **Erledigt.** In dieser Entwicklungsumgebung ist Hugging Face gesperrt; auf dem Windows-Rechner des Bauablaufs nicht. Dort wird das Modell bezogen, der mitgelieferte llama.cpp-Dienst gestartet und eine Fachfrage tatsaechlich vom Modell beantwortet. Auf **Ihrem** Rechner bleibt der einmalige Bezug (`modell einrichten`). | C |
 | Amtliche Quellen | `gesetze-im-internet.de`, `bundesfinanzministerium.de` und weitere waren durch die Netzrichtlinie gesperrt (403 des Proxys). Die Abrufkette ist gegen einen lokalen Server vollstaendig geprueft, **nicht gegen die echten Quellen**. Alle Registereintraege tragen `verified: false`. | G |
 | Zweiter PC, echter Laufwerkswechsel | Der **Laufwerkswechsel ist auf echtem Windows geprueft** (`subst`, Zielpfad mit Leerzeichen) - das Unternehmenswissen war dort vorhanden. Ein physisch zweiter Rechner und ein echter USB-Datentraeger standen nicht zur Verfuegung. | F |
