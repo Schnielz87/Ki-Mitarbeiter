@@ -36,8 +36,16 @@ Geheimnistresor, Freigabepflicht, Connector-Rahmen, Dateiausgabe in acht
 Formaten, Plugin-System mit eigenem Vorgang je Plugin, mitgeliefertem
 Modelldienst und gefuehrtem Weg zum Sprachmodell, grafische Oberflaeche und
 Kommandozeile -
-abgesichert durch **754 automatische Tests**, davon sieben mit einem
+abgesichert durch **837 automatische Tests**, davon neun mit einem
 **echten Fenster** auf einem echten Bildschirm.
+
+Seit dem 09.09.2026 rechnet die Anwendung selbst, statt es dem
+Sprachmodell zu ueberlassen: Abschreibung, Rechnungsabgrenzung und die
+Umsatzsteuer werden ausgerechnet und mit Rechenweg ausgewiesen, erfundene
+Kontonummern und fachliche Widersprueche werden bemaengelt. Der Anlass
+war ein gemeldeter Fehlschlag, bei dem aus 24.000 EUR 5.995.553,43 EUR
+wurden. Siehe `FACHPRUEFUNG.md` - dort steht auch, was damit **nicht**
+geloest ist.
 
 **Noch nicht abgenommen** sind die Schritte, die zwingend Windows, ein
 echtes Sprachmodell oder Zugriff auf die echten amtlichen Server
