@@ -16,7 +16,8 @@ import re
 from dataclasses import dataclass, field
 from typing import Callable, Sequence
 
-from ..fachrechnen import pruefe_zahlen
+from ..fachrechnen import (pruefe_konten, pruefe_regeln, pruefe_zahlen,
+                           rahmen_erkennen)
 from ..fachrechnen.aufgabenleser import Rechnung, lesen as rechenangaben_lesen
 from ..llm.base import ChatMessage, LlmResponse
 from ..llm.manager import LlmManager
@@ -295,6 +296,24 @@ class RagEngine:
             # verhindern. Dann fehlt der Hinweis - die Antwort kommt.
             log.debug("Rechenpruefung fehlgeschlagen", exc_info=True)
 
+        # Kontonummern gegen den Kontenrahmen des Betriebs. Das Modell
+        # schrieb "Umsatzsteuerkonto 4400" und "Vorsteuerkonto 4410";
+        # beides sind in keinem der beiden gebraeuchlichen Rahmen
+        # Steuerkonten.
+        try:
+            for befund in pruefe_konten(text, self._kontenrahmen()):
+                warnings.append(befund.text)
+        except Exception:               # pragma: no cover - defensiv
+            log.debug("Kontenpruefung fehlgeschlagen", exc_info=True)
+
+        # Fachliche Widersprueche, die ohne Rechnung erkennbar sind - etwa
+        # eine Rueckstellung, die in den ARAP gebucht werden soll.
+        try:
+            for befund in pruefe_regeln(text):
+                warnings.append(befund.text)
+        except Exception:               # pragma: no cover - defensiv
+            log.debug("Regelpruefung fehlgeschlagen", exc_info=True)
+
         if not bundle.has_knowledge and einstufung.braucht_recherche:
             # Nur wenn ueberhaupt gesucht wurde. Bei Smalltalk waere der
             # Hinweis irrefuehrend: es fehlt nichts, es wurde bewusst nicht
@@ -313,6 +332,31 @@ class RagEngine:
             context=bundle, llm=response, mode=mode, knowledge_date=knowledge_date,
             warnings=warnings, elapsed=response.elapsed, einstufung=einstufung,
         )
+
+    def _kontenrahmen(self) -> str | None:
+        """Welcher Kontenrahmen gilt - aus dem Unternehmensgedaechtnis.
+
+        Steht dort nichts, wird gegen beide gebraeuchlichen Rahmen
+        geprueft und nur bemaengelt, was in beiden nicht passt. Ein
+        Vorwurf, der nur unter einer Annahme stimmt, ist kein Vorwurf.
+        """
+        if self.memory is None:
+            return None
+        try:
+            eintrag = self.memory.get("company.chart_of_accounts")
+        except Exception:               # pragma: no cover - defensiv
+            return None
+        if eintrag is None:
+            return None
+        # Der Eintrag traegt den Rahmen mal in ``value``, mal im
+        # Fliesstext von ``content`` ("Wir buchen nach SKR03"). Beides
+        # ansehen: nur eines zu pruefen hiesse, es dem Zufall zu
+        # ueberlassen, ob der Rahmen gefunden wird.
+        for feld in ("value", "content", "title"):
+            gefunden = rahmen_erkennen(getattr(eintrag, feld, None))
+            if gefunden:
+                return gefunden
+        return None
 
     # -- Nachbereitung -------------------------------------------------
     def _append_footer(
