@@ -28,7 +28,7 @@ from decimal import Decimal
 
 from .abgrenzung import abgrenzen, ganze_monate
 from .abschreibung import lineare_afa
-from .geld import euro, netto_aus_brutto
+from .geld import deutsch, euro, netto_aus_brutto
 
 #: Datum als 15.03.2026 oder 15.3.2026
 _DATUM = re.compile(r"\b(\d{1,2})\.\s?(\d{1,2})\.\s?(\d{4})\b")
@@ -89,6 +89,11 @@ class Rechnung:
     zeilen: list[str] = field(default_factory=list)
     ergebnis: str = ""
     offene_frage: str = ""      # was der Mensch entscheiden muss
+    #: Dieselben Werte noch einmal als Paare - fuer eine Tabelle in einer
+    #: Datei. Aus dem Rechenweg-Text die Werte wieder herauszuloesen waere
+    #: moeglich und falsch: eine Zahl zweimal zu erzeugen heisst, dass
+    #: sie irgendwann auseinanderlaeuft.
+    felder: list[tuple[str, str]] = field(default_factory=list)
 
 
 def _datum(text: str) -> date | None:
@@ -189,8 +194,8 @@ def _afa_aus(abschnitt: str, stichtag: date) -> Rechnung | None:
         satz = int(satz_treffer.group(1)) if satz_treffer else 19
         netto = netto_aus_brutto(roh, satz)
         zeilen.append(
-            f"Netto aus brutto: {euro(roh)} / (1 + {satz}%) = {netto} EUR "
-            "(geteilt, nicht abgezogen)")
+            f"Netto aus brutto: {deutsch(roh)} / (1 + {satz}%) = "
+            f"{deutsch(netto)} EUR (geteilt, nicht abgezogen)")
     else:
         netto = euro(roh)
 
@@ -201,7 +206,20 @@ def _afa_aus(abschnitt: str, stichtag: date) -> Rechnung | None:
         bezeichnung=_bezeichnung(abschnitt),
         zeilen=zeilen,
         ergebnis=(f"AfA bis {stichtag.strftime('%d.%m.%Y')}: "
-                  f"{afa.afa_kumuliert} EUR, Buchwert {afa.buchwert} EUR"),
+                  f"{deutsch(afa.afa_kumuliert)} EUR, Buchwert "
+                  f"{deutsch(afa.buchwert)} EUR"),
+        # Die Betraege in deutscher Schreibweise, damit sie in einer
+        # erzeugten Tabelle als Zahl und nicht als Text ankommen. Die
+        # Stueckzahlen (Jahre, Monate) bleiben schlichte Ziffern.
+        felder=[
+            ("Anschaffungsdatum", anschaffung.strftime("%d.%m.%Y")),
+            ("Anschaffungswert netto (EUR)", deutsch(afa.anschaffungswert)),
+            ("Nutzungsdauer (Jahre)", str(jahre)),
+            ("AfA pro Jahr (EUR)", deutsch(afa.afa_pro_jahr)),
+            ("Abschreibungsmonate", str(afa.monate)),
+            ("AfA kumuliert (EUR)", deutsch(afa.afa_kumuliert)),
+            ("Buchwert am Stichtag (EUR)", deutsch(afa.buchwert)),
+        ],
     )
 
 
@@ -236,15 +254,29 @@ def _abgrenzung_aus(abschnitt: str, stichtag: date) -> Rechnung | None:
             "Welche Basis gilt, entscheidet der Betrieb. Beide Wege sind "
             "zulaessig; die Ergebnisse weichen voneinander ab.")
         ergebnis = (f"Abzugrenzen zum {stichtag.strftime('%d.%m.%Y')}: "
-                    f"{tag.betrag_abgrenzung} EUR taggenau / "
-                    f"{monat.betrag_abgrenzung} EUR monatsgenau")
+                    f"{deutsch(tag.betrag_abgrenzung)} EUR taggenau / "
+                    f"{deutsch(monat.betrag_abgrenzung)} EUR monatsgenau")
     else:
         zeilen.append(
             "Eine monatsweise Aufteilung ist hier nicht sinnvoll: der "
             "Zeitraum beginnt nicht am Monatsersten und endet nicht am "
             "Monatsletzten. Er deckt keine vollen Kalendermonate ab.")
         ergebnis = (f"Abzugrenzen zum {stichtag.strftime('%d.%m.%Y')}: "
-                    f"{tag.betrag_abgrenzung} EUR (taggenau)")
+                    f"{deutsch(tag.betrag_abgrenzung)} EUR (taggenau)")
+
+    felder = [
+        ("Betrag (EUR)", deutsch(tag.betrag)),
+        ("Zeitraum", f"{beginn.strftime('%d.%m.%Y')} bis "
+                     f"{ende.strftime('%d.%m.%Y')}"),
+        ("Posten", tag.art),
+        ("Tage gesamt", str(tag.einheiten_gesamt)),
+        ("Tage bis Stichtag", str(tag.einheiten_verbraucht)),
+        ("Laufende Periode taggenau (EUR)", deutsch(tag.betrag_periode)),
+        ("Abzugrenzen taggenau (EUR)", deutsch(tag.betrag_abgrenzung)),
+    ]
+    if ganze_monate(beginn, ende):
+        felder.append(("Abzugrenzen monatsgenau (EUR)",
+                       deutsch(monat.betrag_abgrenzung)))
 
     return Rechnung(
         art="Abgrenzung",
@@ -252,6 +284,7 @@ def _abgrenzung_aus(abschnitt: str, stichtag: date) -> Rechnung | None:
         zeilen=zeilen,
         ergebnis=ergebnis,
         offene_frage=offen,
+        felder=felder,
     )
 
 

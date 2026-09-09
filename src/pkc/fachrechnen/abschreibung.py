@@ -21,7 +21,7 @@ from dataclasses import dataclass
 from datetime import date
 from decimal import Decimal
 
-from .geld import euro
+from .geld import deutsch, euro
 
 
 @dataclass(frozen=True)
@@ -45,19 +45,21 @@ class Abschreibung:
         nicht pruefen - und pruefen muss es ein Mensch.
         """
         return [
-            f"Anschaffungswert (netto): {self.anschaffungswert} EUR",
+            f"Anschaffungswert (netto): {deutsch(self.anschaffungswert)} EUR",
             f"Nutzungsdauer: {self.nutzungsdauer_jahre} Jahre",
-            f"AfA pro Jahr: {self.anschaffungswert} / {self.nutzungsdauer_jahre} "
-            f"= {self.afa_pro_jahr} EUR",
-            f"AfA pro Monat: {self.afa_pro_jahr} / 12 = {self.afa_pro_monat} EUR "
+            f"AfA pro Jahr: {deutsch(self.anschaffungswert)} / "
+            f"{self.nutzungsdauer_jahre} = {deutsch(self.afa_pro_jahr)} EUR",
+            f"AfA pro Monat: {deutsch(self.afa_pro_jahr)} / 12 = "
+            f"{deutsch(self.afa_pro_monat)} EUR "
             "(gerundet; gerechnet wird ungerundet)",
             f"Monate von {self.anschaffung.strftime('%m/%Y')} bis "
             f"{self.stichtag.strftime('%m/%Y')} (Anschaffungsmonat zaehlt voll): "
             f"{self.monate}",
-            f"AfA kumuliert: {self.monate} x {self.afa_pro_monat} "
-            f"= {self.afa_kumuliert} EUR",
+            f"AfA kumuliert: {self.monate} x {deutsch(self.afa_pro_monat)} "
+            f"= {deutsch(self.afa_kumuliert)} EUR",
             f"Buchwert am {self.stichtag.strftime('%d.%m.%Y')}: "
-            f"{self.anschaffungswert} - {self.afa_kumuliert} = {self.buchwert} EUR",
+            f"{deutsch(self.anschaffungswert)} - {deutsch(self.afa_kumuliert)} "
+            f"= {deutsch(self.buchwert)} EUR",
         ]
 
 

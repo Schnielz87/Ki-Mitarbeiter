@@ -148,8 +148,8 @@ def test_das_modell_bekommt_die_werte_als_bindende_vorgabe(buchhalter):
     controller.ask(AUFGABE)
     system = doppel.systemtext
     assert "BEREITS AUSGERECHNET" in system
-    assert "5250.00" in system, "die AfA muss in der Vorgabe stehen"
-    assert "22947.95" in system, "die Abgrenzung muss in der Vorgabe stehen"
+    assert "5.250,00" in system, "die AfA muss in der Vorgabe stehen"
+    assert "22.947,95" in system, "die Abgrenzung muss in der Vorgabe stehen"
     assert "nicht nach" in system, "es muss ausdruecklich dastehen"
 
 
@@ -183,3 +183,77 @@ def test_keine_dreizehn_monate_fuer_eine_jahreslizenz(buchhalter):
     assert "nicht sinnvoll" in text
     # Die Versicherung deckt volle Monate ab - dort steht beides.
     assert "12 Monate" in text
+
+
+# -- Die bestellte Datei -----------------------------------------------
+def _zellen(pfad) -> str:
+    """Liest den Textinhalt einer XLSX-Datei - ohne fremde Bibliothek."""
+    import re
+    import zipfile
+
+    with zipfile.ZipFile(pfad) as archiv:
+        roh = archiv.read("xl/worksheets/sheet1.xml").decode("utf-8")
+    return re.sub(r"<[^>]+>", " ", roh)
+
+
+def test_die_bestellte_arbeitsmappe_enthaelt_die_berechneten_werte(buchhalter):
+    """Nicht nur den Antworttext, sondern eine Tabelle mit den Zahlen.
+
+    Der Unterschied ist der zwischen einer Textdatei mit der Endung
+    .xlsx und einer Tabelle, mit der man weiterarbeiten kann. Wer eine
+    Excel-Arbeitsmappe bestellt, meint das zweite.
+    """
+    controller, _ = buchhalter()
+    ergebnis = controller.ask(
+        AUFGABE + "\n\nErstelle dazu bitte eine Excel-Arbeitsmappe.")
+
+    assert ergebnis.datei_fehler == "", ergebnis.datei_fehler
+    assert ergebnis.datei is not None, "es wurde keine Datei erzeugt"
+    assert ergebnis.datei.pfad.suffix == ".xlsx"
+
+    inhalt = _zellen(ergebnis.datei.pfad)
+    # Die Kennzeichnung
+    assert "Angabe" in inhalt and "Wert" in inhalt, "es fehlt die Tabelle"
+
+    # Und die Werte - jeder einzelne als Zahlenzelle, nicht als Text.
+    # Ein blosses "irgendwo steht ein <v>" hat hier nichts geprueft: eine
+    # Gegenprobe, die einen Betrag wieder als Text schrieb, lief durch,
+    # weil die uebrigen Zellen noch Zahlen waren.
+    zahlen = _zahlenzellen(ergebnis.datei.pfad)
+    for wert in ("45000", "5250", "39750", "22947.95", "12000"):
+        assert wert in inhalt, f"{wert} fehlt in der Arbeitsmappe"
+        assert any(_gleich(wert, gefunden) for gefunden in zahlen), (
+            f"{wert} steht als Text in der Zelle - so kann Excel nicht "
+            f"damit rechnen. Zahlenzellen: {sorted(zahlen)}")
+
+
+def _gleich(erwartet: str, gefunden: str) -> bool:
+    """45000 und 45000.00 sind derselbe Betrag."""
+    from decimal import Decimal, InvalidOperation
+
+    try:
+        return Decimal(erwartet) == Decimal(gefunden)
+    except InvalidOperation:                    # pragma: no cover - defensiv
+        return False
+
+
+def _zahlenzellen(pfad) -> set[str]:
+    """Alle Werte, die als Zahl in einer Zelle stehen (<v>...</v>)."""
+    import re
+    import zipfile
+
+    with zipfile.ZipFile(pfad) as archiv:
+        roh = archiv.read("xl/worksheets/sheet1.xml").decode("utf-8")
+    return set(re.findall(r"<v>([^<]+)</v>", roh))
+
+
+def test_ohne_rechnung_bleibt_es_beim_antworttext(buchhalter):
+    """Kein leerer Tabellenkopf unter jeder beliebigen Datei."""
+    controller, _ = buchhalter("**ERGEBNIS**\n\nEine Rechnung braucht "
+                               "Pflichtangaben nach § 14 UStG.")
+    ergebnis = controller.ask(
+        "Welche Pflichtangaben muss eine Rechnung enthalten? "
+        "Erstelle mir das bitte als Excel-Tabelle.")
+    assert ergebnis.datei is not None
+    inhalt = _zellen(ergebnis.datei.pfad)
+    assert "Angabe   Wert" not in inhalt

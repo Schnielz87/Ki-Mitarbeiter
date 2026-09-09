@@ -1645,7 +1645,8 @@ class AppController:
         if wunsch is not None:
             try:
                 datei = self.datei_erzeugen(
-                    result.text, wunsch.format, wunsch.name,
+                    self._dateiinhalt(result, wunsch.name), wunsch.format,
+                    wunsch.name,
                     angaben={"herkunft": f"Frage in Unterhaltung {uid}"},
                 )
                 log.info("Datei zur Frage erzeugt: %s", datei.name)
@@ -1664,6 +1665,40 @@ class AppController:
         )
         return AskOutcome(result, uid, message_id, candidates, stored,
                           datei=datei, datei_fehler=datei_fehler)
+
+    def _dateiinhalt(self, result, name: str):
+        """Was in die bestellte Datei kommt.
+
+        Ohne eigene Rechnung: die Antwort, wie sie ist. Mit Rechnung: die
+        Antwort **und** eine richtige Tabelle je Posten, aus den
+        berechneten Werten.
+
+        Der Unterschied ist der zwischen einer Textdatei mit der
+        Dateiendung .xlsx und einer Tabelle, mit der man weiterarbeiten
+        kann. Wer eine Excel-Arbeitsmappe bestellt, meint das zweite.
+
+        Die Zahlen kommen aus den Feldern der Rechnung, nicht aus dem
+        Rechenweg-Text. Eine Zahl zweimal zu erzeugen heisst, dass sie
+        irgendwann auseinanderlaeuft.
+        """
+        rechnungen = list(getattr(result, "rechnungen", None) or [])
+        if not rechnungen:
+            return result.text
+
+        dokument = aus_markdown(result.text, titel=name or "Auswertung")
+        for rechnung in rechnungen:
+            if not rechnung.felder:
+                continue
+            dokument.ueberschrift(f"{rechnung.bezeichnung} ({rechnung.art})", 2)
+            dokument.tabelle([["Angabe", "Wert"]]
+                             + [[k, v] for k, v in rechnung.felder])
+            if rechnung.offene_frage:
+                dokument.absatz(f"Zu entscheiden: {rechnung.offene_frage}")
+        dokument.absatz(
+            "Diese Werte hat PORTIVA selbst berechnet, nicht das "
+            "Sprachmodell. Fachliche Zuarbeit ohne Gewaehr - Pruefung und "
+            "Freigabe durch einen verantwortlichen Menschen.")
+        return dokument
 
     def require_productive_use(self) -> None:
         """Sperrt die produktive Nutzung ohne gueltige Lizenz (Masterprompt 87).

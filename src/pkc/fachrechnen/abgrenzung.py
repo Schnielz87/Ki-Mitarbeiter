@@ -33,7 +33,7 @@ from dataclasses import dataclass
 from datetime import date, timedelta
 from decimal import Decimal
 
-from .geld import euro
+from .geld import deutsch, euro
 
 
 @dataclass(frozen=True)
@@ -63,27 +63,30 @@ class Abgrenzung:
         return f"{anzahl} {self.einheit}"
 
     def rechenweg(self) -> list[str]:
+        betrag = deutsch(self.betrag)
+        periode = deutsch(self.betrag_periode)
+        abgrenzung = deutsch(self.betrag_abgrenzung)
         zeilen = [
-            f"Betrag: {self.betrag} EUR",
+            f"Betrag: {betrag} EUR",
             f"Zeitraum: {self.beginn.strftime('%d.%m.%Y')} bis "
             f"{self.ende.strftime('%d.%m.%Y')} = "
             f"{self._mit_einheit(self.einheiten_gesamt)}",
             f"Davon bis zum Stichtag {self.stichtag.strftime('%d.%m.%Y')} "
             f"verbraucht: {self._mit_einheit(self.einheiten_verbraucht)}",
             f"Offen (nach dem Stichtag): {self._mit_einheit(self.einheiten_offen)}",
-            f"In der laufenden Periode: {self.betrag} x "
+            f"In der laufenden Periode: {betrag} x "
             f"{self.einheiten_verbraucht} / {self.einheiten_gesamt} "
-            f"= {self.betrag_periode} EUR",
-            f"Abzugrenzen ({self.art}): {self.betrag} x {self.einheiten_offen} "
-            f"/ {self.einheiten_gesamt} = {self.betrag_abgrenzung} EUR",
+            f"= {periode} EUR",
+            f"Abzugrenzen ({self.art}): {betrag} x {self.einheiten_offen} "
+            f"/ {self.einheiten_gesamt} = {abgrenzung} EUR",
         ]
         if self.art == "ARAP":
             zeilen.append(
-                f"Buchungssatz: ARAP an Aufwand {self.betrag_abgrenzung} EUR "
+                f"Buchungssatz: ARAP an Aufwand {abgrenzung} EUR "
                 "(mindert den Aufwand der laufenden Periode)")
         else:
             zeilen.append(
-                f"Buchungssatz: Ertrag an PRAP {self.betrag_abgrenzung} EUR "
+                f"Buchungssatz: Ertrag an PRAP {abgrenzung} EUR "
                 "(mindert den Ertrag der laufenden Periode)")
         return zeilen
 

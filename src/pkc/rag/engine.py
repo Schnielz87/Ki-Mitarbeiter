@@ -47,6 +47,9 @@ class AnswerResult:
     elapsed: float = 0.0
     #: Wie die Frage eingestuft wurde - steuert Recherche und Antworttiefe.
     einstufung: Einstufung | None = None
+    #: Was die Anwendung selbst ausgerechnet hat. Leer, wenn in der Frage
+    #: nichts eindeutig Rechenbares stand - das ist der Normalfall.
+    rechnungen: list = field(default_factory=list)
 
     @property
     def fragetyp(self) -> Fragetyp:
@@ -331,6 +334,7 @@ class RagEngine:
             text=text, references=bundle.references, used_references=used,
             context=bundle, llm=response, mode=mode, knowledge_date=knowledge_date,
             warnings=warnings, elapsed=response.elapsed, einstufung=einstufung,
+            rechnungen=list(rechnungen),
         )
 
     def _kontenrahmen(self) -> str | None:

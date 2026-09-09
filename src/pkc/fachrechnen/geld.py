@@ -18,6 +18,24 @@ def euro(wert) -> Decimal:
     return Decimal(str(wert)).quantize(CENT, rounding=ROUND_HALF_UP)
 
 
+def deutsch(betrag) -> str:
+    """Deutsche Schreibweise: 45000.00 wird zu "45.000,00".
+
+    Zwei Gruende. Erstens liest ein deutscher Buchhalter Betraege so.
+    Zweitens erkennt der Tabellenschreiber eine Zahl an ihrem
+    Dezimalkomma; ohne Komma landet der Betrag als Text in der Zelle und
+    Excel kann nicht damit rechnen. Genau das war der Fall - in der
+    erzeugten Arbeitsmappe standen alle Betraege als Text.
+
+    Die Strenge des Tabellenschreibers ist dabei richtig und bleibt: sie
+    schuetzt Kontonummern und Belegnummern davor, in Zahlen verwandelt
+    zu werden und ihre fuehrende Null zu verlieren.
+    """
+    zahl = Decimal(str(betrag)).quantize(CENT, rounding=ROUND_HALF_UP)
+    ganz = f"{zahl:,.2f}"
+    return ganz.replace(",", "#").replace(".", ",").replace("#", ".")
+
+
 def _satz(steuersatz) -> Decimal:
     """Nimmt 19, 0.19 oder "19%" und macht daraus 0.19."""
     if isinstance(steuersatz, str):
