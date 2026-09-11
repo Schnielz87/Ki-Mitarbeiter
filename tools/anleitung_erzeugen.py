@@ -217,6 +217,7 @@ for nummer, kapitel in enumerate([
     "Belege hinzufuegen",
     "Unternehmenswissen pflegen",
     "Ergebnisse als Datei ausgeben",
+    "Vorlagen: dieselbe Datei immer wieder",
     "Erweiterungen (Plugins)",
     "Betriebsmodus: HYBRID, OFFLINE, ONLINE",
     "Wissen aktualisieren",
@@ -412,7 +413,7 @@ kasten(
     "Messung: Registerkarte \"Sprachmodell\" -> \"Wartezeit messen\". "
     "Dort werden zwei echte Fachfragen gestellt und die Zeiten "
     "angezeigt. Der zweite Hebel neben dem Modell ist die Tempostufe in "
-    "den Einstellungen (Kapitel 16).",
+    "den Einstellungen (Kapitel 17).",
 )
 
 absatz("Die Groessen der Dateien, die genauen Lizenztexte und die Herkunft "
@@ -734,7 +735,7 @@ tabelle_mit(
          "HINWEIS, solange keines eingerichtet ist - siehe unten"],
         ["Lizenz",
          "Ob eine Lizenz noetig und gueltig ist",
-         "OK - siehe Kapitel 14"],
+         "OK - siehe Kapitel 18"],
         ["Quellenregister",
          "Die hinterlegten amtlichen Quellen",
          "OK, 12 Quellen, 32 Dokumente"],
@@ -831,8 +832,8 @@ tabelle_mit(
          "Oeffnen, Exportieren, Umbenennen, Loeschen"],
         ["5. Wissen & Quellen", "Wissensstand und amtliche Quellen",
          "\"Jetzt aktualisieren\" (braucht Internet)"],
-        ["6. Vorlagen", "Wiederverwendbare Word-, Excel- und PDF-Vorlagen",
-         "Noch nicht verfuegbar - der Bereich sagt das auch"],
+        ["6. Vorlagen", "Wiederverwendbare Vorlagen fuellen und erzeugen",
+         "Vorlage waehlen, Angaben eintragen, \"Datei erzeugen\""],
         ["7. Aufgaben", "Geplante und wiederkehrende Arbeiten",
          "Noch nicht verfuegbar - der Bereich sagt das auch"],
         ["8. Plugins", "Zusatzfaehigkeiten installieren und verwalten",
@@ -845,10 +846,10 @@ tabelle_mit(
     breiten=[3.4, 5.4, 7.2],
 )
 
-absatz("Zwei der zehn Bereiche gibt es noch nicht: Vorlagen und Aufgaben. "
-       "Sie stehen trotzdem in der Liste und erklaeren, was sie koennen "
-       "werden und was heute stattdessen hilft. Ein Knopf, der nichts tut, "
-       "steht dort nicht - das waere schlimmer als ein fehlender Bereich.")
+absatz("Einen der zehn Bereiche gibt es noch nicht: Aufgaben. Er steht "
+       "trotzdem in der Liste und erklaert, was er koennen wird und was "
+       "heute stattdessen hilft. Ein Knopf, der nichts tut, steht dort "
+       "nicht - das waere schlimmer als ein fehlender Bereich.")
 
 absatz("Oben rechts stehen drei Angaben, die Sie im Blick behalten sollten:")
 punkt("Wissensstand - das Datum, auf dem die gespeicherten Fachquellen stehen.")
@@ -884,8 +885,8 @@ for _name, _text in [
      "Wissen & Quellen: Wissensstand, Update-Pipeline und das "
      "Quellenregister."),
     ("06_Vorlagen",
-     "Vorlagen: der Bereich sagt offen, dass es ihn noch nicht gibt - und "
-     "was heute stattdessen hilft."),
+     "Vorlagen: links die Liste, rechts die gewaehlte Vorlage. Gefragt "
+     "wird nur nach den Stellen, die offen sind."),
     ("07_Aufgaben",
      "Aufgaben & Automationen: ebenfalls noch nicht verfuegbar, mit "
      "Verweis auf den Zeitplan unter Wissen & Quellen."),
@@ -1443,8 +1444,105 @@ tabelle_mit(
     breiten=[8.0, 7.0],
 )
 
+# ================================================================ 13
+doc.add_heading("13.  Vorlagen: dieselbe Datei immer wieder", level=1)
+
+absatz("Kapitel 12 zeigt, wie aus einer Antwort eine Datei wird. Eine "
+       "Vorlage ist der umgekehrte Weg: der Text steht schon fest, und "
+       "gefuellt werden nur die Stellen, die sich von Fall zu Fall "
+       "aendern. Ein Mandantenbrief ist jeden Monat derselbe Brief - nur "
+       "mit anderem Empfaenger, anderem Betreff und anderem Datum.")
+
+absatz("Sechs Vorlagen sind mitgeliefert und ab dem ersten Start da:")
+tabelle_mit(
+    ["Vorlage", "Wofuer"],
+    [
+        ["Mandantenbrief", "Anschreiben mit Anlagenverzeichnis"],
+        ["Belege nachfordern", "Fehlende Belege eines Zeitraums anfordern"],
+        ["Monatsabschluss - Checkliste", "Punkte vor dem Abschluss eines Monats"],
+        ["Anlagenverzeichnis (AfA)", "Anlagegueter mit Abschreibung und Buchwert"],
+        ["Umsatzsteuer-Voranmeldung", "Abgabevermerk fuer einen Zeitraum"],
+        ["Aktennotiz", "Kurze Notiz zu Vorgang, Gespraech oder Entscheidung"],
+    ],
+    breiten=[5.0, 10.0],
+)
+
+bild("06_Vorlagen",
+     "Links die Liste, rechts die gewaehlte Vorlage mit ihren offenen "
+     "Stellen und der Vorschau.")
+
+doc.add_heading("So erzeugen Sie eine Datei aus einer Vorlage", level=2)
+schritt("Links im Bereich Vorlagen eine Zeile anklicken.")
+schritt("Rechts erscheinen die Angaben, die noch fehlen. Alles, was in "
+        "Ihrem Unternehmenswissen steht, ist bereits eingesetzt und wird "
+        "gar nicht erst gefragt.")
+schritt("Die Felder ausfuellen - so viele, wie Sie mochten.")
+schritt("Vorschau anklicken und lesen, was herauskommt.")
+schritt("Format waehlen und auf Datei erzeugen klicken. Die Datei landet "
+        "unter Arbeitsergebnisse.")
+
+kasten(
+    "Was fehlt, bleibt stehen",
+    "Ein Platzhalter ohne Wert wird nicht weggelassen. Er steht sichtbar "
+    "in der fertigen Datei - als {{betreff}} - und die Anwendung sagt "
+    "Ihnen, welche es waren.\n\n"
+    "Der Grund: ein Brief mit \"Sehr geehrte Damen und Herren der "
+    "{{firma.name}},\" faellt beim Durchlesen auf. Einer, in dem der "
+    "Name stillschweigend fehlt, geht raus.",
+)
+
+absatz("Deshalb koennen Sie eine Datei auch dann erzeugen, wenn noch nicht "
+       "alles ausgefuellt ist. Ein Entwurf, in dem drei Stellen von Hand "
+       "zu ergaenzen sind, ist ein brauchbares Arbeitsergebnis.")
+
+doc.add_heading("Woher die Werte kommen", level=2)
+tabelle_mit(
+    ["Quelle", "Was von dort kommt", "Rang"],
+    [
+        ["Ihre Eingabe", "Alles, was Sie rechts eintragen", "hat Vorrang"],
+        ["Unternehmenswissen", "Firmenname, Steuernummer, Kontenrahmen und "
+         "alles Weitere, was Sie dort gepflegt haben", "wird genommen, "
+         "wenn Sie nichts eintragen"],
+        ["Das Datum", "datum, jahr, monat", "kommt von selbst"],
+    ],
+    breiten=[3.4, 8.0, 4.6],
+)
+
+absatz("Je mehr unter Unternehmenswissen steht, desto weniger fragt eine "
+       "Vorlage. Wer seinen Firmennamen dort hinterlegt, tippt ihn nicht "
+       "bei jedem Brief erneut.")
+
+doc.add_heading("Eigene Vorlagen aufnehmen", level=2)
+absatz("Eine Vorlage ist eine schlichte Textdatei (.md oder .txt). Die "
+       "Stellen zum Fuellen stehen in doppelten geschweiften Klammern:")
+absatz("Sehr geehrte Damen und Herren der {{mandant.name}},")
+schritt("Text in eine .txt- oder .md-Datei schreiben, Platzhalter setzen.")
+schritt("Im Bereich Vorlagen auf Eigene Vorlage aufnehmen klicken.")
+schritt("Die Datei auswaehlen. PORTIVA meldet, wieviele Platzhalter es "
+        "gefunden hat.")
+
+absatz("Word-Dateien gehen hier bewusst nicht. Den Text koennte die "
+       "Anwendung herausloesen, die Formatierung nicht - und eine "
+       "Vorlage, die ihr Aussehen verliert, ist als Vorlage wertlos. "
+       "Besser ein klarer Satz als ein enttaeuschendes Ergebnis.")
+
+kasten(
+    "Ihre Vorlagen gehoeren Ihnen",
+    "Sie liegen als lesbare Textdateien unter workspace\\vorlagen auf "
+    "dem Datentraeger - im Bereich Ihres Unternehmens, nicht im "
+    "Programmordner. Arbeiten mehrere Unternehmen auf demselben "
+    "Datentraeger, hat jedes seine eigenen.\n\n"
+    "Aendern Sie eine mitgelieferte Vorlage, bleibt Ihre Fassung erhalten "
+    "- auch wenn eine neuere Programmfassung eine andere mitbringt.",
+)
+
+absatz("Jede aus einer Vorlage erzeugte Datei traegt unten den Hinweis, "
+       "dass sie fachliche Zuarbeit ist und vor der Verwendung durch "
+       "einen Menschen zu pruefen ist. Sie sieht aus wie ein fertiges "
+       "Dokument - sie ist keines.")
+
 # ================================================================ 12
-doc.add_heading("13.  Erweiterungen (Plugins)", level=1)
+doc.add_heading("14.  Erweiterungen (Plugins)", level=1)
 
 absatz("Der Buchhalter kann neue Faehigkeiten aufnehmen, ohne dass das "
        "Programm neu gebaut wird. Eine solche Erweiterung heisst Plugin und "
@@ -1502,7 +1600,7 @@ absatz("Ein Beispiel liegt bei: examples/plugin_html ergaenzt das "
        "wie eine Erweiterung aufgebaut ist.")
 
 # ================================================================ 8
-doc.add_heading("14.  Betriebsmodus: HYBRID, OFFLINE, ONLINE", level=1)
+doc.add_heading("15.  Betriebsmodus: HYBRID, OFFLINE, ONLINE", level=1)
 
 absatz("Sie bestimmen, ob der Buchhalter ins Internet darf. Die Auswahl "
        "steht oben rechts in der Kopfzeile und ist jederzeit erreichbar.")
@@ -1576,7 +1674,7 @@ absatz("Ueber die Konsolenfassung geht es ebenso: "
        "PORTABLE_BUCHHALTER_KONSOLE.exe modus OFFLINE wechselt.")
 
 # ================================================================ 12
-doc.add_heading("15.  Wissen aktualisieren", level=1)
+doc.add_heading("16.  Wissen aktualisieren", level=1)
 
 absatz("Registerkarte Wissen aktualisieren. Hier laedt der Buchhalter "
        "amtliche Quellen nach. Das ist der einzige Teil, der Internet "
@@ -1646,7 +1744,7 @@ kasten(
 )
 
 # ================================================================ 9
-doc.add_heading("16.  Einstellungen und Status", level=1)
+doc.add_heading("17.  Einstellungen und Status", level=1)
 
 absatz("Registerkarte Einstellungen und Status. Links stellen Sie ein, rechts "
        "sehen Sie den Zustand.")
@@ -1682,7 +1780,7 @@ absatz("Steht bei einem Punkt HINWEIS statt OK, ist das kein Fehler, sondern "
        "daneben sagt, was das bedeutet und wie es zu beheben ist.")
 
 # ================================================================ 12
-doc.add_heading("17.  Lizenz", level=1)
+doc.add_heading("18.  Lizenz", level=1)
 
 doc.add_heading("Im Augenblick muessen Sie nichts tun", level=2)
 absatz("Der Startbildschirm zeigt in der Zeile Lizenz:")
@@ -1815,7 +1913,7 @@ absatz("Diese Fassung ist eine Vorab- bzw. Pilotfassung. Sie ist noch nicht "
        "PORTABLE_BUCHHALTER_KONSOLE.exe reife")
 
 # ================================================================ 13
-doc.add_heading("18.  Was der Buchhalter nicht tut", level=1)
+doc.add_heading("19.  Was der Buchhalter nicht tut", level=1)
 
 absatz("Das ist kein Mangel, sondern bewusst so gebaut. Bitte lesen Sie es "
        "einmal in Ruhe.")
@@ -1847,7 +1945,7 @@ kasten(
 )
 
 # ================================================================ 11
-doc.add_heading("19.  Wenn etwas nicht funktioniert", level=1)
+doc.add_heading("20.  Wenn etwas nicht funktioniert", level=1)
 
 tabelle_mit(
     ["Was Sie sehen", "Was zu tun ist"],

@@ -1,7 +1,13 @@
 # Was bei Vorlagen und Aufgaben noch zu tun ist
 
-Stand 08.09.2026. Antwort auf die Frage: *„Was ist mit der Fachlogik,
+Stand 11.09.2026. Antwort auf die Frage: *„Was ist mit der Fachlogik,
 was muss hier getan werden?"*
+
+> **Vorlagen sind seit Fassung 19 gebaut.** Was hier ueber sie steht, ist
+> als Beschreibung des Zustands ueberholt; es bleibt stehen, weil die
+> Erklaerung, was „Fachlogik" heisst, sich daran am besten zeigt. Was
+> tatsaechlich entstanden ist, steht unten unter „Was aus den Vorlagen
+> geworden ist". Offen ist nur noch **Aufgaben**.
 
 ## Vorab: was heißt hier überhaupt „Fachlogik"?
 
@@ -20,10 +26,13 @@ Büro mit zehn Türen vor. Die Oberfläche ist der Flur mit den zehn
 beschrifteten Türen. Die Fachlogik ist das, was hinter der Tür steht —
 der Aktenschrank, die Ablage, und der Kollege, der weiß, was zu tun ist.
 
-Bei acht Türen ist das Zimmer eingerichtet. Bei **Vorlagen** und
-**Aufgaben** hängt das Schild an der Tür, aber der Raum dahinter ist
-leer. Deshalb steht dort auch offen „Dieser Bereich ist noch nicht
+Bei acht Türen war das Zimmer eingerichtet. Bei **Vorlagen** und
+**Aufgaben** hing das Schild an der Tür, aber der Raum dahinter war
+leer. Deshalb stand dort auch offen „Dieser Bereich ist noch nicht
 verfügbar" — statt eines Knopfes, der nichts tut.
+
+Bei **Vorlagen** ist das Zimmer inzwischen eingerichtet. Bei
+**Aufgaben** hängt das Schild noch allein.
 
 ### Woran du den Unterschied siehst
 
@@ -167,3 +176,55 @@ drehen wäre teuer.
    langsames Programm nicht schneller.
 
 Die Reihenfolge ist dein Ruf — ich sage nur, wie ich sie sähe.
+
+
+---
+
+## 4. Was aus den Vorlagen geworden ist
+
+Gebaut in Fassung 19. Die vier Fragen von oben haben jetzt Antworten:
+
+| Frage von oben | Antwort |
+|---|---|
+| Was ist eine Vorlage, wo liegt sie? | Ein Text mit Platzhaltern. Als lesbare `.md`-Datei unter `workspace/vorlagen` — im Kundenbereich, nicht im Programmordner. |
+| Woran erkennt es die Stellen? | An doppelten geschweiften Klammern: `{{firma.name}}`. |
+| Woher kommen die Werte? | Drei Quellen in fester Rangfolge: Eingabe des Menschen, Unternehmensgedächtnis, Datum. |
+| Was tut es, wenn ein Wert fehlt? | **Der Platzhalter bleibt stehen.** Sichtbar in der Datei, und die Anwendung sagt, welche es waren. |
+
+Die letzte Zeile ist die wichtigste und war die eigentliche
+Entscheidung. Ein Brief mit „Sehr geehrte Damen und Herren der
+{{firma.name}}," fällt beim Durchlesen auf. Einer, in dem der Name
+stillschweigend fehlt, geht raus.
+
+**Was dazugekommen ist**
+
+* Sechs mitgelieferte Vorlagen (Mandantenbrief, Belege nachfordern,
+  Monatsabschluss-Checkliste, Anlagenverzeichnis mit AfA,
+  Umsatzsteuer-Voranmeldung, Aktennotiz).
+* Der Bereich in der Oberfläche: Liste links, Vorlage rechts. Gefragt
+  wird nur nach dem, was das Unternehmensgedächtnis nicht schon
+  beantwortet.
+* Vorschau vor dem Erzeugen — der Auftrag verlangt sie, und sie hat
+  einen Zweck: eine gefüllte Vorlage sieht aus wie ein fertiges
+  Dokument.
+* Eigene Vorlagen aufnehmen (Textdateien).
+* Kapitel 13 der Bedienungsanleitung, mit Bild.
+
+**Was ausdrücklich nicht geht**
+
+* **Word-Dateien als Vorlage.** Den Text könnte man herauslösen, die
+  Formatierung nicht. Eine Vorlage, die ihr Aussehen verliert, ist als
+  Vorlage wertlos. Das steht als Satz in der Anwendung, nicht als
+  stilles Scheitern.
+* **Wiederholte Blöcke.** `{{beleg.1}}`, `{{beleg.2}}`, `{{beleg.3}}` —
+  die Anzahl steht in der Vorlage fest. Eine Liste beliebiger Länge zu
+  füllen wäre der nächste Schritt und ist heute nicht gebaut.
+* **Rechnen in der Vorlage.** Eine Vorlage setzt Werte ein; sie summiert
+  nicht. Gerechnet wird in `pkc.fachrechnen`, und das Ergebnis kommt als
+  Wert herein.
+
+## 5. Aufgaben: die Entscheidung steht, gebaut ist noch nichts
+
+Du hast **Weg C** gewählt — beides, mit Schalter, Vorgabe ist A
+(„nur bei geöffnetem Programm"). Damit ist die Grundsatzfrage vom Tisch.
+Was noch zu bauen ist, steht unverändert oben unter Abschnitt 2.

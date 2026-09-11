@@ -147,6 +147,7 @@ def aufnehmen(ziel: Path, mit_frage: bool = True) -> list[Path]:
             print(f"  uebersprungen (kein Bereich): {schluessel}")
             continue
         fenster.schale.zeigen(schluessel)
+        _vorbereiten(fenster, schluessel)
         _durchatmen(dach)
         bild = ImageGrab.grab(xdisplay=os.environ.get("DISPLAY"))
         bild = bild.crop((0, 0, min(BREITE, bild.width), min(HOEHE, bild.height)))
@@ -161,6 +162,24 @@ def aufnehmen(ziel: Path, mit_frage: bool = True) -> list[Path]:
     except Exception:                                   # pragma: no cover
         pass
     return geschrieben
+
+
+def _vorbereiten(fenster, schluessel: str) -> None:
+    """Fuellt eine Ansicht, damit das Bild etwas zeigt.
+
+    Der Vorlagenbereich ohne gewaehlte Zeile ist eine leere Flaeche mit
+    der Aufschrift "Keine Vorlage gewaehlt". Als Bild in einer Anleitung
+    erklaert das nichts. Also wird eine Vorlage ausgewaehlt - dieselbe,
+    die im Text beschrieben ist.
+    """
+    if schluessel != "vorlagen":
+        return
+    baum = getattr(fenster, "vorlagen_tree", None)
+    if baum is None or "mandantenbrief" not in baum.get_children():
+        return
+    baum.selection_set("mandantenbrief")
+    baum.focus("mandantenbrief")
+    fenster._vorlage_zeigen()
 
 
 def _durchatmen(dach, runden: int = 6) -> None:

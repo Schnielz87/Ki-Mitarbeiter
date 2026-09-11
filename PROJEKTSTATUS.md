@@ -15,9 +15,10 @@ Version 0.4.0
 > (62 Bedienelemente, 0 ohne Rueckruf), `UI_GAP_ANALYSE.md`,
 > `BASELINE_VOR_UI_UMBAU.md`, `config/ui_action_registry.yaml`.
 >
-> **Nicht umgesetzt** (eigener Auftrag): Vorlagen und Aufgaben. Beide
-> Bereiche stehen in der Navigation und kennzeichnen sich als noch nicht
-> verfuegbar.
+> **Nicht umgesetzt** (eigener Auftrag): Aufgaben. Der Bereich steht in
+> der Navigation und kennzeichnet sich als noch nicht verfuegbar.
+> Vorlagen sind seit Fassung 19 gebaut - siehe `FACHLOGIK_OFFEN.md`
+> Abschnitt 4.
 >
 > **Wartezeit:** `ANTWORTZEIT_KONZEPT.md`. Hebel 1 und 2 umgesetzt - der
 > Prompt einer Begriffsfrage schrumpft um ein Drittel bis um die Haelfte.
@@ -36,7 +37,7 @@ Geheimnistresor, Freigabepflicht, Connector-Rahmen, Dateiausgabe in acht
 Formaten, Plugin-System mit eigenem Vorgang je Plugin, mitgeliefertem
 Modelldienst und gefuehrtem Weg zum Sprachmodell, grafische Oberflaeche und
 Kommandozeile -
-abgesichert durch **837 automatische Tests**, davon neun mit einem
+abgesichert durch **886 automatische Tests**, davon zwoelf mit einem
 **echten Fenster** auf einem echten Bildschirm.
 
 Seit dem 09.09.2026 rechnet die Anwendung selbst, statt es dem

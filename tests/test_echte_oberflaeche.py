@@ -350,3 +350,94 @@ def test_die_symboldateien_gibt_es_und_sie_sind_lesbar():
     assert kopf[:4] == b"\x00\x00\x01\x00", "das ist keine gueltige .ico-Datei"
     anzahl = int.from_bytes(kopf[4:6], "little")
     assert anzahl >= 4, f"die .ico enthaelt nur {anzahl} Groessen"
+
+
+def test_der_vorlagenbereich_schneidet_nichts_ab(fenster):
+    """Ein neuer Bereich mit zwei Spalten ist der klassische Ort dafuer.
+
+    Gemessen wird jedes sichtbare Element des Bereichs, nicht nur die
+    Knoepfe: abgeschnitten wird zuerst eine Beschriftung neben einem
+    Eingabefeld.
+    """
+    fenster.schale.zeigen("vorlagen")
+    _durchatmen(fenster.root, 4)
+
+    zu_breit = []
+
+    def messen(element) -> None:
+        if _abgeschnitten(element):
+            beschriftung = ""
+            try:
+                beschriftung = str(element.cget("text"))
+            except Exception:
+                beschriftung = element.winfo_class()
+            zu_breit.append(
+                f"{beschriftung!r}: braucht {element.winfo_reqwidth()}, "
+                f"hat {element.winfo_width()}")
+        for kind in element.winfo_children():
+            messen(kind)
+
+    messen(fenster.schale.bereiche["vorlagen"].rahmen)
+    assert not zu_breit, "Im Vorlagenbereich fehlt Text:\n" + "\n".join(zu_breit)
+
+
+def test_eine_vorlage_laesst_sich_im_echten_fenster_waehlen(fenster):
+    """Die Liste traegt ihre Kennungen - im echten Tk, nicht im Doppel."""
+    fenster.schale.zeigen("vorlagen")
+    _durchatmen(fenster.root, 3)
+
+    kennungen = fenster.vorlagen_tree.get_children()
+    assert "mandantenbrief" in kennungen, \
+        f"die mitgelieferten Vorlagen fehlen: {kennungen}"
+
+    fenster.vorlagen_tree.selection_set("mandantenbrief")
+    fenster._vorlage_zeigen()
+    _durchatmen(fenster.root, 2)
+
+    assert fenster.vorlage_titel.cget("text") == "Mandantenbrief"
+    assert fenster.vorlage_felder, "es muss nach den offenen Stellen fragen"
+    assert "{{" not in fenster.vorlage_vorschau_text.get("1.0", "end")
+
+
+def test_die_vorlagenliste_beschneidet_keinen_namen(fenster):
+    """Eine Tabellenspalte beschneidet anders als ein Knopf.
+
+    Ein zu schmaler Knopf braucht mehr Breite, als er hat - das misst
+    ``winfo_reqwidth``. Eine Treeview-Spalte dagegen ist nie "zu schmal":
+    sie schneidet den Zelltext ab und meldet nichts. Auf dem ersten Bild
+    des fertigen Bereichs stand "Umsatzsteuer-Voranmeldung - Abgab", und
+    der Breitentest daneben war gruen.
+
+    Deshalb hier von Hand: die Textbreite in der tatsaechlichen Schrift
+    gegen die Spaltenbreite.
+    """
+    from tkinter import font as tkfont
+    from tkinter import ttk
+
+    fenster.schale.zeigen("vorlagen")
+    _durchatmen(fenster.root, 3)
+
+    baum = fenster.vorlagen_tree
+    # Das Fenster dieses Tests ausdruecklich mitgeben. Ohne ``root``
+    # sucht Tk das "Standardfenster" - und wenn ein frueherer Test seines
+    # schon zerstoert hat, bricht die Schriftabfrage ab. Der Test war
+    # damit allein gruen und im Verbund rot.
+    # ``lookup`` liefert je nach Thema einen Namen ("TkDefaultFont") oder
+    # eine Beschreibung ("{DejaVu Sans} 9"). ``Font(font=...)`` nimmt
+    # beides; ``nametofont`` nur das erste.
+    spec = ttk.Style(fenster.root).lookup("Treeview", "font") or "TkDefaultFont"
+    schrift = tkfont.Font(root=fenster.root, font=spec)
+    # Tk laesst links und rechts in einer Zelle etwas Luft.
+    LUFT = 12
+
+    zu_lang = []
+    for kennung in baum.get_children():
+        werte = baum.item(kennung)["values"]
+        for spalte, wert in zip(("name", "kategorie", "format"), werte):
+            breite = int(baum.column(spalte, "width"))
+            gebraucht = schrift.measure(str(wert)) + LUFT
+            if gebraucht > breite:
+                zu_lang.append(
+                    f"{spalte}: {wert!r} braucht {gebraucht}, "
+                    f"Spalte ist {breite}")
+    assert not zu_lang, "In der Vorlagenliste fehlt Text:\n" + "\n".join(zu_lang)

@@ -360,3 +360,46 @@ def test_die_anleitung_erklaert_den_unterschied_zwischen_bild_und_bildschirm():
     assert 'ABSCHALTER = "PORTIVA_KEINE_DATEIABLAGE"' in quelle, (
         "Die Anleitung nennt eine Umgebungsvariable, die es im Code nicht "
         "gibt.")
+
+
+def test_die_anleitung_erklaert_die_vorlagen():
+    """Was gebaut ist, muss erklaert sein - sonst findet es niemand.
+
+    Umgekehrt genauso wichtig: der alte Satz "Vorlagen gibt es noch
+    nicht" darf nicht stehen bleiben. Eine Anleitung, die einen fertigen
+    Bereich fuer unfertig erklaert, haelt Leute davon ab, ihn zu
+    benutzen.
+    """
+    assert "13.  Vorlagen" in QUELLE, "Das Kapitel zu den Vorlagen fehlt."
+    assert "Eigene Vorlage aufnehmen" in QUELLE
+    assert "{{mandant.name}}" in QUELLE, \
+        "Wie ein Platzhalter aussieht, muss dastehen"
+    assert "Zwei der zehn Bereiche gibt es noch nicht" not in QUELLE, \
+        "Vorlagen ist gebaut - der Satz stimmt nicht mehr"
+
+
+def test_der_ablageort_der_vorlagen_stimmt_mit_dem_layout_ueberein():
+    from pkc.paths import LAYOUT
+
+    assert "workspace\\\\vorlagen" in QUELLE, \
+        "Die Anleitung sagt nicht, wo die Vorlagen liegen."
+    assert LAYOUT["vorlagen"] == "workspace/vorlagen", \
+        "Der Ablageort hat sich geaendert - die Anleitung muss nachgezogen werden."
+
+
+def test_die_kapitelnummern_der_verweise_stimmen():
+    """"siehe Kapitel 14" bei der Lizenz zeigte auf den Betriebsmodus.
+
+    Ein falscher Verweis faellt niemandem auf, der ihn schreibt - nur
+    dem, der ihm folgt. Deshalb hier mechanisch: jede genannte
+    Kapitelnummer muss es geben.
+    """
+    kapitel = dict(
+        (int(nummer), titel)
+        for nummer, titel in re.findall(
+            r'doc\.add_heading\("(\d+)\.\s+([^"]+)"', QUELLE))
+    assert len(kapitel) >= 20, f"nur {len(kapitel)} Kapitel gefunden"
+    genannt = {int(n) for n in re.findall(r"Kapitel (\d+)", QUELLE)}
+    fehlend = sorted(n for n in genannt if n not in kapitel)
+    assert not fehlend, (
+        f"Die Anleitung verweist auf Kapitel, die es nicht gibt: {fehlend}")

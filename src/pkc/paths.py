@@ -51,6 +51,11 @@ LAYOUT: dict[str, str] = {
     # Erzeugte Dateien (Erweiterung E4). Sie gehoeren dem Kunden und
     # liegen deshalb unterhalb seines Bereichs.
     "artefakte": "workspace/artefakte",
+    # Wiederverwendbare Vorlagen. Sie enthalten Unternehmenstexte und
+    # gehoeren damit ebenso in den Kundenbereich wie die erzeugten
+    # Dateien - eine Vorlage von Kunde A hat bei Kunde B nichts zu
+    # suchen (Abschnitt 61).
+    "vorlagen": "workspace/vorlagen",
     "connectors": "connectors",
     "runtime": "runtime",
     "logs": "logs",
@@ -83,8 +88,8 @@ PROGRAM_DIRS = frozenset({"app", "profiles", "tools", "docs", "assets"})
 #: Bewusst NICHT kundenbezogen: das allgemeine Fachwissen (Gesetze, Erlasse,
 #: Fachmodule). Es ist fuer alle gleich und enthaelt keine Unternehmensdaten.
 CUSTOMER_DIRS = frozenset({
-    "company", "database", "conversations", "workspace", "artefakte", "backups",
-    "data", "logs", "config",
+    "company", "database", "conversations", "workspace", "artefakte",
+    "vorlagen", "backups", "data", "logs", "config",
 })
 
 #: Verzeichnisse, die beim Start angelegt werden duerfen/sollen.
@@ -102,6 +107,7 @@ RUNTIME_DIRS = (
     "conversations",
     "workspace",
     "artefakte",
+    "vorlagen",
     "connectors",
     "runtime",
     "logs",

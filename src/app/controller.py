@@ -19,6 +19,10 @@ from typing import Any, Callable, Iterable, Sequence
 
 from pkc.artefakte import Artefaktwerk, aus_markdown
 from pkc.artefakte.wunsch import erkennen as dateiwunsch_erkennen
+from pkc.vorlagen import (
+    VorlagenFehler, Vorlagenspeicher, Vorlagenwerk,
+    uebernehmen as vorlagen_uebernehmen,
+)
 from pkc.audit import ApprovalState, ApprovalStore, AuditLog
 from pkc.checkpoint import CheckpointManager
 from pkc.config import Config
@@ -209,6 +213,14 @@ class AppController:
             marke=self.brand.name,
         )
 
+        # Vorlagen. Sie liegen im Kundenbereich und benutzen dieselbe
+        # Artefakt-Engine wie jede andere erzeugte Datei - eine aus einer
+        # Vorlage erzeugte Datei bekommt damit Fassungsnummer, Pruefsumme
+        # und Verzeichniseintrag wie jede andere auch.
+        self.vorlagen = Vorlagenspeicher(self.paths, audit=self.audit)
+        self.vorlagenwerk = Vorlagenwerk(
+            self.vorlagen, self.artefakte, memory=self.memory)
+
         # Plugins (Erweiterung E5). Geladen wird erst beim Start, damit ein
         # fehlerhaftes Plugin die Anwendung nicht am Hochfahren hindert.
         self.plugins = Pluginverwaltung(
@@ -277,6 +289,7 @@ class AppController:
 
         self.conversation_uid: str = ""
         self._bundled_result: dict = {}
+        self._vorlagen_aufnahme = None
 
     def _datenbanken_oeffnen(self) -> None:
         """Oeffnet beide Datenbanken und alles, was auf ihnen aufsetzt.
@@ -344,6 +357,14 @@ class AppController:
                 int(self.config.get("retrieval.chunk_tokens", 400)),
                 int(self.config.get("retrieval.chunk_overlap", 60)),
             )
+        # Mitgelieferte Vorlagen in den Kundenbereich uebernehmen. Eigene
+        # Aenderungen daran bleiben erhalten - siehe pkc.vorlagen.
+        try:
+            self._vorlagen_aufnahme = vorlagen_uebernehmen(self.vorlagen, self.paths)
+        except Exception as fehler:          # Vorlagen duerfen den Start nie blockieren
+            log.warning("Vorlagen nicht uebernommen: %s", fehler)
+            self._vorlagen_aufnahme = None
+
         stats = self.knowledge.stats()
         report.add(
             "Fachwissen", stats["documents"] > 0,
@@ -1378,6 +1399,36 @@ class AppController:
 
     def artefakt_loeschen(self, name: str) -> bool:
         return self.artefakte.loeschen(name)
+
+    # ------------------------------------------------------------------
+    # Vorlagen
+    # ------------------------------------------------------------------
+    def vorlagen_liste(self, kategorie: str = "", suche: str = "") -> list:
+        """Alle Vorlagen des aktiven Kundenbereichs."""
+        return self.vorlagen.liste(kategorie=kategorie, suche=suche)
+
+    def vorlagen_kategorien(self) -> list[str]:
+        return self.vorlagen.kategorien()
+
+    def vorlage_holen(self, kennung: str):
+        return self.vorlagen.holen(kennung)
+
+    def vorlage_vorschau(self, kennung: str, werte: dict | None = None):
+        """Zeigt, was herauskaeme - ohne eine Datei zu schreiben."""
+        return self.vorlagenwerk.vorschau(kennung, werte)
+
+    def vorlage_erzeugen(self, kennung: str, *, format: str = "",
+                         werte: dict | None = None, name: str = ""):
+        """Erzeugt die Datei aus einer Vorlage."""
+        return self.vorlagenwerk.erzeugen(kennung, format=format,
+                                          zusatz=werte, name=name)
+
+    def vorlage_aufnehmen(self, pfad):
+        """Nimmt eine eigene Textvorlage auf."""
+        return self.vorlagen.aus_datei(pfad)
+
+    def vorlage_entfernen(self, kennung: str) -> bool:
+        return self.vorlagen.entfernen(kennung)
 
     # -- Plugins --------------------------------------------------------
     def plugin_liste(self) -> list[dict]:

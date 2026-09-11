@@ -292,9 +292,13 @@ def test_noch_nicht_gebaute_bereiche_haben_keine_toten_knoepfe(fenster):
     oder es ist eindeutig als nicht verfuegbar gekennzeichnet.
 
     Der einzige Knopf in diesen Bereichen fuehrt zu dem Bereich, der heute
-    schon hilft - und der funktioniert."""
+    schon hilft - und der funktioniert.
+
+    Uebrig ist nur noch "Aufgaben". "Vorlagen" war bis zur Fassung 19
+    ebenfalls hier; der Bereich ist jetzt gebaut und wird weiter unten
+    gegen seine eigenen Ansprueche geprueft."""
     window, _, _ = fenster
-    for kennung in ("vorlagen", "aufgaben"):
+    for kennung in ("aufgaben",):
         flaeche = window.schale.bereiche[kennung].rahmen
         texte = _alle_texte(flaeche)
         assert any("nicht verfuegbar" in t for t in texte), (
@@ -308,11 +312,64 @@ def test_noch_nicht_gebaute_bereiche_haben_keine_toten_knoepfe(fenster):
 
 def test_der_verweis_aus_einem_leeren_bereich_fuehrt_wirklich_hin(fenster):
     window, _, _ = fenster
-    window.schale.zeigen("vorlagen")
-    knoepfe = _alle_knoepfe(window.schale.bereiche["vorlagen"].rahmen)
+    window.schale.zeigen("aufgaben")
+    knoepfe = _alle_knoepfe(window.schale.bereiche["aufgaben"].rahmen)
     assert knoepfe, "es muss einen Weg heraus geben"
-    knoepfe[0].invoke()
-    assert window.schale.aktiv == "arbeitsergebnisse"
+    knoepfe[-1].invoke()
+    assert window.schale.aktiv == "wissen_quellen"
+
+
+def test_der_vorlagenbereich_ist_kein_schild_mehr(fenster):
+    """Er war eine beschriftete Tuer vor einem leeren Raum."""
+    window, _, _ = fenster
+    flaeche = window.schale.bereiche["vorlagen"].rahmen
+    texte = _alle_texte(flaeche)
+    assert not any("nicht verfuegbar" in t for t in texte), \
+        "der Bereich ist gebaut - der Hinweis muss weg"
+    beschriftungen = {k.options.get("text") for k in _alle_knoepfe(flaeche)}
+    assert "Datei erzeugen" in beschriftungen
+    assert "Vorschau" in beschriftungen
+    for knopf in _alle_knoepfe(flaeche):
+        assert knopf.commands.get("command") is not None, (
+            f"toter Knopf: {knopf.options.get('text')}")
+
+
+def test_die_mitgelieferten_vorlagen_stehen_in_der_liste(fenster):
+    window, _, _ = fenster
+    zeilen = window.vorlagen_tree.rows
+    namen = [zeile["values"][0] for zeile in zeilen.values()]
+    assert "Mandantenbrief" in namen, \
+        "der Bereich muss ohne Zutun schon etwas anzubieten haben"
+    assert "mandantenbrief" in zeilen, \
+        "die Zeile muss ihre Kennung tragen - sonst weiss der Knopf nicht, "\
+        "welche Vorlage gemeint ist"
+
+
+def test_aus_der_oberflaeche_entsteht_eine_datei(fenster):
+    """Der ganze Weg: Zeile waehlen, Angabe eintragen, Knopf druecken."""
+    window, controller, _ = fenster
+    window.vorlagen_tree._selection = ("mandantenbrief",)
+    window._vorlage_zeigen()
+
+    assert window.vorlage_felder, "es muss nach den offenen Stellen fragen"
+    for name, feld in window.vorlage_felder.items():
+        feld.set(f"Wert fuer {name}")
+    window.vorlage_format.set("md")
+    window._vorlage_erzeugen()
+
+    dateien = controller.artefakt_liste()
+    assert dateien, "es muss eine Datei entstanden sein"
+    pfad = controller.artefakt_pfad(dateien[0]["name"])
+    assert "Wert fuer betreff" in pfad.read_text(encoding="utf-8")
+
+
+def test_die_vorschau_zeigt_die_offenen_stellen(fenster):
+    window, _, _ = fenster
+    window.vorlagen_tree._selection = ("mandantenbrief",)
+    window._vorlage_zeigen()
+    text = window.vorlage_vorschau_text.buffer
+    assert "{{" not in text, "in der Vorschau werden sie hervorgehoben"
+    assert "betreff" in text
 
 
 def test_der_systemstatus_ist_eine_ampelliste(fenster):

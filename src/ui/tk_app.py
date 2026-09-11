@@ -25,6 +25,7 @@ from app.controller import AppController, AskOutcome, StartupReport
 from pkc.branding import load_brand, profilname
 from pkc.logging_setup import get_logger
 from pkc.netstate import Mode
+from pkc.vorlagen import beschriftung as platzhalter_beschriftung
 from ui.antwort import teilen
 # Die Farben kommen aus einer Stelle. Sie hier noch einmal als Zahl
 # hinzuschreiben hiesse, sie beim naechsten Umbau an einer davon zu
@@ -67,6 +68,12 @@ SCHWELLE_LEISTE = 1000
 HINWEIS_LANG = ("Eingabe sendet  ·  Umschalt+Eingabe neue Zeile  ·  "
                 "Strg+N neue Unterhaltung  ·  Esc bricht ab")
 HINWEIS_KURZ = "Eingabe sendet  ·  Umschalt+Eingabe neue Zeile"
+
+#: Mindestbreiten der beiden Spalten im Vorlagenbereich. Links muss ein
+#: Vorlagenname ganz hineinpassen, rechts ein Eingabefeld neben seiner
+#: Beschriftung - sonst steht die Beschriftung ueber dem halben Feld.
+VORLAGEN_LISTE = 500
+VORLAGEN_DETAIL = 520
 
 FONT_BASE = ("Segoe UI", 10)
 FONT_MONO = ("Consolas", 10)
@@ -1913,19 +1920,279 @@ class MainWindow:
                        ).pack(anchor="w", pady=(14, 0))
 
     def _build_templates_tab(self) -> None:
-        self._build_pending_tab(
+        """Vorlagen durchsuchen, fuellen, ansehen und erzeugen.
+
+        Links die Liste, rechts die Vorlage. Gefragt wird nur nach dem,
+        was das Unternehmensgedaechtnis nicht schon beantwortet - wer
+        seinen Firmennamen hinterlegt hat, soll ihn nicht bei jedem Brief
+        noch einmal tippen.
+        """
+        frame = self.schale.bereich_anlegen(
             "vorlagen", "Vorlagen",
-            "Wiederverwendbare Word-, Excel-, PowerPoint- und Fachvorlagen.",
-            "\u25a7",
-            ["Vorlagen durchsuchen und nach Kategorien ordnen",
-             "Eine Vorlage mit Unternehmens- und Profildaten fuellen lassen",
-             "Vorschau vor dem Erzeugen",
-             "Eigene Unternehmensvorlagen aufnehmen"],
-            "PORTIVA erzeugt Dateien bereits in neun Formaten - aus einer "
-            "Antwort heraus ueber \u201eAntwort speichern\u201c in der "
-            "Unterhaltung. Was fehlt, ist die Verwaltung wiederverwendbarer "
-            "Vorlagen.",
-            weg=("arbeitsergebnisse", "Zu den Arbeitsergebnissen"))
+            "Wiederverwendbare Vorlagen fuellen und als Datei erzeugen.",
+            "\u25a7")
+
+        leiste = ttk.Frame(frame)
+        leiste.pack(fill="x", pady=(0, PAD))
+        ttk.Button(leiste, text="Eigene Vorlage aufnehmen",
+                   command=self._vorlage_aufnehmen).pack(side="left")
+        ttk.Button(leiste, text="Entfernen",
+                   command=self._vorlage_entfernen).pack(side="left",
+                                                         padx=(PAD, 0))
+        ttk.Button(leiste, text="Aktualisieren",
+                   command=self._refresh_vorlagen).pack(side="left",
+                                                        padx=(PAD, 0))
+        ttk.Label(leiste, text="Suche:").pack(side="left", padx=(PAD * 2, 4))
+        self.vorlagen_suche = tk.StringVar()
+        suchfeld = ttk.Entry(leiste, textvariable=self.vorlagen_suche, width=22)
+        suchfeld.pack(side="left")
+        suchfeld.bind("<KeyRelease>", lambda _e: self._refresh_vorlagen())
+        self.vorlagen_hinweis = ttk.Label(leiste, text="", foreground=LEISE)
+        self.vorlagen_hinweis.pack(side="right")
+
+        # Zwei Spalten mit fester Mindestbreite statt eines Schiebereglers.
+        # Ein Schieberegler verteilt die Breite anteilig; die Liste wurde
+        # damit auf schmalen Fenstern so eng, dass von "Mandantenbrief"
+        # nur "Manda..." uebrig blieb (OBERFLAECHEN_STANDARD Abschnitt 4).
+        teiler = ttk.Frame(frame)
+        teiler.pack(fill="both", expand=True)
+        teiler.columnconfigure(0, weight=3, minsize=VORLAGEN_LISTE)
+        teiler.columnconfigure(1, weight=4, minsize=VORLAGEN_DETAIL)
+        teiler.rowconfigure(0, weight=1)
+
+        links = ttk.Frame(teiler)
+        links.grid(row=0, column=0, sticky="nsew")
+        self.vorlagen_tree = ttk.Treeview(
+            links, columns=("name", "kategorie", "format"), show="headings")
+        # 300 statt der zuerst gesetzten 240: aus
+        # "Umsatzsteuer-Voranmeldung - Abgabevermerk" wurde sonst
+        # "Umsatzsteuer-Voranmeldung - Abgab". Eine Tabellenspalte
+        # beschneidet still, ohne dass das Element dafuer zu schmal
+        # waere - die uebliche Breitenmessung faellt darauf herein.
+        for spalte, kopf, breite in (("name", "Vorlage", 300),
+                                     ("kategorie", "Kategorie", 130),
+                                     ("format", "Format", 70)):
+            self.vorlagen_tree.heading(spalte, text=kopf)
+            self.vorlagen_tree.column(spalte, width=breite, anchor="w")
+        self.vorlagen_tree.pack(fill="both", expand=True)
+        self.vorlagen_tree.bind("<<TreeviewSelect>>",
+                                lambda _e: self._vorlage_zeigen())
+
+        rechts = ttk.Frame(teiler)
+        rechts.grid(row=0, column=1, sticky="nsew", padx=(PAD, 0))
+        self.vorlage_titel = ttk.Label(rechts, text="Keine Vorlage gewaehlt",
+                                       font=FONT_TITLE)
+        self.vorlage_titel.pack(anchor="w")
+        self.vorlage_beschreibung = ttk.Label(
+            rechts, text="Links eine Vorlage auswaehlen.", foreground=LEISE,
+            wraplength=520, justify="left")
+        self.vorlage_beschreibung.pack(anchor="w", pady=(2, PAD))
+
+        ttk.Label(rechts, text="Angaben",
+                  font=("Segoe UI", 10, "bold")).pack(anchor="w")
+        self.vorlage_felder_hinweis = ttk.Label(
+            rechts, text="", foreground=LEISE, wraplength=520,
+            justify="left")
+        self.vorlage_felder_hinweis.pack(anchor="w", pady=(0, 4))
+        self.vorlage_felder_rahmen = ttk.Frame(rechts)
+        self.vorlage_felder_rahmen.pack(fill="x")
+        #: Platzhaltername -> Eingabefeld. Wird bei jeder Auswahl neu
+        #: aufgebaut, weil jede Vorlage andere Stellen offen laesst.
+        self.vorlage_felder: dict[str, tk.StringVar] = {}
+
+        unten = ttk.Frame(rechts)
+        unten.pack(fill="x", pady=(PAD, 0))
+        ttk.Label(unten, text="Format:").pack(side="left")
+        self.vorlage_format = tk.StringVar(value="docx")
+        self.vorlage_format_wahl = ttk.Combobox(
+            unten, textvariable=self.vorlage_format, width=8,
+            state="readonly",
+            values=[f["format"] for f in self.controller.artefakt_formate()])
+        self.vorlage_format_wahl.pack(side="left", padx=(4, PAD))
+        ttk.Button(unten, text="Vorschau",
+                   command=self._vorlage_vorschau).pack(side="left")
+        ttk.Button(unten, text="Datei erzeugen",
+                   command=self._vorlage_erzeugen).pack(side="left",
+                                                        padx=(PAD, 0))
+
+        ttk.Label(rechts, text="Vorschau",
+                  font=("Segoe UI", 10, "bold")).pack(anchor="w",
+                                                      pady=(PAD, 2))
+        self.vorlage_vorschau_text = scrolledtext.ScrolledText(
+            rechts, wrap="word", height=14, font=FONT_MONO,
+            bg=KARTE, fg=TEXT, relief="flat", borderwidth=1,
+            highlightthickness=1, highlightbackground=RAND)
+        self.vorlage_vorschau_text.pack(fill="both", expand=True)
+        self.vorlage_vorschau_text.configure(state="disabled")
+
+        self._refresh_vorlagen()
+
+    # -- Vorlagen: Liste -----------------------------------------------
+    def _refresh_vorlagen(self) -> None:
+        if not hasattr(self, "vorlagen_tree"):
+            return
+        self.vorlagen_tree.delete(*self.vorlagen_tree.get_children())
+        try:
+            vorlagen = self.controller.vorlagen_liste(
+                suche=self.vorlagen_suche.get())
+        except Exception as fehler:                 # pragma: no cover
+            log.warning("Vorlagen nicht lesbar: %s", fehler)
+            vorlagen = []
+        for vorlage in vorlagen:
+            self.vorlagen_tree.insert(
+                "", "end", iid=vorlage.kennung,
+                values=(vorlage.name, vorlage.kategorie,
+                        vorlage.format.upper()))
+        self.vorlagen_hinweis.configure(
+            text=f"{len(vorlagen)} Vorlagen" if vorlagen
+            else "Keine Vorlage gefunden")
+
+    def _gewaehlte_vorlage(self, still: bool = False) -> str:
+        auswahl = self.vorlagen_tree.selection()
+        if not auswahl:
+            if not still:
+                messagebox.showinfo(
+                    "Vorlagen",
+                    "Bitte zuerst links eine Vorlage auswaehlen.",
+                    parent=self.root)
+            return ""
+        return str(auswahl[0])
+
+    # -- Vorlagen: Auswahl ---------------------------------------------
+    def _vorlage_zeigen(self) -> None:
+        """Zeigt die gewaehlte Vorlage und fragt nur nach dem, was fehlt."""
+        kennung = self._gewaehlte_vorlage(still=True)
+        if not kennung:
+            return
+        vorlage = self.controller.vorlage_holen(kennung)
+        if vorlage is None:                         # pragma: no cover
+            return
+        self.vorlage_titel.configure(text=vorlage.name)
+        herkunft = ("mitgeliefert" if vorlage.herkunft == "mitgeliefert"
+                    else "eigene Vorlage")
+        self.vorlage_beschreibung.configure(
+            text=f"{vorlage.beschreibung} ({herkunft})"
+            if vorlage.beschreibung else f"({herkunft})")
+        self.vorlage_format.set(vorlage.format)
+
+        for kind in self.vorlage_felder_rahmen.winfo_children():
+            kind.destroy()
+        self.vorlage_felder = {}
+
+        try:
+            vorschau = self.controller.vorlage_vorschau(kennung)
+        except Exception as fehler:
+            messagebox.showerror("Vorlagen", str(fehler), parent=self.root)
+            return
+
+        offen = list(dict.fromkeys(vorschau.offen))
+        if offen:
+            self.vorlage_felder_hinweis.configure(
+                text="Diese Stellen sind noch offen. Was leer bleibt, steht "
+                     "sichtbar in der Datei und kann dort ergaenzt werden.")
+        else:
+            self.vorlage_felder_hinweis.configure(
+                text="Alle Stellen sind aus dem Unternehmensgedaechtnis "
+                     "gefuellt.")
+
+        for zeile, name in enumerate(offen[:14]):
+            ttk.Label(self.vorlage_felder_rahmen,
+                      text=platzhalter_beschriftung(name)).grid(
+                row=zeile, column=0, sticky="w", pady=1)
+            wert = tk.StringVar()
+            ttk.Entry(self.vorlage_felder_rahmen, textvariable=wert,
+                      width=38).grid(row=zeile, column=1, sticky="ew",
+                                     padx=(PAD, 0), pady=1)
+            self.vorlage_felder[name] = wert
+        self.vorlage_felder_rahmen.columnconfigure(1, weight=1)
+        if len(offen) > 14:
+            ttk.Label(
+                self.vorlage_felder_rahmen,
+                text=f"... und {len(offen) - 14} weitere. Sie bleiben in der "
+                     "Datei stehen und lassen sich dort ergaenzen.",
+                foreground=LEISE, wraplength=480, justify="left",
+            ).grid(row=14, column=0, columnspan=2, sticky="w", pady=(4, 0))
+
+        self._vorlage_vorschau()
+
+    def _vorlage_werte(self) -> dict:
+        return {name: feld.get() for name, feld in self.vorlage_felder.items()}
+
+    # -- Vorlagen: Vorschau und Erzeugen -------------------------------
+    def _vorlage_vorschau(self) -> None:
+        kennung = self._gewaehlte_vorlage()
+        if not kennung:
+            return
+        try:
+            vorschau = self.controller.vorlage_vorschau(
+                kennung, self._vorlage_werte())
+        except Exception as fehler:
+            messagebox.showerror("Vorlagen", str(fehler), parent=self.root)
+            return
+        self.vorlage_vorschau_text.configure(state="normal")
+        self.vorlage_vorschau_text.delete("1.0", "end")
+        self.vorlage_vorschau_text.insert("1.0", vorschau.angezeigt)
+        if vorschau.hinweis:
+            self.vorlage_vorschau_text.insert("end",
+                                              "\n\n" + vorschau.hinweis)
+        self.vorlage_vorschau_text.configure(state="disabled")
+
+    def _vorlage_erzeugen(self) -> None:
+        kennung = self._gewaehlte_vorlage()
+        if not kennung:
+            return
+        try:
+            ergebnis = self.controller.vorlage_erzeugen(
+                kennung, format=self.vorlage_format.get(),
+                werte=self._vorlage_werte())
+        except Exception as fehler:
+            messagebox.showerror("Vorlagen", str(fehler), parent=self.root)
+            return
+        self._refresh_results()
+        text = f"Erzeugt: {ergebnis.artefakt.name}\n\nZu finden unter " \
+               "\u201eArbeitsergebnisse\u201c."
+        if ergebnis.offen:
+            text += ("\n\n" + ergebnis.hinweis)
+        messagebox.showinfo("Vorlagen", text, parent=self.root)
+
+    def _vorlage_aufnehmen(self) -> None:
+        pfad = filedialog.askopenfilename(
+            title="Eigene Vorlage aufnehmen",
+            filetypes=[("Textvorlagen", "*.md *.markdown *.txt"),
+                       ("Alle Dateien", "*.*")],
+            parent=self.root)
+        if not pfad:
+            return
+        try:
+            vorlage = self.controller.vorlage_aufnehmen(pfad)
+        except Exception as fehler:
+            messagebox.showerror("Vorlagen", str(fehler), parent=self.root)
+            return
+        self._refresh_vorlagen()
+        messagebox.showinfo(
+            "Vorlagen",
+            f"Aufgenommen: {vorlage.name}\n\n"
+            f"Erkannte Platzhalter: {len(vorlage.platzhalter)}",
+            parent=self.root)
+
+    def _vorlage_entfernen(self) -> None:
+        kennung = self._gewaehlte_vorlage()
+        if not kennung:
+            return
+        vorlage = self.controller.vorlage_holen(kennung)
+        if vorlage is None:                         # pragma: no cover
+            return
+        if not messagebox.askyesno(
+            "Entfernen", f"„{vorlage.name}“ entfernen?",
+            parent=self.root,
+        ):
+            return
+        try:
+            self.controller.vorlage_entfernen(kennung)
+        except Exception as fehler:
+            messagebox.showwarning("Entfernen", str(fehler), parent=self.root)
+            return
+        self._refresh_vorlagen()
 
     def _build_tasks_tab(self) -> None:
         self._build_pending_tab(

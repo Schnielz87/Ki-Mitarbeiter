@@ -260,10 +260,17 @@ class _TreeviewWidget(_Widget):
     def column(self, column, **kwargs): return self
 
     def insert(self, parent, index, values=(), **kwargs):
-        self._counter += 1
-        key = f"I{self._counter}"
-        self.rows[key] = {"values": list(values)}
-        return key
+        # ``iid`` wurde hier zuerst verschluckt und immer ein eigener
+        # Schluessel vergeben. Echtes Tk nimmt den uebergebenen. Wer sich
+        # darauf verlaesst - etwa um aus der Auswahl die Kennung einer
+        # Vorlage zu lesen - haette im Test etwas anderes geprueft als im
+        # Programm.
+        key = kwargs.get("iid")
+        if not key:
+            self._counter += 1
+            key = f"I{self._counter}"
+        self.rows[str(key)] = {"values": list(values)}
+        return str(key)
 
     def get_children(self, item=""):
         return list(self.rows)
