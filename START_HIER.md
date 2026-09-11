@@ -30,9 +30,11 @@ klicken.
 >    neueste Fassung - so brauchen Sie sich keinen Link zu merken und
 >    bekommen nie eine veraltete Fassung.
 > 3. Ganz unten im Kasten **Artefakte** (englisch *Artifacts*) **direkt auf
->    den Namen** `Portable-Buchhalter-Windows` klicken. Das Wort selbst ist
+>    den Namen** `Portable-Buchhalter-Windows_Vxx` klicken (xx ist die
+>    laufende Nummer - die hoechste ist die neueste). Das Wort selbst ist
 >    der Link; angemeldet ist es blau. Es kommt eine ZIP-Datei, GitHub zeigt
->    die Groesse als **21,9 MB** an.
+>    die Groesse an - derzeit rund **95 MB**, weil der Modelldienst und
+>    die Bilder der Anleitung mit im Paket liegen.
 > 4. ZIP **auf den Datentraeger entpacken**, nicht in den Download-Ordner.
 >    Windows blockiert sonst unter Umstaenden die Ausfuehrung.
 > 5. Rechtsklick auf die ZIP-Datei vor dem Entpacken → *Eigenschaften* →
@@ -51,9 +53,14 @@ klicken.
 
 ## Ausfuehrliche Bedienungsanleitung
 
-`docs\BEDIENUNGSANLEITUNG.docx` - als Word-Dokument, elf Kapitel: wo Sie was
-eingeben, wie eine Antwort aufgebaut ist, was der Buchhalter bewusst nicht
-tut, und was zu tun ist, wenn etwas nicht funktioniert.
+**`BEDIENUNGSANLEITUNG.docx`** - sie liegt direkt hier, neben der EXE
+(und zusaetzlich in `docs\`). Ein Word-Dokument mit 21 Kapiteln und
+Bildern aller zehn Bereiche: wo Sie was eingeben, wie eine Antwort
+aufgebaut ist, wie Vorlagen und geplante Aufgaben funktionieren, was der
+Buchhalter bewusst nicht tut, und was zu tun ist, wenn etwas nicht
+funktioniert.
+
+Sie ist im Paket enthalten - Sie muessen sie nirgends herunterladen.
 
 ## Was Sie **nicht** brauchen
 

@@ -441,3 +441,36 @@ def test_die_anleitung_verspricht_keinen_speicher_ohne_schalter():
     assert "antwortspeicher" in DEFAULTS["llm"], \
         "der Schalter muss es geben"
     assert "abschalten" in QUELLE or "abgeschaltet" in QUELLE
+
+
+def test_das_bauskript_legt_die_anleitung_neben_die_exe():
+    """Sie in docs\\ zu vergraben heisst, dass niemand sie findet.
+
+    Gemeldet wurde: "die Anleitung kann ich nicht runterladen". Sie lag
+    im Paket - unter docs\\ - und war ueber GitHub nur als Vorschau zu
+    sehen. Wer den Ordner oeffnet, sucht dort, wo das Programm steht.
+    """
+    skript = (ROOT / "build" / "build_windows.ps1").read_text(encoding="utf-8")
+    assert "BEDIENUNGSANLEITUNG.docx" in skript, \
+        "das Bauskript nimmt die Anleitung nicht ausdruecklich mit"
+    assert "Bedienungsanleitung uebernommen" in skript, \
+        "der Kopiervorgang muss berichten, ob er etwas getan hat"
+    assert "HINWEIS: docs\\BEDIENUNGSANLEITUNG.docx fehlt" in skript, \
+        "und er muss es sagen, wenn sie fehlt - statt still nichts zu tun"
+
+
+def test_der_bauablauf_prueft_dass_die_anleitung_im_paket_liegt():
+    """Ein stiller Kopiervorgang ist kein Nachweis."""
+    ablauf = (ROOT / ".github" / "workflows"
+              / "build-windows.yml").read_text(encoding="utf-8")
+    assert "Die Bedienungsanleitung liegt wirklich im Paket" in ablauf
+    assert "Die Bedienungsanleitung fehlt im Paket" in ablauf, \
+        "der Schritt muss den Bau anhalten, nicht nur etwas ausgeben"
+
+
+def test_start_hier_nennt_die_anleitung_dort_wo_sie_liegt():
+    start = (ROOT / "START_HIER.md").read_text(encoding="utf-8")
+    assert "BEDIENUNGSANLEITUNG.docx" in start
+    assert "neben der EXE" in start
+    assert "21,9 MB" not in start, \
+        "die Paketgroesse hat sich vervielfacht - die Zahl war veraltet"

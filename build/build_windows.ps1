@@ -102,6 +102,24 @@ if (Test-Path "runtime\llama") {
 
 New-Item -ItemType Directory -Force -Path "$Ziel\docs" | Out-Null
 Copy-Item "docs\*" -Destination "$Ziel\docs\" -Recurse -Force -ErrorAction SilentlyContinue
+
+# Die Bedienungsanleitung liegt ZUSAETZLICH neben der EXE. Sie in docs\
+# zu vergraben heisst, dass niemand sie findet: wer den Ordner oeffnet,
+# sucht dort, wo das Programm steht.
+#
+# Und es wird berichtet, ob sie wirklich mitgekommen ist. Der Kopiervorgang
+# darueber laeuft mit -ErrorAction SilentlyContinue - er wuerde also
+# stillschweigend nichts tun, wenn etwas fehlt. Genau das ist passiert:
+# gemeldet wurde "die Anleitung laesst sich nicht herunterladen", und
+# ob sie im Paket lag, konnte niemand sagen.
+$anleitung = "docs\BEDIENUNGSANLEITUNG.docx"
+if (Test-Path $anleitung) {
+    Copy-Item $anleitung -Destination $Ziel -Force
+    $groesse = [math]::Round((Get-Item $anleitung).Length / 1MB, 1)
+    Write-Host "Bedienungsanleitung uebernommen: BEDIENUNGSANLEITUNG.docx ($groesse MB)"
+} else {
+    Write-Host "HINWEIS: docs\BEDIENUNGSANLEITUNG.docx fehlt - das Paket enthaelt keine Anleitung."
+}
 foreach ($datei in @("START_HIER.md","README.md","ARCHITEKTUR.md","PROJEKTSTATUS.md",
                      "CHANGELOG.md","SICHERHEITSKONZEPT.md","UPDATE_KONZEPT.md",
                      "ERP_CONNECTOR_KONZEPT.md","MEMORY_KONZEPT.md",

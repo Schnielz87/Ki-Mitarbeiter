@@ -40,7 +40,7 @@ Geheimnistresor, Freigabepflicht, Connector-Rahmen, Dateiausgabe in acht
 Formaten, Plugin-System mit eigenem Vorgang je Plugin, mitgeliefertem
 Modelldienst und gefuehrtem Weg zum Sprachmodell, grafische Oberflaeche und
 Kommandozeile -
-abgesichert durch **963 automatische Tests**, davon fuenfzehn mit einem
+abgesichert durch **966 automatische Tests**, davon fuenfzehn mit einem
 **echten Fenster** auf einem echten Bildschirm.
 
 Seit dem 09.09.2026 rechnet die Anwendung selbst, statt es dem

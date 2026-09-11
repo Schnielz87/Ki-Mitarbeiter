@@ -205,6 +205,34 @@ jobs:
             Write-Host "$datei vorhanden, $([math]::Round($groesse/1MB,1)) MB"
           }
 
+      - name: Die Bedienungsanleitung liegt wirklich im Paket
+        shell: pwsh
+        # Gemeldet wurde: "die Anleitung kann ich nicht runterladen". Ob
+        # sie ueberhaupt im Paket lag, liess sich nicht sagen - der
+        # Kopiervorgang im Bauskript laeuft still. Jetzt wird es geprueft
+        # statt angenommen.
+        run: |
+          $gefunden = @()
+          foreach ($pfad in @("dist\Portable-Buchhalter\BEDIENUNGSANLEITUNG.docx",
+                              "dist\Portable-Buchhalter\docs\BEDIENUNGSANLEITUNG.docx")) {
+            if (Test-Path $pfad) {
+              $mb = [math]::Round((Get-Item $pfad).Length / 1MB, 1)
+              Write-Host "  $pfad - $mb MB"
+              $gefunden += $pfad
+            } else {
+              Write-Host "  FEHLT: $pfad"
+            }
+          }
+          if ($gefunden.Count -eq 0) {
+            throw "Die Bedienungsanleitung fehlt im Paket. Wer die ZIP herunterlaedt, haette keine."
+          }
+          # Und die Bilder der Oberflaeche, auf die sie sich beruft.
+          $bilder = Get-ChildItem "dist\Portable-Buchhalter\docs\Oberflaeche" -Filter *.png -ErrorAction SilentlyContinue
+          Write-Host "  Bildschirmfotos im Paket: $($bilder.Count)"
+          if ($bilder.Count -lt 10) {
+            throw "Es fehlen Bildschirmfotos im Paket ($($bilder.Count) von 11)."
+          }
+
       - name: Systempruefung der gebauten EXE
         shell: pwsh
         run: |
