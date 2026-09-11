@@ -114,19 +114,50 @@ class _Widget:
     _MAX_AFTER_DEPTH = 400
     _after_depth = 0
 
+    #: Welche Rueckrufe gerade ueber ``after`` laufen. Gebraucht, um eine
+    #: Uhr zu erkennen, die sich selbst neu stellt.
+    _laufende_rueckrufe: list = []
+
+    @staticmethod
+    def _schluessel(rueckruf):
+        """Erkennt denselben Rueckruf wieder - auch als gebundene Methode.
+
+        Bei einer Lambda-Funktion geht das nicht: jedes ``lambda`` ist ein
+        neues Objekt. Das ist hier verschmerzbar - eine Uhr, die sich
+        selbst neu stellt, tut das ueber eine Methode.
+        """
+        eigner = getattr(rueckruf, "__self__", None)
+        funktion = getattr(rueckruf, "__func__", rueckruf)
+        return (id(eigner), funktion)
+
     def after(self, delay, callback=None, *args):
         """Fuehrt den Rueckruf aus, statt eine Ereignisschleife zu betreiben.
 
         Wartezeiten werden tatsaechlich abgewartet (verkuerzt), damit
         Hintergrundarbeit in einem anderen Thread fertig werden kann - sonst
         wuerde eine Warteschleife wie in ``BackgroundTask`` endlos wiederholen.
+
+        **Eine Uhr, die sich selbst neu stellt, wird nur vermerkt.** Echtes
+        Tk kehrt bei ``after`` sofort zurueck und ruft spaeter aus der
+        Ereignisschleife; das Doppel ruft sofort auf. Stellt ein Rueckruf
+        am Ende wieder sich selbst, entstuende daraus eine Endlosfolge -
+        im Programm ist es eine Uhr, die jede Minute einmal schlaegt.
+
+        Die Unterscheidung nach der Wartezeit waere die einfachere
+        gewesen und war falsch: das Begruessungsbild schliesst sich nach
+        drei Sekunden ueber genau dasselbe ``after``, und das ist keine
+        Uhr, sondern ein einmaliger Termin.
         """
         if callback is None:
             return "job"
         self.after_jobs.append((delay, callback))
+        schluessel = _Widget._schluessel(callback)
+        if schluessel in _Widget._laufende_rueckrufe:
+            return "takt"
         if delay:
             time.sleep(min(int(delay), 50) / 1000.0)
         _Widget._after_depth += 1
+        _Widget._laufende_rueckrufe.append(schluessel)
         try:
             if _Widget._after_depth > _Widget._MAX_AFTER_DEPTH:
                 raise AssertionError(
@@ -136,6 +167,7 @@ class _Widget:
             return callback(*args)
         finally:
             _Widget._after_depth -= 1
+            _Widget._laufende_rueckrufe.pop()
     def after_cancel(self, job): return None
     def mainloop(self): return None
     def update(self): return None
@@ -304,8 +336,24 @@ class _PhotoImage:
 class _Variable:
     def __init__(self, master=None, value=None, **kwargs):
         self._value = value
+        self._beobachter: list = []
+
     def get(self): return self._value
-    def set(self, value): self._value = value
+
+    def set(self, value):
+        self._value = value
+        for rueckruf in list(self._beobachter):
+            rueckruf(str(id(self)), "", "write")
+
+    def trace_add(self, art, rueckruf):
+        """Echtes Tk ruft bei jeder Aenderung zurueck. Das Doppel auch.
+
+        Ohne das lief eine Oberflaeche, die sich auf trace_add verlaesst,
+        im Test durch, ohne dass die Rueckrufe je ausgeloest wurden -
+        geprueft waere dann etwas anderes als das Programm.
+        """
+        self._beobachter.append(rueckruf)
+        return f"trace{len(self._beobachter)}"
 
 
 class _StringVar(_Variable):
@@ -316,6 +364,22 @@ class _StringVar(_Variable):
 class _BooleanVar(_Variable):
     def __init__(self, master=None, value=False, **kwargs):
         super().__init__(master, bool(value))
+
+
+class _Radiobutton(_Widget):
+    """Setzt beim Anklicken seinen Wert in die verbundene Variable."""
+
+    def __init__(self, master=None, **options):
+        super().__init__(master, **options)
+        self.variable = options.get("variable")
+        self.value = options.get("value")
+
+    def invoke(self):
+        if self.variable is not None:
+            self.variable.set(self.value)
+        befehl = self.commands.get("command")
+        if befehl is not None:
+            befehl()
 
 
 class _Combobox(_Widget):
@@ -484,6 +548,7 @@ def install() -> _Dialogs:
                  "PanedWindow", "Notebook", "Separator", "LabelFrame"):
         setattr(ttk, name, _Widget)
     ttk.Button = _Button
+    ttk.Radiobutton = _Radiobutton
     ttk.Entry = _Entry
     ttk.Combobox = _Combobox
     tk.PhotoImage = _PhotoImage

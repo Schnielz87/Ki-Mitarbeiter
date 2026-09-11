@@ -403,3 +403,25 @@ def test_die_kapitelnummern_der_verweise_stimmen():
     fehlend = sorted(n for n in genannt if n not in kapitel)
     assert not fehlend, (
         f"Die Anleitung verweist auf Kapitel, die es nicht gibt: {fehlend}")
+
+
+def test_die_anleitung_erklaert_die_aufgaben():
+    assert "14.  Aufgaben" in QUELLE, "Das Kapitel zu den Aufgaben fehlt."
+    assert "nur, solange es geoeffnet ist" in QUELLE, \
+        "Der Preis der Portabilitaet muss dastehen, nicht verschwiegen werden"
+    assert "EINMAL nachgeholt" in QUELLE
+    assert "Aufgabenplanung von Windows" in QUELLE
+    assert "Laufwerksbuchstaben" in QUELLE, \
+        "Der Haken mit dem Pfad muss auch in der Anleitung stehen"
+    assert "Einen der zehn Bereiche gibt es noch nicht" not in QUELLE, \
+        "Aufgaben ist gebaut - der Satz stimmt nicht mehr"
+
+
+def test_die_anleitung_nennt_die_planbaren_arbeiten():
+    """Was sich planen laesst, muss mit dem Programm uebereinstimmen."""
+    from pkc.aufgaben import alle
+
+    for aktion in alle():
+        assert aktion.name in QUELLE, (
+            f"Die Arbeit „{aktion.name}“ laesst sich planen, steht aber "
+            "nicht in der Anleitung.")

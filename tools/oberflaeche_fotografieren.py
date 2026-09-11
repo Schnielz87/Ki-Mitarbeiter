@@ -172,14 +172,32 @@ def _vorbereiten(fenster, schluessel: str) -> None:
     erklaert das nichts. Also wird eine Vorlage ausgewaehlt - dieselbe,
     die im Text beschrieben ist.
     """
-    if schluessel != "vorlagen":
+    if schluessel == "vorlagen":
+        baum = getattr(fenster, "vorlagen_tree", None)
+        if baum is None or "mandantenbrief" not in baum.get_children():
+            return
+        baum.selection_set("mandantenbrief")
+        baum.focus("mandantenbrief")
+        fenster._vorlage_zeigen()
         return
-    baum = getattr(fenster, "vorlagen_tree", None)
-    if baum is None or "mandantenbrief" not in baum.get_children():
-        return
-    baum.selection_set("mandantenbrief")
-    baum.focus("mandantenbrief")
-    fenster._vorlage_zeigen()
+
+    if schluessel == "aufgaben":
+        # Zwei Beispielaufgaben, damit die Liste nicht leer ist. Sie
+        # entstehen in der Wurzel dieser Bildaufnahme und nicht bei
+        # einem Anwender - die ausgelieferte Anwendung bringt keine
+        # Aufgaben mit. Eine Anwendung, die von selbst Automationen
+        # anlegt, waere das Gegenteil dessen, was hier gilt.
+        speicher = fenster.controller.aufgaben
+        if speicher.liste():
+            return
+        from pkc.aufgaben import Ausloeser
+
+        speicher.anlegen("Naechtliche Sicherung", "sicherung_anlegen",
+                         Ausloeser("taeglich", uhrzeit="23:00"))
+        speicher.anlegen("Wissen woechentlich pruefen",
+                         "wissensstand_pruefen",
+                         Ausloeser("intervall", stunden=168))
+        fenster._refresh_aufgaben()
 
 
 def _durchatmen(dach, runden: int = 6) -> None:

@@ -56,6 +56,9 @@ LAYOUT: dict[str, str] = {
     # Dateien - eine Vorlage von Kunde A hat bei Kunde B nichts zu
     # suchen (Abschnitt 61).
     "vorlagen": "workspace/vorlagen",
+    # Geplante Aufgaben samt Protokoll. Ebenfalls Kundendaten: welche
+    # Sicherung wann lief, geht nur dieses Unternehmen etwas an.
+    "aufgaben": "workspace/aufgaben",
     "connectors": "connectors",
     "runtime": "runtime",
     "logs": "logs",
@@ -89,7 +92,7 @@ PROGRAM_DIRS = frozenset({"app", "profiles", "tools", "docs", "assets"})
 #: Fachmodule). Es ist fuer alle gleich und enthaelt keine Unternehmensdaten.
 CUSTOMER_DIRS = frozenset({
     "company", "database", "conversations", "workspace", "artefakte",
-    "vorlagen", "backups", "data", "logs", "config",
+    "vorlagen", "aufgaben", "backups", "data", "logs", "config",
 })
 
 #: Verzeichnisse, die beim Start angelegt werden duerfen/sollen.
@@ -108,6 +111,7 @@ RUNTIME_DIRS = (
     "workspace",
     "artefakte",
     "vorlagen",
+    "aufgaben",
     "connectors",
     "runtime",
     "logs",

@@ -3,11 +3,11 @@
 Stand 11.09.2026. Antwort auf die Frage: *„Was ist mit der Fachlogik,
 was muss hier getan werden?"*
 
-> **Vorlagen sind seit Fassung 19 gebaut.** Was hier ueber sie steht, ist
-> als Beschreibung des Zustands ueberholt; es bleibt stehen, weil die
-> Erklaerung, was „Fachlogik" heisst, sich daran am besten zeigt. Was
-> tatsaechlich entstanden ist, steht unten unter „Was aus den Vorlagen
-> geworden ist". Offen ist nur noch **Aufgaben**.
+> **Beide Bereiche sind gebaut** — Vorlagen in Fassung 19, Aufgaben in
+> Fassung 20. Was hier über den offenen Zustand steht, ist überholt; es
+> bleibt stehen, weil die Erklärung, was „Fachlogik" heißt, sich daran
+> am besten zeigt. Was tatsächlich entstanden ist, steht unten in den
+> Abschnitten 4 und 5.
 
 ## Vorab: was heißt hier überhaupt „Fachlogik"?
 
@@ -31,8 +31,7 @@ Bei acht Türen war das Zimmer eingerichtet. Bei **Vorlagen** und
 leer. Deshalb stand dort auch offen „Dieser Bereich ist noch nicht
 verfügbar" — statt eines Knopfes, der nichts tut.
 
-Bei **Vorlagen** ist das Zimmer inzwischen eingerichtet. Bei
-**Aufgaben** hängt das Schild noch allein.
+Inzwischen sind beide Zimmer eingerichtet.
 
 ### Woran du den Unterschied siehst
 
@@ -223,8 +222,56 @@ stillschweigend fehlt, geht raus.
   nicht. Gerechnet wird in `pkc.fachrechnen`, und das Ergebnis kommt als
   Wert herein.
 
-## 5. Aufgaben: die Entscheidung steht, gebaut ist noch nichts
+## 5. Was aus den Aufgaben geworden ist
 
-Du hast **Weg C** gewählt — beides, mit Schalter, Vorgabe ist A
-(„nur bei geöffnetem Programm"). Damit ist die Grundsatzfrage vom Tisch.
-Was noch zu bauen ist, steht unverändert oben unter Abschnitt 2.
+Gebaut in Fassung 20, nach **Weg C** mit A als Vorgabe — so wie du es
+freigegeben hast.
+
+### Die drei Sätze, die den Rest erklären
+
+1. **PORTIVA läuft nur, solange es geöffnet ist.** Das ist der Preis der
+   Portabilität, nicht eine Nachlässigkeit. Aufgaben laufen während des
+   Betriebs; die Oberfläche sieht im Minutentakt nach.
+2. **Verpasstes wird einmal nachgeholt, nicht fünfmal.** War der Rechner
+   fünf Tage aus, läuft die nächtliche Sicherung einmal. Fünf
+   Sicherungen hintereinander wären keine fünf Sicherungen, sondern eine
+   Sicherung und vier Wartezeiten.
+3. **Was nicht laufen konnte, gilt nicht als erledigt.** Kein Internet,
+   pausiert, Plugin entfernt — die Aufgabe bleibt fällig und läuft,
+   sobald es wieder geht. Nur ein wirklich ausgeführter Versuch
+   verschiebt den nächsten Termin; ein fehlgeschlagener auch, sonst
+   liefe eine dauerhaft scheiternde Aufgabe im Minutentakt weiter.
+
+### Weg B, der Schalter
+
+Wer eine nächtliche Auswertung braucht, lässt Windows PORTIVA starten.
+Das ist ausdrücklich die Ausnahme:
+
+* Es passiert **nur auf ausdrückliche Anweisung**.
+* Vorher steht im Klartext da, was auf dem Rechner zurückbleibt — ein
+  Eintrag in der Aufgabenplanung, der Pfad, die Uhrzeit, ein Protokoll
+  von Windows. Mehr nicht.
+* **Ein** Eintrag, nicht einer je Aufgabe. Windows startet PORTIVA,
+  PORTIVA entscheidet dann selbst, was fällig ist. Zehn Einträge für
+  zehn Aufgaben wären zehn Dinge, die man einzeln wieder loswerden muss.
+* Ausschalten entfernt den Eintrag und **prüft**, ob er wirklich weg
+  ist. `schtasks /Delete` meldet auch dann Erfolg, wenn es nichts zu
+  löschen gab.
+* Der Haken, den man kennen muss: der Eintrag merkt sich einen Pfad.
+  Anderer Laufwerksbuchstabe, und er zeigt ins Leere. PORTIVA prüft das
+  und sagt es.
+
+### Was ausdrücklich nicht geht
+
+* **Aufgaben ab Werk.** PORTIVA bringt keine mit. Eine Anwendung, die
+  von selbst Automationen anlegt, wäre das Gegenteil dessen, was hier
+  gilt.
+* **Aktionen mit Außenwirkung** brauchen bei *jeder* Ausführung eine
+  Bestätigung — die Erlaubnis beim Anlegen genügt nicht. Heute hat keine
+  der mitgelieferten Aktionen diese Eigenschaft; das Kennzeichen ist für
+  Plugins und Connectoren da. Ein Schutz, der erst eingebaut wird, wenn
+  er gebraucht wird, ist zu spät eingebaut.
+* **Minutengenaue Intervalle.** Kürzester Abstand ist eine Stunde.
+* **Bedingte Auslöser** („wenn ein neuer Beleg da ist"). Heute gibt es
+  Zeit und Programmstart. Ereignisse zu überwachen wäre der nächste
+  Schritt.

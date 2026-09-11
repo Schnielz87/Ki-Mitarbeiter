@@ -65,6 +65,16 @@ def fenster(portable_root):
     from test_controller import make_controller
     from ui import tk_app
 
+    # Keine echten Meldungsfenster. Ein echtes ``messagebox.showinfo``
+    # wartet auf einen Klick; in einem Test, den niemand anklickt, steht
+    # damit alles - der erste Anlauf blieb genau daran haengen.
+    #
+    # Der Ersatz muss **hier** gesetzt werden und nicht in einer eigenen
+    # Fixture davor: diese Fixture laedt das Paket ``ui`` frisch, und ein
+    # vorher gesetzter Ersatz haengt dann am alten Modul. Genau so ist
+    # der erste Versuch gescheitert - der Ersatz war da und wirkte nicht.
+    tk_app.messagebox = _Meldungen()
+
     steuerung = make_controller(portable_root)
     bericht = steuerung.bootstrap()
     try:
@@ -82,6 +92,28 @@ def fenster(portable_root):
     # Die Module wieder freigeben, damit der naechste Test sie frisch
     # gegen das Doppel laden kann - das Paket "ui" eingeschlossen.
     tk_double.ui_module_freigeben()
+
+
+class _Meldungen:
+    """Ein Ersatz fuer ``messagebox`` - merkt sich, statt zu fragen.
+
+    Geprueft wird hier das Aussehen und das Verhalten der Flaechen. Den
+    Wortlaut der Meldungen prueft ``test_neue_ansichten.py`` gegen das
+    Doppel.
+    """
+
+    def __init__(self):
+        self.gemeldet: list[tuple[str, str]] = []
+
+    def showinfo(self, titel="", text="", **k):
+        self.gemeldet.append((titel, text))
+
+    showwarning = showinfo
+    showerror = showinfo
+
+    def askyesno(self, titel="", text="", **k):
+        self.gemeldet.append((titel, text))
+        return True
 
 
 def _durchatmen(dach, runden: int = 5) -> None:
@@ -441,3 +473,88 @@ def test_die_vorlagenliste_beschneidet_keinen_namen(fenster):
                     f"{spalte}: {wert!r} braucht {gebraucht}, "
                     f"Spalte ist {breite}")
     assert not zu_lang, "In der Vorlagenliste fehlt Text:\n" + "\n".join(zu_lang)
+
+
+def test_der_aufgabenbereich_schneidet_nichts_ab(fenster):
+    """Ein Formular mit Beschriftungen neben Feldern - der klassische Ort.
+
+    Zusaetzlich zum Breitentest wird hier auch die Hoehe geprueft: der
+    Bereich stapelt Liste, Formular und den Windows-Kasten untereinander.
+    Passt das zusammen nicht ins Fenster, faellt der unterste Teil
+    heraus, ohne dass ein einzelnes Element zu klein waere.
+    """
+    fenster.schale.zeigen("aufgaben")
+    _durchatmen(fenster.root, 4)
+
+    zu_breit = []
+
+    def messen(element) -> None:
+        if _abgeschnitten(element):
+            try:
+                beschriftung = str(element.cget("text"))
+            except Exception:
+                beschriftung = element.winfo_class()
+            zu_breit.append(
+                f"{beschriftung!r}: braucht {element.winfo_reqwidth()}, "
+                f"hat {element.winfo_width()}")
+        for kind in element.winfo_children():
+            messen(kind)
+
+    rahmen = fenster.schale.bereiche["aufgaben"].rahmen
+    messen(rahmen)
+    assert not zu_breit, "Im Aufgabenbereich fehlt Text:\n" + "\n".join(zu_breit)
+
+    assert fenster.windows_planung_text.winfo_ismapped(), (
+        "Der Hinweis zur Windows-Aufgabenplanung ist aus dem Fenster "
+        "gefallen - er steht ganz unten und wird als erstes abgeschnitten.")
+
+
+def test_eine_aufgabe_entsteht_im_echten_fenster(fenster):
+    """Der ganze Weg mit echten Bedienelementen, nicht gegen ein Doppel."""
+    fenster.schale.zeigen("aufgaben")
+    _durchatmen(fenster.root, 2)
+
+    fenster.aufgabe_name.set("Naechtliche Sicherung")
+    fenster.aufgabe_aktion.set("Sicherung anlegen")
+    fenster.aufgabe_wann.set("taeglich")
+    fenster.aufgabe_uhrzeit.set("23:00")
+    fenster._aufgabe_anlegen()
+    _durchatmen(fenster.root, 2)
+
+    kennungen = fenster.aufgaben_tree.get_children()
+    assert kennungen, "die Aufgabe muss in der Liste stehen"
+    werte = fenster.aufgaben_tree.item(kennungen[0])["values"]
+    assert werte[0] == "Naechtliche Sicherung"
+    assert werte[1] == "Taeglich um 23:00"
+    assert werte[3] == "aktiv"
+
+
+def test_die_aufgabenliste_beschneidet_keinen_text(fenster):
+    """Wie bei den Vorlagen: eine Tabellenspalte meldet nicht, dass sie
+    zu schmal ist - sie schneidet einfach ab."""
+    from tkinter import font as tkfont
+    from tkinter import ttk
+
+    fenster.schale.zeigen("aufgaben")
+    fenster.aufgabe_name.set("Wissen jede Woche aktualisieren")
+    fenster.aufgabe_aktion.set("Wissen aktualisieren")
+    fenster.aufgabe_wann.set("intervall")
+    fenster.aufgabe_stunden.set("168")
+    fenster._aufgabe_anlegen()
+    _durchatmen(fenster.root, 3)
+
+    baum = fenster.aufgaben_tree
+    spec = ttk.Style(fenster.root).lookup("Treeview", "font") or "TkDefaultFont"
+    schrift = tkfont.Font(root=fenster.root, font=spec)
+    LUFT = 12
+
+    zu_lang = []
+    spalten = ("name", "wann", "aktion", "zustand", "letzter", "ergebnis")
+    for kennung in baum.get_children():
+        for spalte, wert in zip(spalten, baum.item(kennung)["values"]):
+            breite = int(baum.column(spalte, "width"))
+            gebraucht = schrift.measure(str(wert)) + LUFT
+            if gebraucht > breite:
+                zu_lang.append(f"{spalte}: {wert!r} braucht {gebraucht}, "
+                               f"Spalte ist {breite}")
+    assert not zu_lang, "In der Aufgabenliste fehlt Text:\n" + "\n".join(zu_lang)

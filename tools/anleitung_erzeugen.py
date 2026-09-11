@@ -218,6 +218,7 @@ for nummer, kapitel in enumerate([
     "Unternehmenswissen pflegen",
     "Ergebnisse als Datei ausgeben",
     "Vorlagen: dieselbe Datei immer wieder",
+    "Aufgaben: wiederkehrende Arbeiten planen",
     "Erweiterungen (Plugins)",
     "Betriebsmodus: HYBRID, OFFLINE, ONLINE",
     "Wissen aktualisieren",
@@ -413,7 +414,7 @@ kasten(
     "Messung: Registerkarte \"Sprachmodell\" -> \"Wartezeit messen\". "
     "Dort werden zwei echte Fachfragen gestellt und die Zeiten "
     "angezeigt. Der zweite Hebel neben dem Modell ist die Tempostufe in "
-    "den Einstellungen (Kapitel 17).",
+    "den Einstellungen (Kapitel 18).",
 )
 
 absatz("Die Groessen der Dateien, die genauen Lizenztexte und die Herkunft "
@@ -735,7 +736,7 @@ tabelle_mit(
          "HINWEIS, solange keines eingerichtet ist - siehe unten"],
         ["Lizenz",
          "Ob eine Lizenz noetig und gueltig ist",
-         "OK - siehe Kapitel 18"],
+         "OK - siehe Kapitel 19"],
         ["Quellenregister",
          "Die hinterlegten amtlichen Quellen",
          "OK, 12 Quellen, 32 Dokumente"],
@@ -835,7 +836,7 @@ tabelle_mit(
         ["6. Vorlagen", "Wiederverwendbare Vorlagen fuellen und erzeugen",
          "Vorlage waehlen, Angaben eintragen, \"Datei erzeugen\""],
         ["7. Aufgaben", "Geplante und wiederkehrende Arbeiten",
-         "Noch nicht verfuegbar - der Bereich sagt das auch"],
+         "Anlegen, jetzt ausfuehren, pausieren, entfernen"],
         ["8. Plugins", "Zusatzfaehigkeiten installieren und verwalten",
          "Aus Datei installieren, aktivieren, Rechte pruefen"],
         ["9. Verbundene Dienste", "Externe Systeme anbinden",
@@ -846,10 +847,9 @@ tabelle_mit(
     breiten=[3.4, 5.4, 7.2],
 )
 
-absatz("Einen der zehn Bereiche gibt es noch nicht: Aufgaben. Er steht "
-       "trotzdem in der Liste und erklaert, was er koennen wird und was "
-       "heute stattdessen hilft. Ein Knopf, der nichts tut, steht dort "
-       "nicht - das waere schlimmer als ein fehlender Bereich.")
+absatz("Alle zehn Bereiche sind gebaut. Wo etwas nicht geht, sagt "
+       "PORTIVA das an Ort und Stelle - einen Knopf, der nichts tut, "
+       "gibt es nirgends.")
 
 absatz("Oben rechts stehen drei Angaben, die Sie im Blick behalten sollten:")
 punkt("Wissensstand - das Datum, auf dem die gespeicherten Fachquellen stehen.")
@@ -888,8 +888,8 @@ for _name, _text in [
      "Vorlagen: links die Liste, rechts die gewaehlte Vorlage. Gefragt "
      "wird nur nach den Stellen, die offen sind."),
     ("07_Aufgaben",
-     "Aufgaben & Automationen: ebenfalls noch nicht verfuegbar, mit "
-     "Verweis auf den Zeitplan unter Wissen & Quellen."),
+     "Aufgaben & Automationen: oben die geplanten Arbeiten, unten das "
+     "Formular und der Schalter fuer Windows."),
     ("08_Plugins",
      "Plugins & Erweiterungen: installieren, aktivieren, Berechtigungen "
      "pruefen."),
@@ -1541,8 +1541,127 @@ absatz("Jede aus einer Vorlage erzeugte Datei traegt unten den Hinweis, "
        "einen Menschen zu pruefen ist. Sie sieht aus wie ein fertiges "
        "Dokument - sie ist keines.")
 
+# ================================================================ 14
+doc.add_heading("14.  Aufgaben: wiederkehrende Arbeiten planen", level=1)
+
+absatz("Manche Arbeiten wiederholen sich: eine Sicherung jede Nacht, "
+       "ein Blick auf den Wissensstand jede Woche. Dafuer gibt es den "
+       "Bereich Aufgaben.")
+
+bild("07_Aufgaben",
+     "Oben die geplanten Aufgaben mit ihrem naechsten Termin, unten das "
+     "Formular zum Anlegen und der Schalter fuer Windows.")
+
+kasten(
+    "PORTIVA laeuft nur, solange es geoeffnet ist",
+    "Das ist der Preis der Portabilitaet: es gibt keinen Dienst im "
+    "Hintergrund und keine Installation. Aufgaben laufen also, solange "
+    "das Fenster offen ist.\n\n"
+    "Was in einer Pause ausgefallen ist, wird beim naechsten Start "
+    "EINMAL nachgeholt - nicht einmal je verpasstem Termin. War der "
+    "Rechner fuenf Tage aus, laeuft die naechtliche Sicherung einmal und "
+    "nicht fuenfmal. Fuenf Sicherungen hintereinander waeren keine fuenf "
+    "Sicherungen, sondern eine Sicherung und vier Wartezeiten.",
+)
+
+doc.add_heading("Was sich planen laesst", level=2)
+tabelle_mit(
+    ["Arbeit", "Was sie tut", "Braucht Internet"],
+    [
+        ["Wissen aktualisieren",
+         "Holt die amtlichen Quellen, deren Intervall abgelaufen ist",
+         "ja"],
+        ["Sicherung anlegen",
+         "Sichert Unternehmensgedaechtnis, Fachwissen und Einstellungen",
+         "nein"],
+        ["Wissensstand pruefen",
+         "Sieht nach, wie alt das Fachwissen ist; aendert nichts",
+         "nein"],
+    ],
+    breiten=[4.0, 8.5, 2.5],
+)
+
+absatz("Erweiterungen (Plugins) koennen weitere Arbeiten anmelden. Was "
+       "eine Arbeit tut, steht immer neben ihrer Auswahl - bevor Sie sie "
+       "einer Automation ueberlassen.")
+
+doc.add_heading("Eine Aufgabe anlegen", level=2)
+schritt("Unten im Formular einen Namen eintragen.")
+schritt("Bei Was die Arbeit auswaehlen. Rechts daneben steht, was sie tut.")
+schritt("Bei Wann festlegen: taeglich um eine Uhrzeit, alle N Stunden, "
+        "bei jedem Programmstart oder nur von Hand.")
+schritt("Auf Aufgabe anlegen klicken.")
+
+absatz("PORTIVA bringt ab Werk keine Aufgabe mit. Eine Anwendung, die von "
+       "selbst Automationen anlegt, waere das Gegenteil dessen, was hier "
+       "gilt: was laeuft, haben Sie angeordnet.")
+
+doc.add_heading("Was die Liste zeigt", level=2)
+tabelle_mit(
+    ["Spalte", "Bedeutung"],
+    [
+        ["Wann", "Der Zeitplan im Klartext - keine Cron-Zeile"],
+        ["Zustand", "aktiv oder pausiert"],
+        ["Zuletzt", "Wann die Aufgabe zuletzt wirklich gelaufen ist"],
+        ["Ergebnis", "ok, fehler oder uebersprungen"],
+    ],
+    breiten=[3.0, 12.0],
+)
+
+kasten(
+    "Was nicht laufen konnte, gilt nicht als erledigt",
+    "Eine Aufgabe kann uebersprungen werden - weil kein Internet da ist, "
+    "weil sie pausiert ist, oder weil ihre Erweiterung entfernt wurde. "
+    "Dann bleibt sie FAELLIG und laeuft, sobald es wieder geht.\n\n"
+    "Nur ein wirklich ausgefuehrter Versuch verschiebt den naechsten "
+    "Termin - auch ein fehlgeschlagener. Sonst liefe eine Aufgabe, die "
+    "jedes Mal scheitert, im Minutentakt weiter.",
+)
+
+doc.add_heading("Jetzt ausfuehren, pausieren, entfernen", level=2)
+punkt("Jetzt ausfuehren startet die markierte Aufgabe sofort - auch eine "
+      "pausierte. Ein Knopf, der ausfuehren soll, muss ausfuehren.")
+punkt("Pausieren / Aktivieren haelt eine Aufgabe an, ohne sie zu "
+      "loeschen.")
+punkt("Entfernen loescht sie samt ihrem Protokoll.")
+
+doc.add_heading("Auch ohne offenes Fenster laufen lassen", level=2)
+absatz("Wer eine naechtliche Auswertung braucht, kann Windows PORTIVA "
+       "starten lassen. Das ist die Ausnahme und nicht die Vorgabe, denn "
+       "es hinterlaesst etwas auf dem Computer. Deshalb steht vorher im "
+       "Klartext da, was das ist, und Sie muessen ausdruecklich "
+       "zustimmen.")
+
+tabelle_mit(
+    ["Was zurueckbleibt", "Wo"],
+    [
+        ["Ein Eintrag „PORTIVA - geplante Aufgaben“",
+         "Aufgabenplanung von Windows"],
+        ["Der Pfad zu PORTIVA und die Uhrzeit", "in diesem Eintrag"],
+        ["Ein Protokoll, wann er gelaufen ist", "Windows"],
+    ],
+    breiten=[8.0, 7.0],
+)
+
+absatz("Mehr nicht: keine Installation, keine Dateien im Programmordner "
+       "von Windows. Ihre Unternehmensdaten bleiben auf dem "
+       "Datentraeger.")
+
+kasten(
+    "Zwei Dinge, die Sie wissen sollten",
+    "1. Der Eintrag merkt sich den Pfad. Steckt der Datentraeger das "
+    "naechste Mal an einem anderen Laufwerksbuchstaben, zeigt er ins "
+    "Leere - PORTIVA sagt Ihnen das dann im Bereich Aufgaben.\n\n"
+    "2. Auf einem fremden Rechner sollten Sie das nicht einschalten. "
+    "Dort gehoert der Eintrag nicht hin, und Sie muessten daran denken, "
+    "ihn wieder zu entfernen.\n\n"
+    "Ausschalten entfernt den Eintrag und PRUEFT anschliessend, ob er "
+    "wirklich weg ist. Windows meldet naemlich auch dann Erfolg, wenn es "
+    "gar nichts zu loeschen gab.",
+)
+
 # ================================================================ 12
-doc.add_heading("14.  Erweiterungen (Plugins)", level=1)
+doc.add_heading("15.  Erweiterungen (Plugins)", level=1)
 
 absatz("Der Buchhalter kann neue Faehigkeiten aufnehmen, ohne dass das "
        "Programm neu gebaut wird. Eine solche Erweiterung heisst Plugin und "
@@ -1600,7 +1719,7 @@ absatz("Ein Beispiel liegt bei: examples/plugin_html ergaenzt das "
        "wie eine Erweiterung aufgebaut ist.")
 
 # ================================================================ 8
-doc.add_heading("15.  Betriebsmodus: HYBRID, OFFLINE, ONLINE", level=1)
+doc.add_heading("16.  Betriebsmodus: HYBRID, OFFLINE, ONLINE", level=1)
 
 absatz("Sie bestimmen, ob der Buchhalter ins Internet darf. Die Auswahl "
        "steht oben rechts in der Kopfzeile und ist jederzeit erreichbar.")
@@ -1674,7 +1793,7 @@ absatz("Ueber die Konsolenfassung geht es ebenso: "
        "PORTABLE_BUCHHALTER_KONSOLE.exe modus OFFLINE wechselt.")
 
 # ================================================================ 12
-doc.add_heading("16.  Wissen aktualisieren", level=1)
+doc.add_heading("17.  Wissen aktualisieren", level=1)
 
 absatz("Registerkarte Wissen aktualisieren. Hier laedt der Buchhalter "
        "amtliche Quellen nach. Das ist der einzige Teil, der Internet "
@@ -1744,7 +1863,7 @@ kasten(
 )
 
 # ================================================================ 9
-doc.add_heading("17.  Einstellungen und Status", level=1)
+doc.add_heading("18.  Einstellungen und Status", level=1)
 
 absatz("Registerkarte Einstellungen und Status. Links stellen Sie ein, rechts "
        "sehen Sie den Zustand.")
@@ -1780,7 +1899,7 @@ absatz("Steht bei einem Punkt HINWEIS statt OK, ist das kein Fehler, sondern "
        "daneben sagt, was das bedeutet und wie es zu beheben ist.")
 
 # ================================================================ 12
-doc.add_heading("18.  Lizenz", level=1)
+doc.add_heading("19.  Lizenz", level=1)
 
 doc.add_heading("Im Augenblick muessen Sie nichts tun", level=2)
 absatz("Der Startbildschirm zeigt in der Zeile Lizenz:")
@@ -1913,7 +2032,7 @@ absatz("Diese Fassung ist eine Vorab- bzw. Pilotfassung. Sie ist noch nicht "
        "PORTABLE_BUCHHALTER_KONSOLE.exe reife")
 
 # ================================================================ 13
-doc.add_heading("19.  Was der Buchhalter nicht tut", level=1)
+doc.add_heading("20.  Was der Buchhalter nicht tut", level=1)
 
 absatz("Das ist kein Mangel, sondern bewusst so gebaut. Bitte lesen Sie es "
        "einmal in Ruhe.")
@@ -1945,7 +2064,7 @@ kasten(
 )
 
 # ================================================================ 11
-doc.add_heading("20.  Wenn etwas nicht funktioniert", level=1)
+doc.add_heading("21.  Wenn etwas nicht funktioniert", level=1)
 
 tabelle_mit(
     ["Was Sie sehen", "Was zu tun ist"],

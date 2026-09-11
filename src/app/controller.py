@@ -19,6 +19,10 @@ from typing import Any, Callable, Iterable, Sequence
 
 from pkc.artefakte import Artefaktwerk, aus_markdown
 from pkc.artefakte.wunsch import erkennen as dateiwunsch_erkennen
+from pkc.aufgaben import (
+    Aufgabenspeicher, Ausloeser, Planer, WindowsPlanung,
+    alle as aufgaben_aktionen_alle,
+)
 from pkc.vorlagen import (
     VorlagenFehler, Vorlagenspeicher, Vorlagenwerk,
     uebernehmen as vorlagen_uebernehmen,
@@ -220,6 +224,13 @@ class AppController:
         self.vorlagen = Vorlagenspeicher(self.paths, audit=self.audit)
         self.vorlagenwerk = Vorlagenwerk(
             self.vorlagen, self.artefakte, memory=self.memory)
+
+        # Geplante Aufgaben. Der Planer fuehrt nichts von selbst aus -
+        # er wird von der Oberflaeche im Minutentakt gefragt. Ein
+        # Hintergrundfaden im Controller waere schwerer zu durchschauen
+        # und liefe auch in der Konsolenfassung, wo ihn niemand will.
+        self.aufgaben = Aufgabenspeicher(self.paths, audit=self.audit)
+        self.planer = Planer(self.aufgaben, self, audit=self.audit)
 
         # Plugins (Erweiterung E5). Geladen wird erst beim Start, damit ein
         # fehlerhaftes Plugin die Anwendung nicht am Hochfahren hindert.
@@ -1429,6 +1440,58 @@ class AppController:
 
     def vorlage_entfernen(self, kennung: str) -> bool:
         return self.vorlagen.entfernen(kennung)
+
+    # ------------------------------------------------------------------
+    # Geplante Aufgaben
+    # ------------------------------------------------------------------
+    def aufgaben_liste(self) -> list:
+        return self.aufgaben.liste()
+
+    def aufgaben_aktionen(self) -> list:
+        """Welche Arbeiten sich planen lassen - samt ihrer Eigenschaften."""
+        return aufgaben_aktionen_alle()
+
+    def aufgabe_anlegen(self, name: str, aktion: str, ausloeser,
+                        aktiv: bool = True):
+        if isinstance(ausloeser, dict):
+            ausloeser = Ausloeser.aus_dict(ausloeser)
+        return self.aufgaben.anlegen(name, aktion, ausloeser, aktiv=aktiv)
+
+    def aufgabe_entfernen(self, kennung: str) -> bool:
+        return self.aufgaben.entfernen(kennung)
+
+    def aufgabe_umschalten(self, kennung: str, aktiv: bool):
+        return self.aufgaben.umschalten(kennung, aktiv)
+
+    def aufgabe_jetzt(self, kennung: str, bestaetigt: bool = False):
+        """Fuehrt eine Aufgabe von Hand aus - auch eine pausierte."""
+        return self.planer.ausfuehren(kennung, bestaetigt=bestaetigt,
+                                      von_hand=True)
+
+    def aufgaben_durchlauf(self, start: bool = False, bestaetigen=None):
+        """Fuehrt aus, was jetzt faellig ist. Gibt die Laeufe zurueck."""
+        return self.planer.durchlauf(start=start, bestaetigen=bestaetigen)
+
+    def aufgaben_faellig(self, start: bool = False) -> list:
+        return self.planer.faellige(start=start)
+
+    # -- Weg B: Windows-Aufgabenplanung ---------------------------------
+    @property
+    def windows_planung(self) -> WindowsPlanung:
+        return WindowsPlanung(self._eigene_programmdatei())
+
+    def _eigene_programmdatei(self) -> Path:
+        """Die Datei, die Windows starten soll.
+
+        Als gepackte EXE ist das die laufende Datei selbst. Aus dem
+        Quellcode heraus gibt es keine - dann zeigt der Pfad auf die
+        Konsolenfassung im Programmordner, und wenn es die nicht gibt,
+        lehnt die Eintragung ab. Ein Eintrag ins Leere waere schlimmer
+        als keiner.
+        """
+        if getattr(sys, "frozen", False):        # pragma: no cover - EXE
+            return Path(sys.executable)
+        return self.paths.program_root / "PORTABLE_BUCHHALTER_KONSOLE.exe"
 
     # -- Plugins --------------------------------------------------------
     def plugin_liste(self) -> list[dict]:

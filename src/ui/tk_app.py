@@ -420,6 +420,85 @@ class MainWindow:
             "diesem Datentraeger. Alle Antworten sind fachliche Zuarbeit und beduerfen "
             "der Pruefung durch einen verantwortlichen Menschen.",
         )
+        self._aufgabenuhr_starten()
+
+    # -- Die Aufgabenuhr -----------------------------------------------
+    def _aufgabenuhr_starten(self) -> None:
+        """Sieht im Minutentakt nach, was faellig ist.
+
+        Der erste Durchlauf ist ein Startdurchlauf: dort wird nachgeholt,
+        was waehrend der letzten Pause ausgefallen ist - einmal, nicht
+        einmal je verpasstem Termin.
+
+        Ausgefuehrt wird in einem eigenen Faden. Eine Wissensaktualisierung
+        dauert Minuten; liefe sie im Zeichenfaden, waere das Fenster
+        solange eingefroren, und der Anwender saehe eine abgestuerzte
+        Anwendung.
+        """
+        self._aufgabenuhr_laeuft = False
+        self._aufgabenuhr_schlag(start=True)
+
+    def _aufgabenuhr_schlag(self, start: bool = False) -> None:
+        if self._aufgabenuhr_laeuft:
+            # Der vorige Durchlauf ist noch nicht fertig. Ihn zu
+            # ueberholen hiesse, dieselbe Aufgabe zweimal zu starten.
+            self._aufgabenuhr_naechster()
+            return
+
+        try:
+            faellig = self.controller.aufgaben_faellig(start=start)
+        except Exception as fehler:                 # pragma: no cover
+            log.warning("Aufgaben nicht pruefbar: %s", fehler)
+            self._aufgabenuhr_naechster()
+            return
+        if not faellig:
+            self._aufgabenuhr_naechster()
+            return
+
+        self._aufgabenuhr_laeuft = True
+        namen = ", ".join(a.name for a in faellig)
+        self._aufgabenuhr_melden(f"Geplante Aufgabe laeuft: {namen}")
+
+        def arbeiten() -> None:
+            try:
+                laeufe = self.controller.aufgaben_durchlauf(start=start)
+            except Exception as fehler:             # pragma: no cover
+                log.warning("Aufgabenlauf fehlgeschlagen: %s", fehler)
+                laeufe = []
+            self.root.after(0, lambda: self._aufgabenuhr_fertig(laeufe))
+
+        threading.Thread(target=arbeiten, daemon=True).start()
+
+    def _aufgabenuhr_fertig(self, laeufe) -> None:
+        self._aufgabenuhr_laeuft = False
+        if laeufe:
+            gut = sum(1 for l in laeufe if l.ergebnis == "ok")
+            self._aufgabenuhr_melden(
+                f"Geplante Aufgaben: {gut} von {len(laeufe)} erledigt.")
+            self._refresh_aufgaben()
+        self._aufgabenuhr_naechster()
+
+    def _aufgabenuhr_melden(self, text: str) -> None:
+        """Schreibt in die Statuszeile - aber nicht ueber eine laufende Frage.
+
+        Waehrend einer Frage steht dort, seit wann gewartet wird. Diese
+        Anzeige wegzudruecken waere genau das, was den Anwender vorhin
+        glauben liess, die Anwendung haenge.
+        """
+        if self.busy:
+            return
+        try:
+            self.statusbar.configure(text=text)
+        except Exception:                           # pragma: no cover
+            pass
+
+    def _aufgabenuhr_naechster(self) -> None:
+        from pkc.aufgaben import TAKT_SEKUNDEN
+
+        try:
+            self.root.after(TAKT_SEKUNDEN * 1000, self._aufgabenuhr_schlag)
+        except Exception:                           # pragma: no cover
+            pass                                    # Fenster ist schon zu
 
     # -- Aufbau --------------------------------------------------------
     #: Farbpaare fuer die Statuschips: Hintergrund, Schrift.
@@ -1863,62 +1942,6 @@ class MainWindow:
 
         BackgroundTask(self.root).run(self.controller.modell_probe, done)
 
-    # -- Bereiche in Vorbereitung ---------------------------------------
-    def _build_pending_tab(self, kennung: str, titel: str, untertitel: str,
-                           zeichen: str, zweck: list[str], heute: str,
-                           weg=None, kurz: str = "") -> None:
-        """Ein Bereich, den es noch nicht gibt - ehrlich gekennzeichnet.
-
-        Auftrag Abschnitt 34 laesst genau zwei Moeglichkeiten: eine Aktion
-        funktioniert, oder sie ist eindeutig als nicht verfuegbar
-        gekennzeichnet. Hier gilt die zweite. Es gibt deshalb **keinen**
-        Knopf, der nichts tut - sondern eine Erklaerung, was der Bereich
-        koennen wird, und den Weg, der heute stattdessen zum Ziel fuehrt.
-
-        Den Bereich ganz wegzulassen waere die schlechtere Loesung: der
-        Zielentwurf nennt zehn Bereiche, und wer nur acht sieht, sucht die
-        beiden anderen.
-        """
-        frame = self.schale.bereich_anlegen(kennung, titel, untertitel, zeichen,
-                                            kurz=kurz)
-
-        karte = tk.Frame(frame, bg=KARTE, highlightbackground=RAND,
-                         highlightthickness=1)
-        karte.pack(fill="x", pady=(0, PAD))
-        innen = tk.Frame(karte, bg=KARTE)
-        innen.pack(fill="x", padx=20, pady=18)
-
-        tk.Label(innen, text="Dieser Bereich ist noch nicht verfuegbar.",
-                 bg=KARTE, fg="#9a6512", anchor="w",
-                 font=("Segoe UI", 11, "bold")).pack(anchor="w")
-        tk.Label(innen, bg=KARTE, fg=LEISE, anchor="w", justify="left",
-                 wraplength=760, font=("Segoe UI", 9),
-                 text="Er ist geplant und beauftragt, aber noch nicht gebaut. "
-                      "Damit hier nichts steht, was nicht funktioniert, gibt "
-                      "es vorerst keine Schaltflaechen.").pack(anchor="w",
-                                                               pady=(6, 0))
-
-        tk.Label(innen, text="Was der Bereich koennen wird:", bg=KARTE,
-                 fg=TEXT, anchor="w",
-                 font=("Segoe UI", 9, "bold")).pack(anchor="w", pady=(16, 4))
-        for punkt in zweck:
-            tk.Label(innen, text=f"   \u2022  {punkt}", bg=KARTE,
-                     fg="#42556e", anchor="w", justify="left", wraplength=740,
-                     font=("Segoe UI", 9)).pack(anchor="w", pady=1)
-
-        tk.Label(innen, text="Was heute schon geht:", bg=KARTE,
-                 fg=TEXT, anchor="w",
-                 font=("Segoe UI", 9, "bold")).pack(anchor="w", pady=(16, 4))
-        tk.Label(innen, text=heute, bg=KARTE, fg="#42556e", anchor="w",
-                 justify="left", wraplength=740,
-                 font=("Segoe UI", 9)).pack(anchor="w")
-
-        if weg is not None:
-            kennung_ziel, beschriftung = weg
-            ttk.Button(innen, text=beschriftung,
-                       command=lambda k=kennung_ziel: self.schale.zeigen(k)
-                       ).pack(anchor="w", pady=(14, 0))
-
     def _build_templates_tab(self) -> None:
         """Vorlagen durchsuchen, fuellen, ansehen und erzeugen.
 
@@ -2195,19 +2218,332 @@ class MainWindow:
         self._refresh_vorlagen()
 
     def _build_tasks_tab(self) -> None:
-        self._build_pending_tab(
+        """Geplante Arbeiten anlegen, ausfuehren, pausieren, entfernen.
+
+        Das Anlegen steht bewusst als Formular im Bereich selbst und
+        nicht in einem eigenen Fenster: es sind drei Angaben, und ein
+        Fenster, das sich oeffnet und wieder schliesst, verbirgt, was
+        gerade entstanden ist.
+        """
+        frame = self.schale.bereich_anlegen(
             "aufgaben", "Aufgaben & Automationen",
-            "Geplante Pruefungen, wiederkehrende Arbeiten und Freigaben im "
-            "Blick behalten.", "\u25f7",
-            ["Aufgaben fuer heute, geplant und wiederkehrend",
-             "Zeitpunkt, Ausloeser, Profil und Aktion festlegen",
-             "Aktivieren, pausieren, sofort ausfuehren",
-             "Letzte und naechste Ausfuehrung mit Ergebnis"],
-            "Die Wissensaktualisierung hat bereits einen Zeitplan mit "
-            "Faelligkeit und Intervall - zu finden unter "
-            "\u201eWissen & Quellen\u201c. Ein allgemeiner Aufgabenplaner "
-            "fehlt noch.",
-            weg=("wissen_quellen", "Zu Wissen & Quellen"), kurz="Aufgaben")
+            "Wiederkehrende Arbeiten planen, ausfuehren und im Blick "
+            "behalten.", "\u25f7", kurz="Aufgaben")
+
+        leiste = ttk.Frame(frame)
+        leiste.pack(fill="x", pady=(0, PAD))
+        for text, befehl in (("Jetzt ausfuehren", self._aufgabe_jetzt),
+                             ("Pausieren / Aktivieren", self._aufgabe_umschalten),
+                             ("Entfernen", self._aufgabe_entfernen),
+                             ("Aktualisieren", self._refresh_aufgaben)):
+            ttk.Button(leiste, text=text, command=befehl).pack(
+                side="left", padx=(0, PAD))
+        self.aufgaben_hinweis = ttk.Label(leiste, text="", foreground=LEISE)
+        self.aufgaben_hinweis.pack(side="right")
+
+        spalten = ("name", "wann", "aktion", "zustand", "letzter", "ergebnis")
+        self.aufgaben_tree = ttk.Treeview(frame, columns=spalten,
+                                          show="headings", height=8)
+        for spalte, kopf, breite in (
+            ("name", "Aufgabe", 240), ("wann", "Wann", 220),
+            ("aktion", "Was", 200), ("zustand", "Zustand", 100),
+            ("letzter", "Zuletzt", 150), ("ergebnis", "Ergebnis", 130),
+        ):
+            self.aufgaben_tree.heading(spalte, text=kopf)
+            self.aufgaben_tree.column(spalte, width=breite, anchor="w")
+        self.aufgaben_tree.pack(fill="both", expand=True)
+        self.aufgaben_tree.bind("<<TreeviewSelect>>",
+                                lambda _e: self._aufgabe_zeigen())
+
+        self.aufgabe_meldung = ttk.Label(
+            frame, text="Noch keine Aufgabe angelegt.", foreground=LEISE,
+            wraplength=1000, justify="left")
+        self.aufgabe_meldung.pack(anchor="w", pady=(4, PAD))
+
+        self._build_aufgabe_formular(frame)
+        self._build_windows_planung(frame)
+        self._refresh_aufgaben()
+
+    def _build_aufgabe_formular(self, eltern) -> None:
+        kasten = ttk.LabelFrame(eltern, text=" Neue Aufgabe ")
+        kasten.pack(fill="x", pady=(0, PAD))
+        innen = ttk.Frame(kasten)
+        innen.pack(fill="x", padx=PAD, pady=PAD)
+
+        ttk.Label(innen, text="Name:").grid(row=0, column=0, sticky="w")
+        self.aufgabe_name = tk.StringVar()
+        ttk.Entry(innen, textvariable=self.aufgabe_name, width=26).grid(
+            row=0, column=1, sticky="w", padx=(4, PAD * 2))
+
+        ttk.Label(innen, text="Was:").grid(row=0, column=2, sticky="w")
+        self._aufgabe_aktionen = {a.name: a for a in
+                                  self.controller.aufgaben_aktionen()}
+        self.aufgabe_aktion = tk.StringVar(
+            value=next(iter(self._aufgabe_aktionen), ""))
+        ttk.Combobox(innen, textvariable=self.aufgabe_aktion, width=24,
+                     state="readonly",
+                     values=list(self._aufgabe_aktionen)).grid(
+            row=0, column=3, sticky="w", padx=(4, PAD * 2))
+
+        ttk.Label(innen, text="Wann:").grid(row=1, column=0, sticky="w",
+                                            pady=(6, 0))
+        self.aufgabe_wann = tk.StringVar(value="taeglich")
+        wahl = ttk.Frame(innen)
+        wahl.grid(row=1, column=1, columnspan=3, sticky="w", pady=(6, 0))
+        for text, wert in (("Taeglich um", "taeglich"),
+                           ("Alle N Stunden", "intervall"),
+                           ("Bei jedem Start", "beim_start"),
+                           ("Nur von Hand", "manuell")):
+            ttk.Radiobutton(wahl, text=text, value=wert,
+                            variable=self.aufgabe_wann).pack(side="left",
+                                                             padx=(0, PAD))
+        self.aufgabe_uhrzeit = tk.StringVar(value="07:00")
+        ttk.Entry(wahl, textvariable=self.aufgabe_uhrzeit, width=7).pack(
+            side="left", padx=(0, PAD))
+        self.aufgabe_stunden = tk.StringVar(value="24")
+        ttk.Entry(wahl, textvariable=self.aufgabe_stunden, width=5).pack(
+            side="left")
+
+        ttk.Button(innen, text="Aufgabe anlegen",
+                   command=self._aufgabe_anlegen).grid(
+            row=2, column=0, columnspan=2, sticky="w", pady=(PAD, 0))
+        self.aufgabe_aktionstext = ttk.Label(
+            innen, text="", foreground=LEISE, wraplength=700,
+            justify="left")
+        self.aufgabe_aktionstext.grid(row=2, column=2, columnspan=2,
+                                      sticky="w", pady=(PAD, 0))
+        self.aufgabe_aktion.trace_add(
+            "write", lambda *_a: self._aufgabe_aktion_erklaeren())
+        self._aufgabe_aktion_erklaeren()
+
+    def _aufgabe_aktion_erklaeren(self) -> None:
+        """Sagt vor dem Anlegen, was die gewaehlte Arbeit tut."""
+        aktion = self._aufgabe_aktionen.get(self.aufgabe_aktion.get())
+        if aktion is None:
+            self.aufgabe_aktionstext.configure(text="")
+            return
+        text = aktion.beschreibung
+        if aktion.nach_aussen:
+            text += ("  ACHTUNG: gibt Daten nach aussen und fragt deshalb "
+                     "bei jeder Ausfuehrung nach.")
+        self.aufgabe_aktionstext.configure(text=text)
+
+    def _build_windows_planung(self, eltern) -> None:
+        """Weg B - und der Satz, was er auf dem Rechner hinterlaesst."""
+        kasten = ttk.LabelFrame(
+            eltern, text=" Auch ohne offenes Fenster laufen lassen ")
+        kasten.pack(fill="x")
+        innen = ttk.Frame(kasten)
+        innen.pack(fill="x", padx=PAD, pady=PAD)
+
+        self.windows_planung_text = ttk.Label(
+            innen, text="", wraplength=1000, justify="left")
+        self.windows_planung_text.pack(anchor="w")
+        knoepfe = ttk.Frame(innen)
+        knoepfe.pack(anchor="w", pady=(PAD, 0))
+        self.windows_planung_knopf = ttk.Button(
+            knoepfe, text="Einschalten", command=self._windows_planung_ein)
+        self.windows_planung_knopf.pack(side="left")
+        ttk.Button(knoepfe, text="Ausschalten",
+                   command=self._windows_planung_aus).pack(side="left",
+                                                           padx=(PAD, 0))
+        self._refresh_windows_planung()
+
+    # -- Aufgaben: Liste -----------------------------------------------
+    def _refresh_aufgaben(self) -> None:
+        if not hasattr(self, "aufgaben_tree"):
+            return
+        self.aufgaben_tree.delete(*self.aufgaben_tree.get_children())
+        aufgaben = self.controller.aufgaben_liste()
+        namen = {a.kennung: a.name
+                 for a in self.controller.aufgaben_aktionen()}
+        for aufgabe in aufgaben:
+            self.aufgaben_tree.insert(
+                "", "end", iid=aufgabe.kennung,
+                values=(aufgabe.name,
+                        aufgabe.ausloeser.beschreibung(),
+                        namen.get(aufgabe.aktion, aufgabe.aktion),
+                        "aktiv" if aufgabe.aktiv else "pausiert",
+                        (aufgabe.letzter_lauf or "").replace("T", " ")[:16]
+                        or "nie",
+                        aufgabe.letztes_ergebnis or "-"))
+        faellig = len(self.controller.aufgaben_faellig())
+        self.aufgaben_hinweis.configure(
+            text=f"{len(aufgaben)} Aufgaben, {faellig} faellig" if aufgaben
+            else "Noch keine Aufgabe angelegt")
+        # Die Zeile darunter zeigt sonst weiter "Noch keine Aufgabe
+        # angelegt", waehrend darueber zwei stehen. Auf dem ersten Bild
+        # des fertigen Bereichs stand genau das.
+        if not self.aufgaben_tree.selection():
+            self.aufgabe_meldung.configure(
+                text="Eine Zeile auswaehlen, um den naechsten Termin und "
+                     "den letzten Lauf zu sehen." if aufgaben
+                     else "Noch keine Aufgabe angelegt. Unten eine anlegen.")
+
+    def _gewaehlte_aufgabe(self) -> str:
+        auswahl = self.aufgaben_tree.selection()
+        if not auswahl:
+            messagebox.showinfo(
+                "Aufgaben", "Bitte zuerst eine Aufgabe in der Liste "
+                            "auswaehlen.", parent=self.root)
+            return ""
+        return str(auswahl[0])
+
+    def _aufgabe_zeigen(self) -> None:
+        auswahl = self.aufgaben_tree.selection()
+        if not auswahl:
+            return
+        aufgabe = next((a for a in self.controller.aufgaben_liste()
+                        if a.kennung == str(auswahl[0])), None)
+        if aufgabe is None:                         # pragma: no cover
+            return
+        naechste = aufgabe.naechste()
+        teile = [f"„{aufgabe.name}“ - {aufgabe.ausloeser.beschreibung()}."]
+        if naechste is not None and aufgabe.aktiv:
+            teile.append(f"Naechster Termin: "
+                         f"{naechste.strftime('%d.%m.%Y %H:%M')}.")
+        if aufgabe.letzte_meldung:
+            teile.append(f"Zuletzt: {aufgabe.letzte_meldung}")
+        self.aufgabe_meldung.configure(text="  ".join(teile))
+
+    # -- Aufgaben: Aktionen --------------------------------------------
+    def _aufgabe_anlegen(self) -> None:
+        aktion = self._aufgabe_aktionen.get(self.aufgabe_aktion.get())
+        if aktion is None:
+            messagebox.showinfo("Aufgaben", "Bitte eine Arbeit auswaehlen.",
+                                parent=self.root)
+            return
+        art = self.aufgabe_wann.get()
+        daten = {"art": art}
+        if art == "taeglich":
+            daten["uhrzeit"] = self.aufgabe_uhrzeit.get().strip()
+        elif art == "intervall":
+            try:
+                daten["stunden"] = int(self.aufgabe_stunden.get().strip())
+            except ValueError:
+                messagebox.showwarning(
+                    "Aufgaben", "Die Stundenzahl muss eine Zahl sein.",
+                    parent=self.root)
+                return
+        try:
+            aufgabe = self.controller.aufgabe_anlegen(
+                self.aufgabe_name.get() or aktion.name, aktion.kennung, daten)
+        except Exception as fehler:
+            messagebox.showwarning("Aufgaben", str(fehler), parent=self.root)
+            return
+        self.aufgabe_name.set("")
+        self._refresh_aufgaben()
+        messagebox.showinfo(
+            "Aufgaben",
+            f"Angelegt: {aufgabe.name}\n\n"
+            f"{aufgabe.ausloeser.beschreibung()}.\n\n"
+            "Aufgaben laufen, solange PORTIVA geoeffnet ist. Verpasstes "
+            "wird beim naechsten Start einmal nachgeholt.",
+            parent=self.root)
+
+    def _aufgabe_jetzt(self) -> None:
+        kennung = self._gewaehlte_aufgabe()
+        if not kennung:
+            return
+        try:
+            lauf = self.controller.aufgabe_jetzt(kennung)
+        except Exception as fehler:
+            messagebox.showerror("Aufgaben", str(fehler), parent=self.root)
+            return
+        self._refresh_aufgaben()
+        self.aufgabe_meldung.configure(
+            text=f"{lauf.ergebnis}: {lauf.meldung}")
+        if lauf.ergebnis == "ok":
+            messagebox.showinfo("Aufgaben", lauf.meldung, parent=self.root)
+        else:
+            messagebox.showwarning("Aufgaben", lauf.meldung, parent=self.root)
+
+    def _aufgabe_umschalten(self) -> None:
+        kennung = self._gewaehlte_aufgabe()
+        if not kennung:
+            return
+        aufgabe = next((a for a in self.controller.aufgaben_liste()
+                        if a.kennung == kennung), None)
+        if aufgabe is None:                         # pragma: no cover
+            return
+        self.controller.aufgabe_umschalten(kennung, not aufgabe.aktiv)
+        self._refresh_aufgaben()
+
+    def _aufgabe_entfernen(self) -> None:
+        kennung = self._gewaehlte_aufgabe()
+        if not kennung:
+            return
+        if not messagebox.askyesno(
+            "Entfernen",
+            "Diese Aufgabe entfernen? Das Protokoll ihrer Laeufe geht "
+            "damit verloren.", parent=self.root,
+        ):
+            return
+        self.controller.aufgabe_entfernen(kennung)
+        self._refresh_aufgaben()
+
+    # -- Weg B ----------------------------------------------------------
+    def _refresh_windows_planung(self) -> None:
+        if not hasattr(self, "windows_planung_text"):
+            return
+        try:
+            zustand = self.controller.windows_planung.zustand()
+        except Exception as fehler:                 # pragma: no cover
+            log.warning("Windows-Planung nicht lesbar: %s", fehler)
+            return
+        if not zustand.moeglich:
+            self.windows_planung_text.configure(text=zustand.hinweis)
+            self.windows_planung_knopf.configure(state="disabled")
+            return
+        self.windows_planung_knopf.configure(state="normal")
+        if zustand.eingetragen:
+            text = (f"Eingeschaltet: Windows startet PORTIVA taeglich um "
+                    f"{zustand.uhrzeit}. {zustand.hinweis}").strip()
+        else:
+            text = ("Ausgeschaltet. Aufgaben laufen, solange PORTIVA "
+                    "geoeffnet ist; Verpasstes wird beim naechsten Start "
+                    "einmal nachgeholt. Wer eine naechtliche Auswertung "
+                    "braucht, kann Windows PORTIVA starten lassen - was "
+                    "das auf dem Rechner hinterlaesst, steht vorher da.")
+        self.windows_planung_text.configure(text=text)
+
+    def _windows_planung_ein(self) -> None:
+        from pkc.aufgaben import SPUREN
+
+        if not messagebox.askyesno(
+            "Auch ohne offenes Fenster laufen lassen",
+            SPUREN + "\n\nJetzt einschalten?", parent=self.root,
+        ):
+            return
+        uhrzeit = simpledialog.askstring(
+            "Uhrzeit", "Um welche Uhrzeit soll Windows PORTIVA starten "
+                       "(HH:MM)?", initialvalue="07:00", parent=self.root)
+        if not uhrzeit:
+            return
+        try:
+            self.controller.windows_planung.eintragen(uhrzeit.strip())
+        except Exception as fehler:
+            messagebox.showerror("Aufgabenplanung", str(fehler),
+                                 parent=self.root)
+            return
+        self._refresh_windows_planung()
+
+    def _windows_planung_aus(self) -> None:
+        try:
+            weg = self.controller.windows_planung.entfernen()
+        except Exception as fehler:                 # pragma: no cover
+            messagebox.showerror("Aufgabenplanung", str(fehler),
+                                 parent=self.root)
+            return
+        self._refresh_windows_planung()
+        if not weg:
+            messagebox.showwarning(
+                "Aufgabenplanung",
+                "Der Eintrag ist noch da. Windows hat das Loeschen nicht "
+                "ausgefuehrt - haeufigster Grund sind fehlende Rechte. "
+                "Sie koennen ihn auch von Hand entfernen: "
+                "Aufgabenplanung oeffnen, Eintrag „PORTIVA - geplante "
+                "Aufgaben“ loeschen.", parent=self.root)
 
     # -- Bereich: Plugins ----------------------------------------------
     def _build_plugins_tab(self) -> None:

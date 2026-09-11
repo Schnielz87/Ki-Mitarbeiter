@@ -287,36 +287,70 @@ def test_das_sprachmodell_ist_kein_eigener_bereich_mehr(fenster):
     assert hasattr(window, "gruppe_modelle")
 
 
-def test_noch_nicht_gebaute_bereiche_haben_keine_toten_knoepfe(fenster):
-    """Auftrag Abschnitt 34 laesst zwei Moeglichkeiten: es funktioniert,
-    oder es ist eindeutig als nicht verfuegbar gekennzeichnet.
+def test_kein_bereich_ist_mehr_ein_blosses_schild(fenster):
+    """Bis Fassung 19 gab es zwei Bereiche, die es nur dem Namen nach gab.
 
-    Der einzige Knopf in diesen Bereichen fuehrt zu dem Bereich, der heute
-    schon hilft - und der funktioniert.
-
-    Uebrig ist nur noch "Aufgaben". "Vorlagen" war bis zur Fassung 19
-    ebenfalls hier; der Bereich ist jetzt gebaut und wird weiter unten
-    gegen seine eigenen Ansprueche geprueft."""
+    Sie sagten das auch offen - "Dieser Bereich ist noch nicht
+    verfuegbar" - und das war die richtige Loesung, solange sie leer
+    waren. Jetzt sind beide gebaut, und der Satz darf nirgends mehr
+    stehen. Er waere jetzt eine Falschaussage.
+    """
     window, _, _ = fenster
-    for kennung in ("aufgaben",):
-        flaeche = window.schale.bereiche[kennung].rahmen
-        texte = _alle_texte(flaeche)
-        assert any("nicht verfuegbar" in t for t in texte), (
-            f"{kennung} muss sagen, dass es den Bereich noch nicht gibt")
-        assert any("Was heute schon geht" in t for t in texte), (
-            f"{kennung} muss den heutigen Weg nennen")
-        for knopf in _alle_knoepfe(flaeche):
-            assert knopf.commands.get("command") is not None, (
-                f"toter Knopf in {kennung}: {knopf.options.get('text')}")
+    for kennung, bereich in window.schale.bereiche.items():
+        texte = _alle_texte(bereich.rahmen)
+        assert not any("noch nicht verfuegbar" in t for t in texte), (
+            f"{kennung} gibt sich noch als unfertig aus")
 
 
-def test_der_verweis_aus_einem_leeren_bereich_fuehrt_wirklich_hin(fenster):
+def test_der_aufgabenbereich_kann_wirklich_etwas(fenster):
     window, _, _ = fenster
-    window.schale.zeigen("aufgaben")
-    knoepfe = _alle_knoepfe(window.schale.bereiche["aufgaben"].rahmen)
-    assert knoepfe, "es muss einen Weg heraus geben"
-    knoepfe[-1].invoke()
-    assert window.schale.aktiv == "wissen_quellen"
+    flaeche = window.schale.bereiche["aufgaben"].rahmen
+    beschriftungen = {k.options.get("text") for k in _alle_knoepfe(flaeche)}
+    assert "Aufgabe anlegen" in beschriftungen
+    assert "Jetzt ausfuehren" in beschriftungen
+    for knopf in _alle_knoepfe(flaeche):
+        assert knopf.commands.get("command") is not None, (
+            f"toter Knopf: {knopf.options.get('text')}")
+
+
+def test_eine_aufgabe_laesst_sich_aus_der_oberflaeche_anlegen(fenster):
+    window, controller, _ = fenster
+    window.aufgabe_name.set("Naechtliche Sicherung")
+    window.aufgabe_aktion.set("Sicherung anlegen")
+    window.aufgabe_wann.set("taeglich")
+    window.aufgabe_uhrzeit.set("23:00")
+    window._aufgabe_anlegen()
+
+    aufgaben = controller.aufgaben_liste()
+    assert [a.name for a in aufgaben] == ["Naechtliche Sicherung"]
+    assert aufgaben[0].ausloeser.beschreibung() == "Taeglich um 23:00"
+    assert aufgaben[0].kennung in window.aufgaben_tree.rows
+
+
+def test_eine_unsinnige_uhrzeit_wird_abgefangen(fenster):
+    """Sie kommt aus einem Eingabefeld - da steht irgendwann Unsinn."""
+    window, controller, _ = fenster
+    window.aufgabe_name.set("Kaputt")
+    window.aufgabe_aktion.set("Sicherung anlegen")
+    window.aufgabe_wann.set("taeglich")
+    window.aufgabe_uhrzeit.set("halb acht")
+    window._aufgabe_anlegen()
+    assert controller.aufgaben_liste() == []
+
+
+def test_die_gewaehlte_arbeit_erklaert_sich_vor_dem_anlegen(fenster):
+    window, _, _ = fenster
+    window.aufgabe_aktion.set("Wissen aktualisieren")
+    text = window.aufgabe_aktionstext.options["text"]
+    assert "Internet" in text, \
+        "vor dem Anlegen muss dastehen, was die Arbeit tut"
+
+
+def test_ohne_windows_sagt_der_bereich_das_auch(fenster):
+    """Auf diesem Rechner gibt es keine Windows-Aufgabenplanung."""
+    window, _, _ = fenster
+    text = window.windows_planung_text.options["text"]
+    assert "nur unter Windows" in text or "geoeffnet" in text
 
 
 def test_der_vorlagenbereich_ist_kein_schild_mehr(fenster):
@@ -415,3 +449,71 @@ def _alle_knoepfe(widget) -> list:
     for kind in widget.children:
         knoepfe += _alle_knoepfe(kind)
     return knoepfe
+
+
+def test_die_aufgabenuhr_holt_beim_start_nach(fenster):
+    """Verpasstes laeuft beim naechsten Start - darum geht es bei Weg C.
+
+    PORTIVA hat keinen Dienst im Hintergrund. Eine Aufgabe, die nachts um
+    drei faellig war, kann also nur beim naechsten Start nachgeholt
+    werden. Tut sie das nicht, ist der ganze Bereich Zierde.
+
+    Wichtig ist hier, **wo** der Test ansetzt: an einem zweiten Fenster,
+    das nach dem Anlegen der Aufgabe aufgemacht wird. Die erste Fassung
+    rief ``_aufgabenuhr_schlag(start=True)`` von Hand auf - damit lief
+    der Test auch dann durch, wenn das Fenster seinen Startdurchlauf gar
+    nicht als solchen ausfuehrt. Eine Gegenprobe sprang nicht an, und
+    das hat es aufgedeckt.
+    """
+    import time
+
+    from pkc.aufgaben import Aktion, abmelden, registrieren
+    from ui import tk_app
+
+    gelaufen = []
+    registrieren(Aktion(kennung="ui_probe", name="Probelauf",
+                        beschreibung="Nur fuer Tests der Aufgabenuhr.",
+                        funktion=lambda _c: gelaufen.append(1) or "Getan."))
+    try:
+        _, controller, _ = fenster
+        controller.aufgabe_anlegen("Probelauf", "ui_probe",
+                                   {"art": "beim_start"})
+
+        zweites = tk_app.MainWindow(controller, None)
+        ende = time.monotonic() + 5
+        while zweites._aufgabenuhr_laeuft and time.monotonic() < ende:
+            time.sleep(0.02)
+
+        assert gelaufen == [1], (
+            "die Startaufgabe muss beim Oeffnen des Fensters gelaufen sein")
+        assert controller.aufgaben_liste()[0].letztes_ergebnis == "ok"
+    finally:
+        abmelden("ui_probe")
+
+
+def test_die_aufgabenuhr_ueberschreibt_keine_laufende_frage(fenster):
+    """Waehrend einer Frage steht in der Statuszeile, seit wann gewartet
+    wird. Genau diese Anzeige hat Niels gefehlt, als er dachte, die
+    Anwendung haenge."""
+    window, _, _ = fenster
+    window.busy = True
+    window.statusbar.configure(text="Der Buchhalter denkt nach - seit 12 s")
+    window._aufgabenuhr_melden("Geplante Aufgabe laeuft: Sicherung")
+    assert "denkt nach" in window.statusbar.options["text"]
+
+    window.busy = False
+    window._aufgabenuhr_melden("Geplante Aufgabe laeuft: Sicherung")
+    assert "Sicherung" in window.statusbar.options["text"]
+
+
+def test_der_hinweis_unter_der_liste_sagt_nichts_falsches(fenster):
+    """Er behauptete "Noch keine Aufgabe angelegt", waehrend zwei
+    darueber standen. Aufgefallen auf dem ersten Bild des Bereichs."""
+    window, controller, _ = fenster
+    assert "Noch keine" in window.aufgabe_meldung.options["text"]
+
+    controller.aufgabe_anlegen("Sicherung", "sicherung_anlegen",
+                               {"art": "taeglich", "uhrzeit": "23:00"})
+    window._refresh_aufgaben()
+    text = window.aufgabe_meldung.options["text"]
+    assert "Noch keine" not in text, text
