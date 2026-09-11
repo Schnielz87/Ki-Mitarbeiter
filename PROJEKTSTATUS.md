@@ -19,10 +19,14 @@ Version 0.4.0
 > Aufgaben & Automationen seit Fassung 20 - siehe `FACHLOGIK_OFFEN.md`
 > Abschnitte 4 und 5.
 >
-> **Wartezeit:** `ANTWORTZEIT_KONZEPT.md`. Hebel 1 und 2 umgesetzt - der
-> Prompt einer Begriffsfrage schrumpft um ein Drittel bis um die Haelfte.
-> Hebel 3 (Prompt-Anfang wiederverwenden) und 4 (Antwortspeicher) sind
-> offen.
+> **Wartezeit:** `ANTWORTZEIT_KONZEPT.md`. Hebel 1, 2 und 4 umgesetzt -
+> der Prompt einer Begriffsfrage schrumpft um ein Drittel bis um die
+> Haelfte, und eine wiederholte Frage kostet gar keine Wartezeit mehr.
+> Hebel 3 (Prompt-Anfang wiederverwenden) ist gemessen und wirkt
+> **nicht**: der zweite Durchgang ist genauso langsam wie der erste.
+> Das sind 62 bis 64 Prozent der Wartezeit, die brachliegen. Die
+> Gegenprobe zum Verdaechtigen (Beschleunigungsschalter) steht im
+> Bauablauf.
 
 ---
 
@@ -36,7 +40,7 @@ Geheimnistresor, Freigabepflicht, Connector-Rahmen, Dateiausgabe in acht
 Formaten, Plugin-System mit eigenem Vorgang je Plugin, mitgeliefertem
 Modelldienst und gefuehrtem Weg zum Sprachmodell, grafische Oberflaeche und
 Kommandozeile -
-abgesichert durch **935 automatische Tests**, davon fuenfzehn mit einem
+abgesichert durch **963 automatische Tests**, davon fuenfzehn mit einem
 **echten Fenster** auf einem echten Bildschirm.
 
 Seit dem 09.09.2026 rechnet die Anwendung selbst, statt es dem

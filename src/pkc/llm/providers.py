@@ -304,8 +304,49 @@ class OpenAICompatibleProvider:
                 }
             except (KeyError, TypeError, ValueError):
                 continue
+        wiederverwendung = self._wiederverwendung(daten, zeiten)
+        if wiederverwendung:
+            neu["prompt"] = wiederverwendung
         if neu:
             self.letzte_zeiten = neu
+
+    @staticmethod
+    def _wiederverwendung(daten: dict, zeiten: dict) -> dict:
+        """Wurde der unveraenderliche Prompt-Anfang wiederverwendet?
+
+        Das ist Hebel 3 aus ANTWORTZEIT_KONZEPT.md. Rund 1000 der 2900
+        Textbausteine sind bei jeder Frage Zeichen fuer Zeichen dieselben.
+        ``cache_prompt`` verlangt vom Dienst, sie zu merken - ob er es
+        tut, sagt die Anfrage nicht.
+
+        Gemessen wird der Unterschied zwischen zwei Zahlen, die beide vom
+        Dienst selbst kommen:
+
+        * ``usage.prompt_tokens`` - wieviele Textbausteine die Frage hat,
+        * ``timings.prompt_n``    - wieviele davon er verarbeitet hat.
+
+        Sind die zweiten weniger, hat er den Rest gemerkt. Fehlt eine der
+        beiden Zahlen, entsteht kein Eintrag: hier wird gemessen und
+        nicht geschaetzt. Eine Anzeige "wahrscheinlich wiederverwendet"
+        waere schlimmer als gar keine.
+        """
+        nutzung = daten.get("usage")
+        if not isinstance(nutzung, dict):
+            return {}
+        try:
+            gesamt = int(nutzung["prompt_tokens"])
+            verarbeitet = int(zeiten["prompt_n"])
+        except (KeyError, TypeError, ValueError):
+            return {}
+        if gesamt <= 0 or verarbeitet < 0:
+            return {}
+        gemerkt = max(gesamt - verarbeitet, 0)
+        return {
+            "gesamt": gesamt,
+            "verarbeitet": verarbeitet,
+            "gemerkt": gemerkt,
+            "wiederverwendet": gemerkt > 0,
+        }
 
     def _strom(self, request, on_token: Callable[[str], None], started: float) -> LlmResponse:
         """Liest die Antwort als Ereignisstrom (Abschnitt 21).

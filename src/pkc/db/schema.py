@@ -296,4 +296,26 @@ CREATE TABLE app_state (
 );
 """
 
-COMPANY_MIGRATIONS = [(1, COMPANY_V1)]
+#: Fassung 2: der Antwortspeicher (Hebel 4 aus ANTWORTZEIT_KONZEPT.md).
+#:
+#: Er liegt in der Unternehmensdatenbank und damit im Kundenbereich -
+#: eine gespeicherte Antwort enthaelt Unternehmenswissen und darf einen
+#: anderen Kunden nicht erreichen (Abschnitt 61).
+#:
+#: ``cache_key`` deckt alles ab, was das Ergebnis veraendern kann: Frage,
+#: Profil, Wissensstand, Modell, Tempostufe und den Stand des
+#: Unternehmensgedaechtnisses. Aendert sich eines davon, entsteht ein
+#: anderer Schluessel und es wird neu gerechnet.
+COMPANY_V2 = """
+CREATE TABLE answer_cache (
+    cache_key   TEXT PRIMARY KEY,
+    question    TEXT NOT NULL,
+    answer_json TEXT NOT NULL,
+    created_at  TEXT NOT NULL,
+    used_at     TEXT NOT NULL,
+    hits        INTEGER NOT NULL DEFAULT 0
+);
+CREATE INDEX idx_answer_cache_used ON answer_cache(used_at);
+"""
+
+COMPANY_MIGRATIONS = [(1, COMPANY_V1), (2, COMPANY_V2)]

@@ -425,3 +425,19 @@ def test_die_anleitung_nennt_die_planbaren_arbeiten():
         assert aktion.name in QUELLE, (
             f"Die Arbeit „{aktion.name}“ laesst sich planen, steht aber "
             "nicht in der Anleitung.")
+
+
+def test_die_anleitung_erklaert_den_antwortspeicher():
+    assert "Antwortspeicher" in QUELLE
+    assert "gekennzeichnet" in QUELLE, \
+        "dass eine wiederverwendete Antwort erkennbar ist, muss dastehen"
+    assert "Notbetrieb" in QUELLE
+
+
+def test_die_anleitung_verspricht_keinen_speicher_ohne_schalter():
+    """Was sich abschalten laesst, muss auch als abschaltbar dastehen."""
+    from pkc.config import DEFAULTS
+
+    assert "antwortspeicher" in DEFAULTS["llm"], \
+        "der Schalter muss es geben"
+    assert "abschalten" in QUELLE or "abgeschaltet" in QUELLE

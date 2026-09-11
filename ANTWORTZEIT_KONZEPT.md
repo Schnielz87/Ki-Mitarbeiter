@@ -185,9 +185,109 @@ linear, und die Zahl ist auf diesem Rechner nicht nachgemessen. Nachmessen
 lässt sie sich mit „Wartezeit messen".
 
 Hebel 3 (Prompt-Anfang wiederverwenden) und Hebel 4 (Antwortspeicher)
-sind **nicht** umgesetzt und weiterhin offen.
+waren zu diesem Zeitpunkt **nicht** umgesetzt. Siehe 4b.
 
 ---
+
+## 4b. Umgesetzt am 2026-09-11 — Hebel 4 ganz, Hebel 3 zur Hälfte
+
+### Hebel 4 — der Antwortspeicher: umgesetzt
+
+Dieselbe Frage zweimal zu stellen kostet keine Wartezeit mehr. Der
+Speicher liegt in der Unternehmensdatenbank (`answer_cache`, Fassung 2
+des Schemas) und damit im Kundenbereich — eine gespeicherte Antwort
+enthält Unternehmenswissen.
+
+**Die eine Regel, die alles andere trägt:** eine wiederverwendete Antwort
+wird als solche gekennzeichnet, mit dem Datum ihrer Entstehung. Wer eine
+Frage zum zweiten Mal stellt, tut das oft, weil sich etwas geändert hat.
+
+Der Schlüssel umfasst Frage, Profil, Wissensstand, Modell, Tempostufe,
+Betriebsart und den **Stand des Unternehmensgedächtnisses**. Der letzte
+Punkt ist der am leichtesten zu übersehende: wer seinen Kontenrahmen von
+SKR03 auf SKR04 umstellt, bekommt zu derselben Frage eine andere
+Antwort. Gemessen wird er als Anzahl der aktiven Einträge plus jüngstem
+Änderungszeitpunkt — ein Zähler allein übersähe eine Änderung, ein
+Zeitstempel allein eine Löschung.
+
+**Was nicht gespeichert wird:**
+
+* Antworten aus dem Notbetrieb. Sie festzuhalten hieße, den Notbetrieb
+  zu verewigen — auch dann noch, wenn das Modell längst eingerichtet ist.
+* Antworten mit Gesprächsverlauf. Dieselbe Frage meint im nächsten
+  Gespräch etwas anderes. Den Verlauf in den Schlüssel zu nehmen wäre
+  möglich und nutzlos: er ist nie zweimal gleich.
+
+Abschaltbar unter `llm.antwortspeicher`; Stand und „leeren" stehen in den
+Einstellungen. Höchstens 200 Einträge, die am längsten unbenutzten fallen
+heraus.
+
+### Hebel 3 — Prompt-Anfang wiederverwenden: zur Hälfte
+
+Die Anfrage verlangt die Wiederverwendung schon seit Fassung 14
+(`cache_prompt: true` an den mitgelieferten Dienst). Was fehlte, war die
+**Messung** — und damit die Antwort auf die Frage, ob es überhaupt
+wirkt.
+
+Sie ist jetzt da. Gemessen wird der Unterschied zwischen zwei Zahlen, die
+beide vom Modelldienst selbst kommen:
+
+| Zahl | Woher | Bedeutung |
+|---|---|---|
+| `usage.prompt_tokens` | Antwort des Dienstes | wieviele Textbausteine die Frage hat |
+| `timings.prompt_n` | Antwort des Dienstes | wieviele davon er verarbeitet hat |
+
+Ist die zweite kleiner, hat er den Rest gemerkt. „Wartezeit messen" zeigt
+das als eine Zeile:
+
+> Prompt-Anfang wiederverwendet: JA — 1000 von 2900 Textbausteinen
+> gemerkt
+
+Fehlt eine der beiden Zahlen, steht die Zeile **nicht** da. Es wird
+gemessen und nichts geschätzt; eine Anzeige „wahrscheinlich
+wiederverwendet" wäre schlimmer als gar keine.
+
+### Der Befund: es wirkt heute NICHT
+
+Der Bauablauf vom 11.09.2026 hat auf einem echten Windows-Rechner mit
+einem echten Modell gemessen. Das Ergebnis ist eindeutig:
+
+| Tempostufe | 1. Durchgang | 2. Durchgang | Textbausteine verarbeitet |
+|---|---|---|---|
+| schnell | 25,8 s | 27,4 s | 1232 → 1227 |
+| ausgewogen | 50,1 s | 51,5 s | 1960 → 1980 |
+| ausführlich | 45,6 s | 49,3 s | 1960 → 1980 |
+
+Der zweite Durchgang ist **nicht schneller** als der erste — er ist
+sogar durchweg minimal langsamer. Der unveränderliche Prompt-Anfang wird
+also **nicht** wiederverwendet, obwohl die Anfrage es verlangt.
+
+Und es ist teuer: „Frage verarbeiten" ist 25,8 s von 40,1 s (64 %) und
+51,5 s von 83,7 s (62 %). Rund tausend dieser Textbausteine sind bei
+jeder Frage dieselben.
+
+**Damit ist Hebel 3 der größte verbliebene Posten der Wartezeit — und er
+liegt brach.**
+
+### Der Verdächtige, und wie er überführt wird
+
+Punkt 2 der Prüfliste oben lautet: „Verhindern die
+Beschleunigungsschalter (`--cache-type-k/v q8_0`) die Wiederverwendung?
+Gegenprobe: einmal ohne."
+
+Die Messung zeigt in jeder Zeile „Zusatzschalter aktiv". Der Bauablauf
+enthält jetzt genau diese Gegenprobe: eine Messung mit den Schaltern und
+eine ohne, direkt hintereinander, mit dem Befund im Klartext darunter.
+Der nächste Bau beantwortet die Frage.
+
+Bis dahin wird hier **nichts behauptet**. Die Schalter sparen
+nachweislich Arbeitsspeicher, und auf einem knappen Rechner entscheidet
+das über das Auslagern — das kostet nicht Prozente, sondern das
+Zehnfache. Sie abzuschalten, ohne zu wissen, ob es hilft, wäre ein
+Tausch ins Blaue.
+
+Punkt 3 (nativer `/completion`-Weg statt des OpenAI-kompatiblen) bleibt
+ebenfalls offen.
 
 ## 5. Was das zusammen bedeutet
 
@@ -198,9 +298,10 @@ sind **nicht** umgesetzt und weiterhin offen.
 | verwickelter Fall | ~2900 | ~2900 | **~1900** |
 | Wiederholung | ~2900 | ~2900 | **0 (Hebel 4)** |
 
-Hebel 1 und 2 sind klein, sicher und sofort messbar. Hebel 3 ist der
-größte, aber ergebnisoffen — er hängt an einer Fassung, die wir nicht
-selbst schreiben.
+Hebel 1 und 2 sind klein, sicher und sofort messbar. Hebel 4 ist
+umgesetzt. Hebel 3 ist der größte, aber ergebnisoffen — er hängt an einer
+Fassung, die wir nicht selbst schreiben; gemessen wird er jetzt, statt
+vermutet zu werden.
 
 ## 6. Was ich **nicht** verspreche
 

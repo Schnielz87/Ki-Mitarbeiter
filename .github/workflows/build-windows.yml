@@ -494,6 +494,60 @@ jobs:
             }
           }
 
+      - name: Gegenprobe - liegt es an den Beschleunigungsschaltern?
+        shell: pwsh
+        timeout-minutes: 12
+        continue-on-error: true
+        # Der Bauablauf vom 11.09.2026 hat gemessen: der unveraenderliche
+        # Prompt-Anfang wird NICHT wiederverwendet. Die Anfrage verlangt es
+        # (cache_prompt), und der zweite Durchgang war trotzdem genauso
+        # langsam wie der erste - 25,8 s gegen 25,8 s bei 1227 von 1232
+        # Textbausteinen.
+        #
+        # ANTWORTZEIT_KONZEPT.md nennt dafuer einen Verdaechtigen:
+        # "--cache-type-k/-v q8_0" haelt den Kontext quantisiert im
+        # Speicher, und llama.cpp gibt das Merken des Prompt-Anfangs dann
+        # moeglicherweise auf. Punkt 2 der dortigen Pruefliste lautet
+        # woertlich: "Gegenprobe: einmal ohne."
+        #
+        # Das ist diese Gegenprobe. Sie darf fehlschlagen, ohne den Bau zu
+        # stoppen - sie beantwortet eine Frage, sie sichert nichts zu.
+        run: |
+          Set-Location dist\Portable-Buchhalter
+          .\PORTABLE_BUCHHALTER_KONSOLE.exe --offline einstellungen setzen `
+            --schluessel llm.tempo --wert schnell | Out-Null
+
+          Write-Host "===== MIT Beschleunigungsschaltern (wie ausgeliefert) ====="
+          .\PORTABLE_BUCHHALTER_KONSOLE.exe --offline einstellungen setzen `
+            --schluessel llm.tempoflags --wert true | Out-Null
+          $mit = .\PORTABLE_BUCHHALTER_KONSOLE.exe --offline modell messen | Out-String
+          Write-Host $mit
+
+          Write-Host "===== OHNE Beschleunigungsschalter ====="
+          .\PORTABLE_BUCHHALTER_KONSOLE.exe --offline einstellungen setzen `
+            --schluessel llm.tempoflags --wert false | Out-Null
+          $ohne = .\PORTABLE_BUCHHALTER_KONSOLE.exe --offline modell messen | Out-String
+          Write-Host $ohne
+
+          # Die Vorgabe zurueckstellen - das Auslieferungspaket soll sie
+          # tragen, egal wie diese Gegenprobe ausgeht.
+          .\PORTABLE_BUCHHALTER_KONSOLE.exe --offline einstellungen setzen `
+            --schluessel llm.tempoflags --wert true | Out-Null
+
+          Write-Host ""
+          Write-Host "===== BEFUND ====="
+          foreach ($fall in @(@("mit Schaltern", $mit), @("ohne Schalter", $ohne))) {
+            $treffer = if ($fall[1] -match "Prompt-Anfang\s*:\s*(\S+)") { $matches[1] }
+                       elseif ($fall[1] -match "Prompt-Anfang wiederverwendet:\s*(\S+)") { $matches[1] }
+                       else { "nicht messbar" }
+            $erstes = if ($fall[1] -match "Im laufenden Betrieb:\s*([0-9.,]+)\s*s") { $matches[1] } else { "?" }
+            Write-Host ("  {0,-14}  Prompt-Anfang: {1,-20}  1. Wort: {2} s" -f $fall[0], $treffer, $erstes)
+          }
+          Write-Host ""
+          Write-Host "Steht rechts WIEDERVERWENDET, wo links 'ohne Schalter' steht,"
+          Write-Host "ist der Verdaechtige ueberfuehrt - dann kostet die"
+          Write-Host "Speicherersparnis der Schalter mehr Zeit, als sie spart."
+
       - name: Quellenregister gegen die echten Adressen pruefen
         shell: pwsh
         continue-on-error: true

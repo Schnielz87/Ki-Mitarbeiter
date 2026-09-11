@@ -520,61 +520,7 @@ def cmd_modell(args) -> int:
             # Die ehrliche Zahl: eine echte Fachfrage, zweimal. Der erste
             # Lauf enthaelt das Laden des Modells, der zweite ist der Alltag.
             print("Messe an einer echten Fachfrage (zwei Durchgaenge) ...\n")
-            ergebnis = controller.modell_messen(args.frage or "")
-            for nummer, gestellt in enumerate(ergebnis["fragen"], start=1):
-                print(f"Frage {nummer}: {gestellt}")
-            print(f"Tempo  : {ergebnis['tempo']}")
-            dienst = ergebnis.get("dienst", {})
-            if dienst.get("fassung"):
-                # Mit Grafikkarte ist die Geschwindigkeit ein Vielfaches.
-                # Ob sie genommen wurde, soll man nicht raten muessen.
-                auf = ("Grafikkarte" if dienst.get("gpu_schichten") else "Prozessor")
-                print(f"Dienst : {dienst['fassung']} (rechnet auf: {auf}"
-                      + (", Zusatzschalter aktiv" if dienst.get("tempoflags") else "")
-                      + ")")
-            aufteilung = dienst.get("zeitaufteilung") or {}
-            if aufteilung:
-                # Wohin die Zeit geht. Ohne diese Aufteilung ist "es dauert
-                # lange" nicht zu bearbeiten: viel Zeit im Verarbeiten
-                # heisst kuerzerer Kontext, viel Zeit im Schreiben heisst
-                # kleineres Modell.
-                for schluessel, beschriftung in (("verarbeiten", "Frage verarbeiten"),
-                                                 ("schreiben", "Antwort schreiben")):
-                    teil = aufteilung.get(schluessel)
-                    if teil:
-                        print(f"{beschriftung:22}: {teil['sekunden']:8.1f} s "
-                              f"fuer {teil['tokens']} Textbausteine")
-            if ergebnis.get("bereit_nach_s"):
-                print(f"Warten auf die Bereitschaft der Anwendung: "
-                      f"{ergebnis['bereit_nach_s']} s "
-                      "(im Fenster laeuft das beim Start nebenher)")
-            print()
-            print(f"{'Durchgang':11} {'1. Wort':>9} {'gesamt':>9}   Bemerkung")
-            for lauf in ergebnis["laeufe"]:
-                if not lauf.get("ok"):
-                    print(f"{lauf['nummer']:<11} {'-':>9} {'-':>9}   {lauf.get('grund', '')}")
-                    continue
-                bemerkung = ("erste Frage, Anwendung bereit" if lauf["nummer"] == 1
-                             else "andere Frage, im laufenden Betrieb")
-                print(f"{lauf['nummer']:<11} {lauf['erstes_wort_s']:>8.1f}s "
-                      f"{lauf['gesamt_s']:>8.1f}s   {bemerkung}")
-            if not ergebnis["ok"]:
-                print("\nEs hat kein Sprachmodell geantwortet.", file=sys.stderr)
-                return 1
-            print(f"\nIm laufenden Betrieb: {ergebnis['im_betrieb_erstes_wort_s']} s "
-                  f"bis zum ersten Wort, {ergebnis['im_betrieb_gesamt_s']} s bis zum Ende.")
-            # Die Zahl, die eine Stoppuhr daneben anzeigen wuerde. Ohne sie
-            # widerspricht die Ausgabe dem, was jemand tatsaechlich erlebt.
-            print(f"Gesamte Messdauer (Stoppuhr): {ergebnis.get('messdauer_s', 0)} s")
-            wieder = ergebnis.get("prompt_wiederverwendung") or {}
-            if wieder:
-                # Die Frage, die sich sonst nur vermuten liesse.
-                print(f"Prompt-Anfang wiederverwendet: "
-                      f"{'ja' if wieder['greift'] else 'NEIN'} "
-                      f"({wieder['tokens_erster_lauf']} Textbausteine im ersten, "
-                      f"{wieder['tokens_spaeterer_lauf']} im zweiten Durchgang, "
-                      f"{wieder['rueckgang_prozent']} % weniger)")
-            return 0
+            return _messung_ausgeben(controller.modell_messen(args.frage or ""))
 
         print(f"Unbekannte Aktion: {args.aktion}", file=sys.stderr)
         return 2
@@ -1172,3 +1118,82 @@ def main(argv: list[str] | None = None) -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+
+
+def _messung_ausgeben(ergebnis: dict) -> int:
+    """Gibt das Ergebnis von "modell messen" aus.
+
+    Eigene Funktion, damit sich die Ausgabe pruefen laesst, ohne
+    ein Modell zu starten. Die Zeile zum wiederverwendeten
+    Prompt-Anfang ist der Punkt, an dem eine Vermutung zu einer
+    Messung wird - sie darf nicht unbemerkt verschwinden.
+    """
+    for nummer, gestellt in enumerate(ergebnis["fragen"], start=1):
+        print(f"Frage {nummer}: {gestellt}")
+    print(f"Tempo  : {ergebnis['tempo']}")
+    dienst = ergebnis.get("dienst", {})
+    if dienst.get("fassung"):
+        # Mit Grafikkarte ist die Geschwindigkeit ein Vielfaches.
+        # Ob sie genommen wurde, soll man nicht raten muessen.
+        auf = ("Grafikkarte" if dienst.get("gpu_schichten") else "Prozessor")
+        print(f"Dienst : {dienst['fassung']} (rechnet auf: {auf}"
+              + (", Zusatzschalter aktiv" if dienst.get("tempoflags") else "")
+              + ")")
+    aufteilung = dienst.get("zeitaufteilung") or {}
+    if aufteilung:
+        # Wohin die Zeit geht. Ohne diese Aufteilung ist "es dauert
+        # lange" nicht zu bearbeiten: viel Zeit im Verarbeiten
+        # heisst kuerzerer Kontext, viel Zeit im Schreiben heisst
+        # kleineres Modell.
+        for schluessel, beschriftung in (("verarbeiten", "Frage verarbeiten"),
+                                         ("schreiben", "Antwort schreiben")):
+            teil = aufteilung.get(schluessel)
+            if teil:
+                print(f"{beschriftung:22}: {teil['sekunden']:8.1f} s "
+                      f"fuer {teil['tokens']} Textbausteine")
+        # Hebel 3 aus ANTWORTZEIT_KONZEPT.md: die Anfrage
+        # verlangt, den unveraenderlichen Prompt-Anfang zu
+        # merken. Ob der Dienst es tut, sagt nur diese Zeile.
+        # Steht sie nicht da, war es nicht messbar - und dann
+        # wird auch nichts behauptet.
+        prompt = aufteilung.get("prompt")
+        if prompt:
+            if prompt.get("wiederverwendet"):
+                print(f"{'Prompt-Anfang':22}: WIEDERVERWENDET - "
+                      f"{prompt['gemerkt']} von {prompt['gesamt']} "
+                      "Textbausteinen gemerkt")
+            else:
+                print(f"{'Prompt-Anfang':22}: NICHT wiederverwendet - "
+                      f"alle {prompt['gesamt']} Textbausteine neu "
+                      "verarbeitet")
+    if ergebnis.get("bereit_nach_s"):
+        print(f"Warten auf die Bereitschaft der Anwendung: "
+              f"{ergebnis['bereit_nach_s']} s "
+              "(im Fenster laeuft das beim Start nebenher)")
+    print()
+    print(f"{'Durchgang':11} {'1. Wort':>9} {'gesamt':>9}   Bemerkung")
+    for lauf in ergebnis["laeufe"]:
+        if not lauf.get("ok"):
+            print(f"{lauf['nummer']:<11} {'-':>9} {'-':>9}   {lauf.get('grund', '')}")
+            continue
+        bemerkung = ("erste Frage, Anwendung bereit" if lauf["nummer"] == 1
+                     else "andere Frage, im laufenden Betrieb")
+        print(f"{lauf['nummer']:<11} {lauf['erstes_wort_s']:>8.1f}s "
+              f"{lauf['gesamt_s']:>8.1f}s   {bemerkung}")
+    if not ergebnis["ok"]:
+        print("\nEs hat kein Sprachmodell geantwortet.", file=sys.stderr)
+        return 1
+    print(f"\nIm laufenden Betrieb: {ergebnis['im_betrieb_erstes_wort_s']} s "
+          f"bis zum ersten Wort, {ergebnis['im_betrieb_gesamt_s']} s bis zum Ende.")
+    # Die Zahl, die eine Stoppuhr daneben anzeigen wuerde. Ohne sie
+    # widerspricht die Ausgabe dem, was jemand tatsaechlich erlebt.
+    print(f"Gesamte Messdauer (Stoppuhr): {ergebnis.get('messdauer_s', 0)} s")
+    wieder = ergebnis.get("prompt_wiederverwendung") or {}
+    if wieder:
+        # Die Frage, die sich sonst nur vermuten liesse.
+        print(f"Prompt-Anfang wiederverwendet: "
+              f"{'ja' if wieder['greift'] else 'NEIN'} "
+              f"({wieder['tokens_erster_lauf']} Textbausteine im ersten, "
+              f"{wieder['tokens_spaeterer_lauf']} im zweiten Durchgang, "
+              f"{wieder['rueckgang_prozent']} % weniger)")
+    return 0

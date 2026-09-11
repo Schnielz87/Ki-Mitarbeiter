@@ -339,3 +339,74 @@ def test_automatisch_ergibt_immer_eine_echte_stufe(portable_root):
         assert controller.tempowerte() == tempo.stufe(gewaehlt)
     finally:
         controller.shutdown()
+
+
+def test_die_messung_nennt_den_wiederverwendeten_prompt_anfang(capsys):
+    """Hebel 3 wird gemessen, nicht vermutet.
+
+    Der Bauablauf ruft "modell messen" auf einem echten Rechner mit einem
+    echten Modell auf. Steht die Zeile dort nicht in der Ausgabe, ist die
+    Messung wertlos - niemand wuerde je erfahren, ob der Prompt-Anfang
+    wiederverwendet wird.
+    """
+    from ui.cli import main
+
+    class Steuerung:
+        def modell_messen(self, frage=""):
+            return {
+                "ok": True, "tempo": "schnell", "fragen": ["Probe"],
+                "im_betrieb_erstes_wort_s": 1.0, "im_betrieb_gesamt_s": 2.0,
+                "messdauer_s": 3.0,
+                "laeufe": [{"nummer": 1, "ok": True, "erstes_wort_s": 1.0,
+                            "gesamt_s": 2.0}],
+                "dienst": {
+                    "fassung": "cpu", "gpu_schichten": 0,
+                    "zeitaufteilung": {
+                        "verarbeiten": {"sekunden": 1.0, "tokens": 1900},
+                        "prompt": {"gesamt": 2900, "verarbeitet": 1900,
+                                   "gemerkt": 1000, "wiederverwendet": True},
+                    },
+                },
+            }
+
+    _messung_ausgeben(Steuerung())
+    text = capsys.readouterr().out
+    assert "Prompt-Anfang" in text
+    assert "WIEDERVERWENDET" in text
+    assert "1000 von 2900" in text
+
+
+def test_ohne_wiederverwendung_steht_das_auch_da(capsys):
+    class Steuerung:
+        def modell_messen(self, frage=""):
+            return {
+                "ok": True, "tempo": "schnell", "fragen": ["Probe"],
+                "im_betrieb_erstes_wort_s": 1.0, "im_betrieb_gesamt_s": 2.0,
+                "messdauer_s": 3.0, "laeufe": [],
+                "dienst": {"zeitaufteilung": {
+                    "prompt": {"gesamt": 2900, "verarbeitet": 2900,
+                               "gemerkt": 0, "wiederverwendet": False}}},
+            }
+
+    _messung_ausgeben(Steuerung())
+    text = capsys.readouterr().out
+    assert "NICHT wiederverwendet" in text
+
+
+def test_ohne_messwerte_wird_nichts_behauptet(capsys):
+    class Steuerung:
+        def modell_messen(self, frage=""):
+            return {"ok": True, "tempo": "schnell", "fragen": ["Probe"],
+                    "im_betrieb_erstes_wort_s": 1.0,
+                    "im_betrieb_gesamt_s": 2.0, "messdauer_s": 3.0,
+                    "laeufe": [], "dienst": {"zeitaufteilung": {}}}
+
+    _messung_ausgeben(Steuerung())
+    assert "Prompt-Anfang" not in capsys.readouterr().out
+
+
+def _messung_ausgeben(steuerung) -> None:
+    """Ruft den Ausgabeteil von "modell messen" mit einem Doppel auf."""
+    from ui import cli
+
+    cli._messung_ausgeben(steuerung.modell_messen())

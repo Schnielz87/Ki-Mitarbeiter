@@ -517,3 +517,19 @@ def test_der_hinweis_unter_der_liste_sagt_nichts_falsches(fenster):
     window._refresh_aufgaben()
     text = window.aufgabe_meldung.options["text"]
     assert "Noch keine" not in text, text
+
+
+def test_der_antwortspeicher_steht_in_den_einstellungen(fenster):
+    """Eine Einstellung, deren Wirkung man nicht sehen kann, ist keine."""
+    window, controller, dialoge = fenster
+    assert "llm.antwortspeicher" in window.setting_vars
+    assert "Noch keine" in window.speicher_stand.options["text"]
+
+    controller.ask("Welche Pflichtangaben muss eine Rechnung enthalten?",
+                   use_history=False)
+    window._refresh_speicher_stand()
+    assert "1 Antworten gespeichert" in window.speicher_stand.options["text"]
+
+    window._antwortspeicher_leeren()
+    assert "Noch keine" in window.speicher_stand.options["text"]
+    assert controller.antwortspeicher_stand()["eintraege"] == 0

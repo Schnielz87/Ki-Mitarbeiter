@@ -19,6 +19,7 @@ from typing import Any, Callable, Iterable, Sequence
 
 from pkc.artefakte import Artefaktwerk, aus_markdown
 from pkc.artefakte.wunsch import erkennen as dateiwunsch_erkennen
+from pkc.rag.antwortspeicher import Antwortspeicher
 from pkc.aufgaben import (
     Aufgabenspeicher, Ausloeser, Planer, WindowsPlanung,
     alle as aufgaben_aktionen_alle,
@@ -40,7 +41,7 @@ from pkc.knowledge.extract import ExtractionError, extract
 from pkc.knowledge.store import KnowledgeStore
 from pkc.licensing import LicenseChecker
 from pkc.llm import tempo
-from pkc.llm.base import ChatMessage
+from pkc.llm.base import ChatMessage, LlmResponse
 from pkc.llm.manager import LlmManager, discover_models
 from pkc.logging_setup import get_logger, setup_logging
 from pkc.memory import CaptureCandidate, MemoryCapture, MemoryStore
@@ -224,6 +225,13 @@ class AppController:
         self.vorlagen = Vorlagenspeicher(self.paths, audit=self.audit)
         self.vorlagenwerk = Vorlagenwerk(
             self.vorlagen, self.artefakte, memory=self.memory)
+
+        # Antwortspeicher (Hebel 4). Dieselbe Frage zweimal zu stellen ist
+        # im Buero der Normalfall; die zweite Antwort muss nicht noch
+        # einmal Minuten dauern.
+        self.antwortspeicher = Antwortspeicher(
+            self.company_db,
+            aktiv=bool(self.config.get("llm.antwortspeicher", True)))
 
         # Geplante Aufgaben. Der Planer fuehrt nichts von selbst aus -
         # er wird von der Oberflaeche im Minutentakt gefragt. Ein
@@ -1704,13 +1712,40 @@ class AppController:
         history = (self._history(uid, turns=werte["verlauf"] + 1)[:-1]
                    if use_history else [])
 
-        result = self.rag.answer(
-            question, history=history, mode=mode.value, knowledge_date=knowledge_date,
-            as_of=as_of, max_tokens=self.antwortlaenge(),
-            temperature=float(self.config.get("llm.temperature", 0.2)),
-            prefer_online=prefer_online and lage.online_moeglich,
-            on_token=on_token,
-        )
+        # Der Antwortspeicher greift nur, wenn die Frage fuer sich steht.
+        # Mit Gespraechsverlauf haengt die Antwort an dem, was vorher
+        # gesagt wurde - dieselbe Frage in einem anderen Gespraech meint
+        # dann etwas anderes. Den Verlauf in den Schluessel zu nehmen
+        # waere moeglich und nutzlos: er ist nie zweimal gleich.
+        schluessel = "" if history else self._antwortschluessel(
+            question, mode.value, knowledge_date)
+        treffer = (self.antwortspeicher.holen(schluessel)
+                   if schluessel else None)
+
+        if treffer is not None:
+            result = self._antwort_aus_speicher(treffer)
+            if on_token is not None:
+                # Damit die Oberflaeche etwas zu zeigen hat. Sie erwartet
+                # Textstuecke; hier kommt alles auf einmal.
+                on_token(result.text)
+        else:
+            result = self.rag.answer(
+                question, history=history, mode=mode.value, knowledge_date=knowledge_date,
+                as_of=as_of, max_tokens=self.antwortlaenge(),
+                temperature=float(self.config.get("llm.temperature", 0.2)),
+                prefer_online=prefer_online and lage.online_moeglich,
+                on_token=on_token,
+            )
+            # Nur echte Modellantworten werden aufgehoben. Die
+            # Ersatzantwort des Notbetriebs festzuhalten hiesse, den
+            # Notbetrieb zu verewigen - auch dann noch, wenn das Modell
+            # laengst eingerichtet ist.
+            if schluessel and result.model_answered:
+                try:
+                    self.antwortspeicher.merken(
+                        schluessel, question, _antwort_als_daten(result))
+                except Exception as fehler:     # pragma: no cover - defensiv
+                    log.debug("Antwort nicht gespeichert: %s", fehler)
 
         message_id = self._store_message(
             uid, "assistant", result.text, mode.value,
@@ -1779,6 +1814,81 @@ class AppController:
         )
         return AskOutcome(result, uid, message_id, candidates, stored,
                           datei=datei, datei_fehler=datei_fehler)
+
+    def _antwortschluessel(self, frage: str, betriebsart: str,
+                           wissensstand: str | None) -> str:
+        """Alles, was die Antwort veraendern kann, geht in den Schluessel."""
+        return self.antwortspeicher.schluessel(
+            frage,
+            profil=self.profile.profile_id,
+            wissensstand=wissensstand or "",
+            modell=self._modellkennung(),
+            tempo=str(self.config.get("llm.tempo", "")),
+            betriebsart=betriebsart,
+            gedaechtnis=Antwortspeicher.gedaechtnisstand(self.memory),
+        )
+
+    def _modellkennung(self) -> str:
+        """Welches Modell gerade antwortet - so genau wie moeglich.
+
+        Der Name des Anbieters allein genuegt nicht. Er lautet beim
+        mitgelieferten Dienst immer "local-llama-cpp", auch wenn jemand
+        eine andere Modelldatei in den Ordner legt. Der Antwortspeicher
+        wuerde dann weiter mit den Antworten des alten Modells antworten,
+        obwohl ein anderes eingerichtet ist.
+
+        Genommen wird deshalb, was der Anbieter ueber sich selbst sagt:
+        Modellname und Pfad. Wo er nichts sagt, bleibt der Name - ein
+        grober Schluessel ist besser als gar keiner.
+        """
+        anbieter = self.llm.primary
+        try:
+            angaben = anbieter.describe() or {}
+        except Exception:                       # pragma: no cover - defensiv
+            angaben = {}
+        teile = [str(angaben.get("anbieter") or getattr(anbieter, "name", "")),
+                 str(angaben.get("modell") or ""),
+                 str(angaben.get("pfad") or "")]
+        return "|".join(t for t in teile if t)
+
+    def _antwort_aus_speicher(self, treffer) -> AnswerResult:
+        """Baut die gespeicherte Antwort wieder auf - sichtbar gekennzeichnet.
+
+        Die Kennzeichnung ist keine Hoeflichkeit. Wer eine Frage zum
+        zweiten Mal stellt, tut das oft, weil sich etwas geaendert hat.
+        Eine gespeicherte Antwort als frisch auszugeben waere eine
+        Taeuschung.
+        """
+        daten = treffer.daten
+        text = (daten.get("text") or "").rstrip() + "\n\n" + treffer.marke()
+        antwort = AnswerResult(
+            text=text,
+            references=[_referenz_aus(r) for r in daten.get("references") or []],
+            used_references=[_referenz_aus(r)
+                             for r in daten.get("used_references") or []],
+            mode=daten.get("mode") or "OFFLINE",
+            knowledge_date=daten.get("knowledge_date"),
+            warnings=list(daten.get("warnings") or []),
+            elapsed=0.0,
+            rechnungen=[_rechnung_aus(r) for r in daten.get("rechnungen") or []],
+        )
+        antwort.llm = LlmResponse(
+            text=daten.get("text") or "",
+            provider=daten.get("anbieter") or "antwortspeicher",
+            model=daten.get("modell") or "",
+            meta={"generated": True, "aus_speicher": True,
+                  "erstellt": treffer.erstellt},
+        )
+        return antwort
+
+    def antwortspeicher_stand(self) -> dict:
+        return self.antwortspeicher.stand()
+
+    def antwortspeicher_leeren(self) -> int:
+        anzahl = self.antwortspeicher.leeren()
+        self.audit.record("antwortspeicher.geleert", "system", "cache",
+                          eintraege=anzahl)
+        return anzahl
 
     def _dateiinhalt(self, result, name: str):
         """Was in die bestellte Datei kommt.
@@ -2511,3 +2621,60 @@ class AppController:
             "letzte_updatelaeufe": self.update_runs(5),
             "wissensstand": self.knowledge.knowledge_date(),
         }
+
+
+# ----------------------------------------------------------------------
+# Antworten fuer den Speicher ein- und auspacken
+#
+# Absichtlich ueber ``dataclasses.asdict`` und die Feldnamen selbst - und
+# nicht ueber ``SourceReference.as_dict()``. Das gibt deutsche
+# Schluesselnamen fuer die Anzeige aus ("nummer", "titel"); damit liesse
+# sich kein Quellennachweis wieder aufbauen, ohne die Namen ein zweites
+# Mal zu pflegen. Zwei Listen von Namen laufen irgendwann auseinander.
+# ----------------------------------------------------------------------
+
+def _antwort_als_daten(result: AnswerResult) -> dict:
+    """Was von einer Antwort aufgehoben wird."""
+    from dataclasses import asdict
+
+    return {
+        "text": result.text,
+        "references": [asdict(r) for r in result.references],
+        "used_references": [asdict(r) for r in result.used_references],
+        "warnings": list(result.warnings),
+        "mode": result.mode,
+        "knowledge_date": result.knowledge_date,
+        "modell": result.llm.model if result.llm else "",
+        "anbieter": result.llm.provider if result.llm else "",
+        "rechnungen": [asdict(r) for r in (result.rechnungen or [])],
+    }
+
+
+def _nur_bekannte_felder(klasse, daten: dict) -> dict:
+    """Schuetzt vor einem Speicher aus einer aelteren Fassung.
+
+    Kommt ein Feld hinzu oder faellt eines weg, wuerde ein blosses
+    ``Klasse(**daten)`` mit einem TypeError abbrechen - und zwar mitten
+    in einer Antwort. Ein alter Eintrag darf hoechstens unvollstaendig
+    sein, nicht toedlich.
+    """
+    from dataclasses import fields
+
+    erlaubt = {f.name for f in fields(klasse)}
+    return {k: v for k, v in (daten or {}).items() if k in erlaubt}
+
+
+def _referenz_aus(daten: dict):
+    from pkc.rag.context import SourceReference
+
+    return SourceReference(**_nur_bekannte_felder(SourceReference, daten))
+
+
+def _rechnung_aus(daten: dict):
+    from pkc.fachrechnen.aufgabenleser import Rechnung
+
+    werte = _nur_bekannte_felder(Rechnung, daten)
+    # Aus JSON kommen Listen zurueck, keine Tupel - die Felder einer
+    # Tabelle sind Paare.
+    werte["felder"] = [tuple(f) for f in werte.get("felder") or []]
+    return Rechnung(**werte)

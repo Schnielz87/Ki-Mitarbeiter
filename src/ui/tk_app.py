@@ -1849,6 +1849,23 @@ class MainWindow:
                     zeilen.append(
                         f"  Antwort schreiben: {schreiben['sekunden']} s "
                         f"fuer {schreiben['tokens']} Textbausteine")
+                # Hebel 3: wird der unveraenderliche Prompt-Anfang
+                # wiederverwendet? Die Anfrage verlangt es
+                # (cache_prompt); ob der Dienst es tut, sagt nur diese
+                # Messung. Steht hier nichts, war es nicht messbar - und
+                # dann wird auch nichts behauptet.
+                prompt = aufteilung.get("prompt") or {}
+                if prompt:
+                    if prompt.get("wiederverwendet"):
+                        zeilen.append(
+                            f"  Prompt-Anfang wiederverwendet: JA - "
+                            f"{prompt['gemerkt']} von {prompt['gesamt']} "
+                            "Textbausteinen gemerkt")
+                    else:
+                        zeilen.append(
+                            f"  Prompt-Anfang wiederverwendet: NEIN - alle "
+                            f"{prompt['gesamt']} Textbausteine neu "
+                            "verarbeitet")
             if ergebnis.get("bereit_nach_s"):
                 zeilen.append(f"  Warten auf die Bereitschaft: "
                               f"{ergebnis['bereit_nach_s']} s "
@@ -2925,6 +2942,28 @@ class MainWindow:
                         "Arbeitsspeicher und beschleunigt knappe "
                         "Rechner.")).pack(anchor="w", pady=(0, PAD))
 
+        # -- Antwortspeicher -------------------------------------------
+        ttk.Label(left, text="Antwortspeicher",
+                  font=("Segoe UI", 10, "bold")).pack(anchor="w",
+                                                      pady=(PAD, 2))
+        add_check("Antworten auf wiederholte Fragen wiederverwenden",
+                  "llm.antwortspeicher")
+        self.speicher_stand = ttk.Label(
+            left, wraplength=430, justify="left", foreground="#555555",
+            text="")
+        self.speicher_stand.pack(anchor="w", pady=(0, 2))
+        ttk.Button(left, text="Antwortspeicher leeren",
+                   command=self._antwortspeicher_leeren).pack(anchor="w",
+                                                              pady=(0, 4))
+        ttk.Label(left, wraplength=430, justify="left", foreground="#555555",
+                  text=("Dieselbe Frage zweimal zu stellen kostet dann keine "
+                        "Wartezeit mehr. Eine wiederverwendete Antwort ist "
+                        "als solche gekennzeichnet - und sobald sich der "
+                        "Wissensstand, das Modell oder Ihr "
+                        "Unternehmenswissen aendert, wird ohnehin neu "
+                        "gerechnet.")).pack(anchor="w", pady=(0, PAD))
+        self._refresh_speicher_stand()
+
         ttk.Button(left, text="Einstellungen speichern", command=self._save_settings).pack(
             anchor="w", pady=PAD
         )
@@ -3047,6 +3086,26 @@ class MainWindow:
         self._statuszeile("Lizenz", lizenz or "keine Angabe",
                           "gut" if lizenz.lower() in ("gueltig", "valid", "ok")
                           else "neutral")
+
+    def _refresh_speicher_stand(self) -> None:
+        if not hasattr(self, "speicher_stand"):
+            return
+        stand = self.controller.antwortspeicher_stand()
+        if not stand["eintraege"]:
+            text = "Noch keine Antwort gespeichert."
+        else:
+            text = (f"{stand['eintraege']} Antworten gespeichert, "
+                    f"{stand['wiederverwendungen']}-mal wiederverwendet "
+                    f"(hoechstens {stand['grenze']}).")
+        self.speicher_stand.configure(text=text)
+
+    def _antwortspeicher_leeren(self) -> None:
+        anzahl = self.controller.antwortspeicher_leeren()
+        self._refresh_speicher_stand()
+        messagebox.showinfo(
+            "Antwortspeicher",
+            f"{anzahl} gespeicherte Antworten entfernt.\n\n"
+            "Die naechste Frage wird wieder gerechnet.", parent=self.root)
 
     def _build_statusbar(self) -> None:
         self.statusbar = ttk.Label(self.root, text="", relief="sunken", anchor="w")

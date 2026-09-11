@@ -585,6 +585,32 @@ absatz("Die Umstellung wirkt sofort - Sie muessen die Anwendung nicht neu "
        "starten. Zwischen \"Schnell\" und \"Ausfuehrlich\" liegt bei der "
        "reinen Rechenzeit ungefaehr der Faktor drei.")
 
+doc.add_heading("Dieselbe Frage zweimal: der Antwortspeicher", level=3)
+absatz("Im Buero ist es der Normalfall, dieselbe Frage noch einmal zu "
+       "stellen. PORTIVA merkt sich deshalb fertige Antworten. Die zweite "
+       "Antwort steht dann sofort da - ohne Wartezeit.")
+
+kasten(
+    "Eine wiederverwendete Antwort ist als solche gekennzeichnet",
+    "Unter ihr steht, wann sie erstellt wurde. Das ist keine "
+    "Hoeflichkeit: wer eine Frage zum zweiten Mal stellt, tut das oft, "
+    "weil sich etwas geaendert hat. Eine gespeicherte Antwort als frisch "
+    "auszugeben waere eine Taeuschung.\n\n"
+    "Sobald sich etwas Massgebliches aendert, wird ohnehin neu "
+    "gerechnet: der Wissensstand, das Modell, die Tempostufe, die "
+    "Betriebsart - und vor allem Ihr Unternehmenswissen. Wer seinen "
+    "Kontenrahmen von SKR03 auf SKR04 umstellt, bekommt zu derselben "
+    "Frage eine andere Antwort.",
+)
+
+absatz("Unter \"Einstellungen und Status\" sehen Sie, wieviele Antworten "
+       "gespeichert sind und wie oft sie wiederverwendet wurden. Dort "
+       "laesst sich der Speicher auch leeren oder ganz abschalten.")
+absatz("Zwei Dinge wandern nicht in den Speicher: Antworten aus dem "
+       "Notbetrieb - also wenn gar kein Sprachmodell eingerichtet ist - "
+       "und Antworten, die auf dem bisherigen Gespraechsverlauf beruhen. "
+       "Dieselbe Frage meint im naechsten Gespraech etwas anderes.")
+
 doc.add_heading("Warum die erste Frage laenger dauert", level=3)
 absatz("Beim Start laedt die Anwendung das Sprachmodell im Hintergrund - "
        "mehrere Gigabyte von Ihrem Datentraeger. Sie koennen waehrenddessen "

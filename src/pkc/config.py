@@ -51,6 +51,13 @@ DEFAULTS: dict[str, Any] = {
         # sie - abschalten muss man das also nur bei einer Fehlersuche.
         "tempoflags": True,
         "temperature": 0.2,
+        # Antwortspeicher (Hebel 4 aus ANTWORTZEIT_KONZEPT.md). Dieselbe
+        # Frage zweimal zu stellen ist im Buero der Normalfall; die
+        # zweite Antwort muss nicht noch einmal Minuten dauern. Eine
+        # wiederverwendete Antwort ist als solche gekennzeichnet, und
+        # sobald sich Wissensstand, Modell, Tempostufe oder das
+        # Unternehmensgedaechtnis aendern, wird ohnehin neu gerechnet.
+        "antwortspeicher": True,
         "threads": 0,                  # 0 = automatisch
         "gpu_layers": 0,
         "online": {

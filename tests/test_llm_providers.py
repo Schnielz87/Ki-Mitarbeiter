@@ -370,10 +370,50 @@ def test_die_zeitangaben_des_dienstes_werden_uebernommen(model_server):
     anbieter = OpenAICompatibleProvider(model_server.base, model="testmodell")
     anbieter.generate([ChatMessage("user", "Frage")], max_tokens=8)
 
-    assert anbieter.letzte_zeiten == {
-        "verarbeiten": {"sekunden": 120.0, "tokens": 2400},
-        "schreiben": {"sekunden": 40.0, "tokens": 160},
-    }
+    assert anbieter.letzte_zeiten["verarbeiten"] == \
+        {"sekunden": 120.0, "tokens": 2400}
+    assert anbieter.letzte_zeiten["schreiben"] == \
+        {"sekunden": 40.0, "tokens": 160}
+
+
+def test_der_wiederverwendete_prompt_anfang_wird_gemessen(model_server):
+    """Hebel 3: die Anfrage verlangt cache_prompt - ob der Dienst es tut,
+    sagt nur die Messung.
+
+    Gemessen wird der Unterschied zwischen zwei Zahlen, die beide vom
+    Dienst kommen: wieviele Textbausteine die Frage hat und wieviele er
+    davon verarbeitet hat.
+    """
+    from pkc.llm.providers import OpenAICompatibleProvider as Anbieter
+
+    gemessen = Anbieter._wiederverwendung(
+        {"usage": {"prompt_tokens": 2900}},
+        {"prompt_n": 1900})
+    assert gemessen["wiederverwendet"] is True
+    assert gemessen["gemerkt"] == 1000
+    assert gemessen["gesamt"] == 2900
+
+
+def test_ohne_wiederverwendung_wird_das_auch_so_gemessen():
+    from pkc.llm.providers import OpenAICompatibleProvider as Anbieter
+
+    gemessen = Anbieter._wiederverwendung(
+        {"usage": {"prompt_tokens": 2900}},
+        {"prompt_n": 2900})
+    assert gemessen["wiederverwendet"] is False
+    assert gemessen["gemerkt"] == 0
+
+
+def test_ohne_die_noetigen_zahlen_wird_nichts_behauptet():
+    """Eine Anzeige "wahrscheinlich wiederverwendet" waere schlimmer als
+    gar keine."""
+    from pkc.llm.providers import OpenAICompatibleProvider as Anbieter
+
+    assert Anbieter._wiederverwendung({}, {"prompt_n": 100}) == {}
+    assert Anbieter._wiederverwendung(
+        {"usage": {"prompt_tokens": 2900}}, {}) == {}
+    assert Anbieter._wiederverwendung(
+        {"usage": {"prompt_tokens": 0}}, {"prompt_n": 0}) == {}
 
 
 def test_ohne_zeitangaben_wird_nichts_geschaetzt(model_server):
